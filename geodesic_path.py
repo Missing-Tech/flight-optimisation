@@ -19,10 +19,10 @@ def __calculate_central_angle(phi1, phi2, delta):
     central_angle = math.atan2(numerator, denominator)
     return central_angle
 
+# azimuth = alpha0
 def __calculate_azimuth(alpha1, phi1):
     numerator = math.sin(alpha1) * math.cos(phi1)
-    denominator = math.sqrt(pow(math.cos(alpha1), 2) + (pow(math.sin(alpha1), 2) * pow(math.sin(phi1), 2)))
-
+    denominator = math.sqrt(math.cos(alpha1)**2 + (math.sin(alpha1)**2 * math.sin(phi1)**2))
     azimuth = math.atan2(numerator, denominator)
     return azimuth
 
@@ -38,6 +38,8 @@ def __calculate_equator_longitude(azimuth, angle1, lamda1):
     numerator = math.sin(azimuth) * math.sin(angle1)
     denominator = math.cos(angle1)
     equator_longitude = lamda1 - math.atan2(numerator, denominator)
+    print(math.degrees(azimuth), math.degrees(angle1), math.degrees(lamda1))
+    print(math.degrees(equator_longitude))
     return equator_longitude
 
 def __find_point_distance_along_great_circle(distance, azimuth, equator_longitude):
@@ -77,11 +79,11 @@ def calculate_path(radius, no_of_points, p1, p2):
     central_angle = __calculate_central_angle(phi1, phi2, delta)
 
     angle1 = __calculate_angle_1(alpha1, phi1)
-    equator_longitude = __calculate_equator_longitude(alpha1, angle1, lambda1)
+    equator_longitude = __calculate_equator_longitude(azimuth, angle1, lambda1)
 
-    points = [(lat1,lon1, 90)]
+    points = [(lat1,lon1, 0), (lat0, lon0, 0)]
 
-    for i in range(0, no_of_points):
+    for i in range(no_of_points):
         total_distance = radius * central_angle
         step = total_distance / no_of_points
         distance = angle1 + ((i * step) / radius)
