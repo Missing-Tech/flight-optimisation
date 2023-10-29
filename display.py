@@ -10,11 +10,11 @@ import routing_grid as rg
 
 lon0, lat0 =  0, 50
 lon1, lat1 =  -72, 46
-no_of_points = 50
+no_of_points = 20
 R = 6371 # Earth radius in km
 
 points = gp.calculate_path(R, no_of_points, (lat0, lon0, 90), (lat1, lon1, 90))
-grid = rg.RoutingGrid().calculate_routing_grid(5, 0.5, (lat0, lon0, 90), (lat1, lon1, 90), R, no_of_points)
+grid = rg.RoutingGrid().calculate_routing_grid(5, (lat0, lon0, 90), (lat1, lon1, 90), R, no_of_points)
 
 path = get_path("naturalearth.land")
 geoid = Geod(ellps="sphere", a=R, b=R)
