@@ -38,8 +38,6 @@ def __calculate_equator_longitude(azimuth, angle1, lamda1):
     numerator = math.sin(azimuth) * math.sin(angle1)
     denominator = math.cos(angle1)
     equator_longitude = lamda1 - math.atan2(numerator, denominator)
-    print(math.degrees(azimuth), math.degrees(angle1), math.degrees(lamda1))
-    print(math.degrees(equator_longitude))
     return equator_longitude
 
 def __find_point_distance_along_great_circle(distance, azimuth, equator_longitude):

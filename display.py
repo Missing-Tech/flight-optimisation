@@ -16,16 +16,14 @@ R = 6371 # Earth radius in km
 points = gp.calculate_path(R, no_of_points, (lat0, lon0, 90), (lat1, lon1, 90))
 grid = rg.RoutingGrid().calculate_routing_grid(5, 0.5, (lat0, lon0, 90), (lat1, lon1, 90), R, no_of_points)
 
-print (grid)
-
 path = get_path("naturalearth.land")
-geoid = Geod(ellps="WGS84")
+geoid = Geod(ellps="sphere", a=R, b=R)
 geodesic_path_df = pd.DataFrame(points, columns=['Latitude', 'Longitude', 'Azimuth'])
 routing_grid_df = pd.DataFrame(grid, columns=['Latitude', 'Longitude', 'Azimuth'])
 geodesic_path_geometry = [Point(xy) for xy in zip(geodesic_path_df['Longitude'], geodesic_path_df['Latitude'])]
 routing_grid_geometry = [Point(xy) for xy in zip(routing_grid_df['Longitude'], routing_grid_df['Latitude'])]
-gdf = gpd.GeoDataFrame(geodesic_path_df, geometry=geodesic_path_geometry, crs='EPSG:4326') 
-gdf2 = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs='EPSG:4326') 
+gdf = gpd.GeoDataFrame(geodesic_path_df, geometry=geodesic_path_geometry) 
+gdf2 = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry) 
 
 ax = gpd.read_file(path).plot()
 gdf.plot(ax=ax, color='red', markersize=10)
