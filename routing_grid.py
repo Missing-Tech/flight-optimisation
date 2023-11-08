@@ -1,4 +1,3 @@
-import geodesic_path as gp
 import math
 import util
 
@@ -46,8 +45,7 @@ class RoutingGrid:
         return math.degrees(lat2), math.degrees(lon2), bearing
 
 
-    def calculate_routing_grid(self, grid_width, p1, p2, radius, no_of_points):
-        path = gp.calculate_path(radius, no_of_points, p1, p2)
+    def calculate_routing_grid(self, grid_width, path, no_of_points):
         grid = []
         for point in path:
             for i in range(1, grid_width + 1):
@@ -72,3 +70,4 @@ class RoutingGrid:
                 grid.append(new_point_positive)
                 grid.append(new_point_negative)
         return grid
+    
