@@ -1,19 +1,9 @@
-import math
+import numpy as np
 import util
 
 class RoutingGrid:
-    def __calculate_normal_vector(self, latitude, longitude, azimuth):
-        # Convert latitude, azimuth, and longitude from degrees to radians
-        latitude = math.radians(latitude)
-        longitude = math.radians(longitude)
-        azimuth = math.radians(azimuth)
-        
-        # Calculate the components of the normal vector
-        x = math.cos(latitude) * math.cos(azimuth)
-        y = math.cos(latitude) * math.sin(azimuth)
-        z = math.sin(latitude)
-
-        return (x,y,z)
+    def __calculate_normal_bearing(self, bearing):
+        return (bearing + np.pi/2) % (2 * np.pi)
 
     # Formula from https://www.movable-type.co.uk/scripts/latlong.html
     def __calculate_bearing(self, p1, p2):
@@ -21,13 +11,13 @@ class RoutingGrid:
         lat2, lon2, a2 = p2
         delta_lon = lon2 - lon1
 
-        lat1 = math.radians(lat1)
-        lat2 = math.radians(lat2)
-        delta_lon = math.radians(delta_lon)
+        lat1 = np.radians(lat1)
+        lat2 = np.radians(lat2)
+        delta_lon = np.radians(delta_lon)
 
-        x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(delta_lon)
-        y = math.sin(delta_lon) * math.cos(lat1)
-        z = math.atan2(y, x) % (2 * math.pi) # Convert to range [0, 2pi]
+        x = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(delta_lon)
+        y = np.sin(delta_lon) * np.cos(lat1)
+        z = np.arctan2(y, x) % (2 * np.pi) # Convert to range [0, 2pi]
 
         return z
     
@@ -36,13 +26,13 @@ class RoutingGrid:
 
         lat1, lon1, a1 = p1
 
-        lat1 = math.radians(lat1)
-        lon1 = math.radians(lon1)
+        lat1 = np.radians(lat1)
+        lon1 = np.radians(lon1)
         
-        lat2 = math.asin(math.sin(lat1) * math.cos(distance / util.R) + math.cos(lat1) * math.sin(distance / util.R) * math.cos(bearing))
-        lon2 = lon1 + math.atan2(math.sin(bearing) * math.sin(distance / util.R) * math.cos(lat1), math.cos(distance / util.R) - math.sin(lat1) * math.sin(lat2))
+        lat2 = np.arcsin(np.sin(lat1) * np.cos(distance / util.R) + np.cos(lat1) * np.sin(distance / util.R) * np.cos(bearing))
+        lon2 = lon1 + np.arctan2(np.sin(bearing) * np.sin(distance / util.R) * np.cos(lat1), np.cos(distance / util.R) - np.sin(lat1) * np.sin(lat2))
 
-        return math.degrees(lat2), math.degrees(lon2), bearing
+        return np.degrees(lat2), np.degrees(lon2), bearing
 
 
     def calculate_routing_grid(self, grid_width, path, no_of_points):
@@ -61,8 +51,7 @@ class RoutingGrid:
                     continue
 
                 bearing = self.__calculate_bearing(path[index], path[index + i]) 
-                bearing = (bearing + math.pi/2) % (2 * math.pi)
-
+                bearing = self.__calculate_normal_bearing(bearing)
 
                 distance = 100 # distance in km
                 new_point_positive = self.__calculate_new_coordinates(point, distance * i, bearing)
