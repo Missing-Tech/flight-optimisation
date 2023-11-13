@@ -6,6 +6,9 @@ import warnings
 import geodesic_path as gp
 from cartopy import crs as ccrs
 from cartopy.feature import OCEAN, LAND, BORDERS
+from geographiclib.geodesic import Geodesic
+geod = Geodesic.WGS84 
+import math
 import routing_grid as rg
 
 warnings.filterwarnings("ignore")
@@ -17,7 +20,7 @@ no_of_points = 20
 crs = ccrs.LambertConformal(central_longitude=10, central_latitude=50)
 crs_proj4 = crs.proj4_init
 
-epsg = "EPSG:4326"
+wgs84 = "WGS84"
 
 ax = plt.axes(projection=crs)
 ax.set_extent([-20, 40, 35, 70])
@@ -28,12 +31,12 @@ ax.coastlines(resolution="50m", lw=0.5, color="gray")
 points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
 geodesic_path_df = pd.DataFrame(points, columns=['Latitude', 'Longitude', 'Azimuth'])
 geodesic_path_geometry = [Point(xy) for xy in zip(geodesic_path_df['Longitude'], geodesic_path_df['Latitude'])]
-gdf = gpd.GeoDataFrame(geodesic_path_df, geometry=geodesic_path_geometry, crs=epsg) 
+gdf = gpd.GeoDataFrame(geodesic_path_df, geometry=geodesic_path_geometry, crs=wgs84) 
 
-grid = rg.RoutingGrid().calculate_routing_grid(5, points, no_of_points)
+grid = rg.RoutingGrid().calculate_routing_grid(5, points)
 routing_grid_df = pd.DataFrame(grid, columns=['Latitude', 'Longitude', 'Azimuth'])
 routing_grid_geometry = [Point(xy) for xy in zip(routing_grid_df['Longitude'], routing_grid_df['Latitude'])]
-gdf2 = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=epsg) 
+gdf2 = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=wgs84) 
 
 gdf_ae = gdf.to_crs(crs_proj4)
 gdf2_ae = gdf2.to_crs(crs_proj4)

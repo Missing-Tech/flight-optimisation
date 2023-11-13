@@ -35,19 +35,16 @@ class RoutingGrid:
         return np.degrees(lat2), np.degrees(lon2), bearing
 
 
-    def calculate_routing_grid(self, grid_width, path, no_of_points):
+    def calculate_routing_grid(self, grid_width, path):
         grid = []
         for point in path:
-            for i in range(1, grid_width + 1):
+            for i in range(1, grid_width ):
                 index = path.index(point)
 
-                if (index - i <= 0):
+                if index - i <= 0:
                     continue
 
-                if (index + i > no_of_points):
-                    continue
-
-                if index+1 > no_of_points:
+                if index + i > len(path) - 1:
                     continue
 
                 bearing = self.__calculate_bearing(path[index], path[index + i]) 

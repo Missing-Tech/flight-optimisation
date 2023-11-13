@@ -88,6 +88,8 @@ def calculate_path(no_of_points, p1, p2):
         distance = angle1 + ((i * step) / util.R)
         points.append(__find_point_distance_along_great_circle(distance, azimuth, equator_longitude))
 
+    points.append((lat1,lon1,0))
+
     return points
 
 
