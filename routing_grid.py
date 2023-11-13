@@ -38,7 +38,7 @@ class RoutingGrid:
     def calculate_routing_grid(self, grid_width, path):
         grid = []
         for point in path:
-            for i in range(1, grid_width ):
+            for i in range(1, grid_width + 1):
                 index = path.index(point)
 
                 if index - i <= 0:
