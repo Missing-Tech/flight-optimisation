@@ -12,5 +12,6 @@ c.retrieve("reanalysis-era5-complete", {
     "step": "0",
     "stream": "oper",
     "time": "09:00:00",
+    "grid": "0.25/0.25",
     "type": "4v"
 }, "output")
