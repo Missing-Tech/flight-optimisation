@@ -5,25 +5,22 @@ from shapely.geometry import Point
 import warnings
 import geodesic_path as gp
 from cartopy import crs as ccrs
-from cartopy.feature import OCEAN, LAND, BORDERS
-from geographiclib.geodesic import Geodesic
-geod = Geodesic.WGS84 
-import math
+from cartopy.feature import BORDERS 
 import routing_grid as rg
 
 warnings.filterwarnings("ignore")
 
-lon0, lat0 = -3.7, 40.4
-lon1, lat1 =  24.9, 60.1
+lon0, lat0 = 0.5, 51.4
+lon1, lat1 =  -73.7 ,40.6
 no_of_points = 20
 
-crs = ccrs.LambertConformal(central_longitude=10, central_latitude=50)
+crs = ccrs.NearsidePerspective(central_latitude=51, central_longitude=-35)
 crs_proj4 = crs.proj4_init
 
 wgs84 = "WGS84"
 
 ax = plt.axes(projection=crs)
-ax.set_extent([-20, 40, 35, 70])
+ax.set_extent([10, -90, 25, 60])
 ax.add_feature(BORDERS, lw=0.5, color="gray")
 ax.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
 ax.coastlines(resolution="50m", lw=0.5, color="gray")
@@ -41,7 +38,27 @@ gdf2 = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=wgs
 gdf_ae = gdf.to_crs(crs_proj4)
 gdf2_ae = gdf2.to_crs(crs_proj4)
 
+
+
+downsample_factor = 25
+wind_data = pd.read_csv("output_data.csv", sep=",")
+downsampled_data = wind_data.loc[::downsample_factor, :]
+
 gdf_ae.plot(ax=ax, color='red', markersize=10)
 gdf2_ae.plot(ax=ax, color='blue', markersize=2)
+
+# Quiver plot for downsampled wind vectors
+ax.quiver(
+    downsampled_data['longitude'],
+    downsampled_data['latitude'],
+    downsampled_data['u'],
+    downsampled_data['v'],
+    transform=ccrs.PlateCarree(),
+    color=(0.73, 0.93, 1, 0.8),
+    scale_units='xy',
+    angles='xy',
+    width=0.005,
+)
+
 
 plt.show()
