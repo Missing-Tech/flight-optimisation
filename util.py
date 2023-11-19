@@ -1,5 +1,5 @@
+R = 6371  # Earth radius in km
 
-R = 6371 # Earth radius in km
 
 def reduce_angle(angle):
     while angle < -180:

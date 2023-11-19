@@ -1,9 +1,10 @@
 import numpy as np
 import util
 
+
 class RoutingGrid:
     def __calculate_normal_bearing(self, bearing):
-        return (bearing + np.pi/2) % (2 * np.pi)
+        return (bearing + np.pi / 2) % (2 * np.pi)
 
     # Formula from https://www.movable-type.co.uk/scripts/latlong.html
     def __calculate_bearing(self, p1, p2):
@@ -15,25 +16,31 @@ class RoutingGrid:
         lat2 = np.radians(lat2)
         delta_lon = np.radians(delta_lon)
 
-        x = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(delta_lon)
+        x = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(
+            delta_lon
+        )
         y = np.sin(delta_lon) * np.cos(lat1)
-        z = np.arctan2(y, x) % (2 * np.pi) # Convert to range [0, 2pi]
+        z = np.arctan2(y, x) % (2 * np.pi)  # Convert to range [0, 2pi]
 
         return z
-    
+
     # Formula from https://www.movable-type.co.uk/scripts/latlong.html
     def __calculate_new_coordinates(self, p1, distance, bearing):
-
         lat1, lon1, a1 = p1
 
         lat1 = np.radians(lat1)
         lon1 = np.radians(lon1)
-        
-        lat2 = np.arcsin(np.sin(lat1) * np.cos(distance / util.R) + np.cos(lat1) * np.sin(distance / util.R) * np.cos(bearing))
-        lon2 = lon1 + np.arctan2(np.sin(bearing) * np.sin(distance / util.R) * np.cos(lat1), np.cos(distance / util.R) - np.sin(lat1) * np.sin(lat2))
+
+        lat2 = np.arcsin(
+            np.sin(lat1) * np.cos(distance / util.R)
+            + np.cos(lat1) * np.sin(distance / util.R) * np.cos(bearing)
+        )
+        lon2 = lon1 + np.arctan2(
+            np.sin(bearing) * np.sin(distance / util.R) * np.cos(lat1),
+            np.cos(distance / util.R) - np.sin(lat1) * np.sin(lat2),
+        )
 
         return np.degrees(lat2), np.degrees(lon2), bearing
-
 
     def calculate_routing_grid(self, grid_width, path):
         grid = []
@@ -47,13 +54,16 @@ class RoutingGrid:
                 if index + i > len(path) - 1:
                     continue
 
-                bearing = self.__calculate_bearing(path[index], path[index + i]) 
+                bearing = self.__calculate_bearing(path[index], path[index + i])
                 bearing = self.__calculate_normal_bearing(bearing)
 
-                distance = 100 # distance in km
-                new_point_positive = self.__calculate_new_coordinates(point, distance * i, bearing)
-                new_point_negative = self.__calculate_new_coordinates(point, distance * i * -1, bearing)
+                distance = 100  # distance in km
+                new_point_positive = self.__calculate_new_coordinates(
+                    point, distance * i, bearing
+                )
+                new_point_negative = self.__calculate_new_coordinates(
+                    point, distance * i * -1, bearing
+                )
                 grid.append(new_point_positive)
                 grid.append(new_point_negative)
         return grid
-    
