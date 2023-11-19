@@ -26,41 +26,55 @@ ax.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")
 ax.coastlines(resolution="50m", lw=0.5, color="gray")
 
 points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
-geodesic_path_df = pd.DataFrame(points, columns=["Latitude", "Longitude", "Azimuth"])
-geodesic_path_geometry = [
-    Point(xy) for xy in zip(geodesic_path_df["Longitude"], geodesic_path_df["Latitude"])
-]
-gdf = gpd.GeoDataFrame(geodesic_path_df, geometry=geodesic_path_geometry, crs=wgs84)
-
 grid = rg.RoutingGrid().calculate_routing_grid(5, points)
-routing_grid_df = pd.DataFrame(grid, columns=["Latitude", "Longitude", "Azimuth"])
-routing_grid_geometry = [
-    Point(xy) for xy in zip(routing_grid_df["Longitude"], routing_grid_df["Latitude"])
-]
-gdf2 = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=wgs84)
 
-gdf_ae = gdf.to_crs(crs_proj4)
-gdf2_ae = gdf2.to_crs(crs_proj4)
 
-downsample_factor = 25
-wind_data = pd.read_csv("output_data.csv", sep=",")
-downsampled_data = wind_data.loc[::downsample_factor, :]
+def display_wind_vectors(downsample_factor=25):
+    wind_data = pd.read_csv("output_data.csv", sep=",")
+    downsampled_data = wind_data.loc[::downsample_factor, :]
+    # Quiver plot for downsampled wind vectors
+    ax.quiver(
+        downsampled_data["longitude"],
+        downsampled_data["latitude"],
+        downsampled_data["u"],
+        downsampled_data["v"],
+        transform=ccrs.PlateCarree(),
+        color=(0.73, 0.93, 1, 0.8),
+        scale_units="xy",
+        angles="xy",
+        width=0.005,
+    )
 
-gdf_ae.plot(ax=ax, color="red", markersize=10)
-gdf2_ae.plot(ax=ax, color="blue", markersize=2)
 
-# Quiver plot for downsampled wind vectors
-ax.quiver(
-    downsampled_data["longitude"],
-    downsampled_data["latitude"],
-    downsampled_data["u"],
-    downsampled_data["v"],
-    transform=ccrs.PlateCarree(),
-    color=(0.73, 0.93, 1, 0.8),
-    scale_units="xy",
-    angles="xy",
-    width=0.005,
-)
+def display_geodesic_path(points=points):
+    geodesic_path_df = pd.DataFrame(
+        points, columns=["Latitude", "Longitude", "Azimuth"]
+    )
+    geodesic_path_geometry = [
+        Point(xy)
+        for xy in zip(geodesic_path_df["Longitude"], geodesic_path_df["Latitude"])
+    ]
+    gdf = gpd.GeoDataFrame(geodesic_path_df, geometry=geodesic_path_geometry, crs=wgs84)
+    gdf_ae = gdf.to_crs(crs_proj4)
+    gdf_ae.plot(ax=ax, color="red", markersize=10)
 
+
+def display_routing_grid(grid=grid):
+    grid = sum(grid, [])
+
+    routing_grid_df = pd.DataFrame(grid, columns=["Latitude", "Longitude"])
+    routing_grid_geometry = [
+        Point(xy)
+        for xy in zip(routing_grid_df["Longitude"], routing_grid_df["Latitude"])
+    ]
+    gdf = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=wgs84)
+
+    gdf_ae = gdf.to_crs(crs_proj4)
+
+    gdf_ae.plot(ax=ax, color="blue", markersize=2)
+
+
+display_geodesic_path()
+display_routing_grid()
 
 plt.show()
