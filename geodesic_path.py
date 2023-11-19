@@ -81,8 +81,8 @@ def __find_point_distance_along_great_circle(distance, azimuth, equator_longitud
 
 
 def calculate_path(no_of_points, p1, p2):
-    lat0, lon0, a1 = p1
-    lat1, lon1, a2 = p2
+    lat0, lon0, _ = p1
+    lat1, lon1, _ = p2
 
     phi1 = np.radians(lat0)
     lambda1 = np.radians(lon0)
