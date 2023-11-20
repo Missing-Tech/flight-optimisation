@@ -204,3 +204,4 @@ pip-selfcheck.json
 
 output_data.csv
 output.grib
+*.idx
