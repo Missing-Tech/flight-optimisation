@@ -7,13 +7,21 @@ ds = xr.open_dataset("output.grib", engine="cfgrib")
 # Access wind vector data
 u_component = ds["u"]
 v_component = ds["v"]
+w_component = ds["w"]
 
-ds = ds.get(["u", "v", "latitude", "longitude"])
+# Access temperature data
+temperature = ds["t"]
+
+# Access relative humidity
+relative_humidity = ds["r"]
+
+ds = ds.get(["u", "v", "w", "t", "r", "latitude", "longitude", "isobaricInhPa"])
 
 df = ds.to_dataframe()
 
 latitudes = df.index.get_level_values("latitude")
 longitudes = df.index.get_level_values("longitude")
+pressures = df.index.get_level_values("isobaricInhPa")
 
 
 def center_longitudes(lon):
@@ -24,5 +32,6 @@ remapped_longitudes = longitudes.map(center_longitudes)
 
 df["longitude"] = remapped_longitudes
 df["latitude"] = latitudes
+df["pressure"] = pressures
 
 df.to_csv("output_data.csv", index=False)
