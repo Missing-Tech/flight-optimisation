@@ -11,6 +11,8 @@ import routing_grid as rg
 from cartopy.mpl.patch import geos_to_path
 import itertools
 import numpy as np
+import altitude_grid as ag
+import flight_path as fp
 
 warnings.filterwarnings("ignore")
 
@@ -44,6 +46,24 @@ def create_3d_ax(fig=None):
 
 points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
 grid = rg.calculate_routing_grid(5, points)
+altitude_grid = ag.calculate_altitude_grid(grid)
+flight_path = fp.generate_random_flight_path(altitude_grid)
+
+
+def display_flight_path(flight_path=flight_path, ax=None):
+    if ax is None:
+        ax = create_map_ax()
+    flight_path_df = pd.DataFrame(
+        flight_path, columns=["Latitude", "Longitude", "Altitude"]
+    )
+    ax.plot(
+        flight_path_df["Longitude"],
+        flight_path_df["Latitude"],
+        color="green",
+        markersize=10,
+        linewidth=1,
+        transform=ccrs.PlateCarree(),
+    )
 
 
 def display_wind_vectors(downsample_factor=755, ax=None):
@@ -79,7 +99,7 @@ def display_geodesic_path(points=points, ax=None):
     ]
     gdf = gpd.GeoDataFrame(geodesic_path_df, geometry=geodesic_path_geometry, crs=wgs84)
     gdf_ae = gdf.to_crs(crs_proj4)
-    gdf_ae.plot(ax=ax, color="red", markersize=10)
+    gdf_ae.plot(ax=ax, color="red", markersize=5)
 
 
 def display_routing_grid(grid=grid, ax=None):
@@ -88,20 +108,19 @@ def display_routing_grid(grid=grid, ax=None):
 
     grid = sum(grid, [])
 
-    routing_grid_df = pd.DataFrame(grid, columns=["Latitude", "Longitude", "Altitude"])
-    altitude_30000 = routing_grid_df[routing_grid_df["Altitude"] == 30_000]
+    routing_grid_df = pd.DataFrame(grid, columns=["Latitude", "Longitude"])
     routing_grid_geometry = [
         Point(xy)
         for xy in zip(
-            altitude_30000["Longitude"],
-            altitude_30000["Latitude"],
+            routing_grid_df["Longitude"],
+            routing_grid_df["Latitude"],
         )
     ]
-    gdf = gpd.GeoDataFrame(altitude_30000, geometry=routing_grid_geometry, crs=wgs84)
+    gdf = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=wgs84)
 
     gdf_ae = gdf.to_crs(crs_proj4)
 
-    gdf_ae.plot(ax=ax, color="blue", markersize=2)
+    gdf_ae.plot(ax=ax, color="blue", markersize=1)
 
 
 def extract_map_geometry():
@@ -127,15 +146,18 @@ def extract_map_geometry():
 
 # Function to display altitude grid as 3D scatter plot
 # Method from https://stackoverflow.com/questions/23785408/3d-cartopy-similar-to-matplotlib-basemap
-def display_altitude_grid_3d(grid=grid, ax=None):
+def display_altitude_grid_3d(grid=altitude_grid, ax=None):
     if ax is None:
         ax = create_3d_ax()
 
     lc = extract_map_geometry()
     ax.add_collection3d(lc, zs=28_000, zdir="z")
 
-    grid = sum(grid, [])
-    altitude_grid_df = pd.DataFrame(grid, columns=["Longitude", "Latitude", "Altitude"])
+    altitude_grid_df = pd.DataFrame(
+        [(alt, *coords) for alt, coords_list in grid.items() for coords in coords_list],
+        columns=["Altitude", "Longitude", "Latitude"],
+    )
+
     altitude_grid_geometry = [
         Point(xyz)
         for xyz in zip(
@@ -169,11 +191,13 @@ def display_altitude_grid_3d(grid=grid, ax=None):
 
 # Create a subplots for 3D scatter plot and the map
 ax1 = create_map_ax()
-ax2 = create_3d_ax()
+# ax2 = create_3d_ax()
 
-display_geodesic_path(ax=ax1)
 display_routing_grid(ax=ax1)
+display_geodesic_path(ax=ax1)
 display_wind_vectors(ax=ax1)
-display_altitude_grid_3d(ax=ax2)
+display_flight_path(ax=ax1)
+# display_altitude_grid_3d(ax=ax2)
+
 
 plt.show()
