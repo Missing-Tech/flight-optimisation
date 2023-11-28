@@ -20,7 +20,7 @@ def generate_random_flight_path(altitude_grid):
             return None
         min_i = max(yi - max_lateral_var, 0)
         max_i = min(yi + max_lateral_var, len(grid[altitude][xi]) - 1)
-        # points = grid[altitude][xi + 1][min_i : max_i + 1]
+
         points = []
         if max_i > 0:
             for i in range(min_i, max_i + 1):
@@ -68,9 +68,11 @@ def generate_random_flight_path(altitude_grid):
         flight_path.append(point)
 
     flight_path = calculate_course_at_points(flight_path)
-    flight_path = calculate_time_at_points(flight_path, 350, pd.Timestamp.now())
     flight_path = calculate_true_air_speed_at_points(flight_path)
-
+    flight_path = calculate_headings_at_points(flight_path)
+    flight_path = calculate_climb_angle_at_points(flight_path)
+    flight_path = calculate_ground_speed_at_points(flight_path)
+    flight_path = calculate_time_at_points(flight_path, pd.Timestamp.now())
     print(flight_path)
 
     return flight_path
@@ -80,17 +82,16 @@ def calculate_course_at_points(flight_path):
     for i in range(len(flight_path) - 1):
         point = flight_path[i]
         next_point = flight_path[i + 1]
-        bearing = np.rad2deg(
-            util.calculate_bearing(
-                (point["latitude"], point["longitude"], 0),
-                (next_point["latitude"], next_point["longitude"], 0),
-            )
+        bearing = util.calculate_bearing(
+            (point["latitude"], point["longitude"], 0),
+            (next_point["latitude"], next_point["longitude"], 0),
         )
+
         flight_path[i]["course"] = bearing
     return flight_path
 
 
-def calculate_time_at_points(flight_path, TAS, start_time):
+def calculate_time_at_points(flight_path, start_time):
     time = start_time
     flight_path[0]["time"] = time
     for i in range(len(flight_path) - 1):
@@ -100,18 +101,15 @@ def calculate_time_at_points(flight_path, TAS, start_time):
             (point["latitude"], point["longitude"]),
             (next_point["latitude"], next_point["longitude"]),
         ).km
-        flight_path[i + 1]["time"] = time + pd.Timedelta(hours=distance / TAS)
+        flight_path[i + 1]["time"] = time + pd.Timedelta(
+            hours=distance / point["ground_speed"]
+        )
     return flight_path
 
 
-def calculate_true_air_speed(point, mach, altitude):
+def calculate_true_air_speed(point, mach):
     speed_of_sound = 340.29
-    weather_data = util.get_weather_data_at_point(point)
-    pressure = util.calculate_pressure_from_altitude_ft(altitude)
-    pressure_steps = weather_data.transpose().columns
-    nearest_pressure = util.get_nearest_value_from_list(pressure, pressure_steps)
-
-    temperature = weather_data.loc[nearest_pressure]["t"]
+    temperature = util.get_temperature_at_point(point)
     sea_level_temp = 288.15  # in kelvin
     air_temp_ratio = temperature / sea_level_temp
 
@@ -121,6 +119,64 @@ def calculate_true_air_speed(point, mach, altitude):
 def calculate_true_air_speed_at_points(flight_path):
     for i in range(len(flight_path)):
         point = flight_path[i]
-        tas = calculate_true_air_speed(point, point["mach"], point["altitude"])
+        tas = calculate_true_air_speed(point, point["mach"])
         flight_path[i]["tas"] = tas
+    return flight_path
+
+
+def calculate_heading(point):
+    u, v = util.get_wind_vector_at_point(point)
+
+    numerator = v * np.sin(point["course"]) - u * np.cos(point["course"])
+    crabbing_angle = (180 / np.pi) * np.arcsin(numerator / point["tas"])
+
+    return crabbing_angle
+
+
+def calculate_headings_at_points(flight_path):
+    for i in range(len(flight_path) - 1):
+        point = flight_path[i]
+        heading = calculate_heading(point)
+        flight_path[i]["heading"] = heading
+    return flight_path
+
+
+def calculate_climb_angle(point, next_point):
+    change_in_altitude = next_point["altitude"] - point["altitude"]
+    change_in_altitude_km = change_in_altitude / 3281
+    distance = gp.distance(
+        (point["latitude"], point["longitude"]),
+        (next_point["latitude"], next_point["longitude"]),
+    ).km
+    angle = np.arctan2(change_in_altitude_km, distance)
+    return angle
+
+
+def calculate_climb_angle_at_points(flight_path):
+    for i in range(len(flight_path) - 1):
+        point = flight_path[i]
+        next_point = flight_path[i + 1]
+        climb_angle = calculate_climb_angle(point, next_point)
+        flight_path[i]["climb_angle"] = climb_angle
+    flight_path[-1]["climb_angle"] = 0
+    return flight_path
+
+
+def calculate_ground_speed(point):
+    u, v = util.get_wind_vector_at_point(point)
+    climb_angle = point["climb_angle"]
+    first_component = v * np.cos(point["course"]) + u * np.sin(point["course"])
+    second_component = np.sqrt(
+        np.power((point["tas"] * np.cos(climb_angle)), 2)
+        - np.power(((v * np.sin(point["course"])) - (u * np.cos(point["course"]))), 2)
+    )
+    ground_speed = first_component + second_component
+    return ground_speed
+
+
+def calculate_ground_speed_at_points(flight_path):
+    for i in range(len(flight_path) - 1):
+        point = flight_path[i]
+        ground_speed = calculate_ground_speed(point)
+        flight_path[i]["ground_speed"] = ground_speed
     return flight_path

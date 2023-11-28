@@ -77,3 +77,26 @@ def get_weather_data_at_point(point):
     )
     nearest_point = nearest_point.to_dataframe()
     return nearest_point
+
+
+def get_pressure_levels():
+    return ds["isobaricInhPa"].values
+
+
+def get_wind_vector_at_point(point):
+    weather_data = get_weather_data_at_point(point)
+    pressure = calculate_pressure_from_altitude_ft(point["altitude"])
+    nearest_pressure = get_nearest_value_from_list(pressure, get_pressure_levels())
+    u = weather_data.loc[nearest_pressure]["u"]
+    v = weather_data.loc[nearest_pressure]["v"]
+
+    return (u, v)
+
+
+def get_temperature_at_point(point):
+    weather_data = get_weather_data_at_point(point)
+    pressure = calculate_pressure_from_altitude_ft(point["altitude"])
+    nearest_pressure = get_nearest_value_from_list(pressure, get_pressure_levels())
+
+    temperature = weather_data.loc[nearest_pressure]["t"]
+    return temperature
