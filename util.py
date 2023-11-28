@@ -49,13 +49,3 @@ def calculate_new_coordinates(p1, distance, bearing):
     )
 
     return np.degrees(lat2), np.degrees(lon2), bearing
-
-
-def get_consecutive_points(xi, yi, grid, max_var=2):
-    if xi == len(grid) - 1:
-        return None
-    min_i = max(yi - max_var, 0)
-    max_i = min(yi + max_var, len(grid[xi]) - 1)
-    points = grid[xi + 1][min_i : max_i + 1]
-
-    return points
