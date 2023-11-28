@@ -1,6 +1,8 @@
 import numpy as np
+import cfgrib
 
 R = 6371  # Earth radius in km
+ds = cfgrib.open_dataset("output.grib")
 
 
 def reduce_angle(angle):
@@ -49,3 +51,29 @@ def calculate_new_coordinates(p1, distance, bearing):
     )
 
     return np.degrees(lat2), np.degrees(lon2), bearing
+
+
+# From https://pvlib-python.readthedocs.io/en/v0.2.2/_modules/pvlib/atmosphere.html
+def calculate_altitude_ft_from_pressure(pressure):
+    # Use the international barometric formula
+    altitude = 44331.5 - 4946.62 * pressure ** (0.190263)
+    return altitude
+
+
+# From https://pvlib-python.readthedocs.io/en/v0.2.2/_modules/pvlib/atmosphere.html
+def calculate_pressure_from_altitude_ft(altitude_ft):
+    pressure = 100 * ((44331.514 - altitude_ft) / 11880.516) ** (1 / 0.1902632)
+
+    return pressure
+
+
+def get_nearest_value_from_list(value, list):
+    return min(list, key=lambda x: abs(x - value))
+
+
+def get_weather_data_at_point(point):
+    nearest_point = ds.sel(
+        latitude=point["latitude"], longitude=point["longitude"], method="nearest"
+    )
+    nearest_point = nearest_point.to_dataframe()
+    return nearest_point
