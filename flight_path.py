@@ -1,6 +1,4 @@
 import random
-import pandas as pd
-from pycontrails import Flight
 
 
 def generate_random_flight_path(altitude_grid):
@@ -56,22 +54,11 @@ def generate_random_flight_path(altitude_grid):
         )
 
         point = altitude_grid[currentAltitude][currentXi][currentYi]
-        point = (*point, currentAltitude)
-        flight_path.append(point)
-
-    latitudes = [point[0] for point in flight_path]
-    longitudes = [point[1] for point in flight_path]
-    altitudes = [point[2] for point in flight_path]
-
-    df = pd.DataFrame(
-        {
-            "longitude": longitudes,
-            "latitude": latitudes,
-            "altitude_ft": altitudes,
-            "time": pd.date_range("2021-01-01T10", "2021-01-01T15", periods=21),
+        point = {
+            "latitude": point[0],
+            "longitude": point[1],
+            "altitude": currentAltitude,
         }
-    )
-
-    # fl = Flight(data=df, flight_id=123)
+        flight_path.append(point)
 
     return flight_path

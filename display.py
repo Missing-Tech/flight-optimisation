@@ -54,11 +54,12 @@ def display_flight_path(flight_path=flight_path, ax=None):
     if ax is None:
         ax = create_map_ax()
     flight_path_df = pd.DataFrame(
-        flight_path, columns=["Latitude", "Longitude", "Altitude"]
+        flight_path, columns=["latitude", "longitude", "altitude"]
     )
+
     ax.plot(
-        flight_path_df["Longitude"],
-        flight_path_df["Latitude"],
+        flight_path_df["longitude"],
+        flight_path_df["latitude"],
         color="green",
         markersize=10,
         linewidth=1,
@@ -193,9 +194,9 @@ def display_altitude_grid_3d(grid=altitude_grid, ax=None):
 ax1 = create_map_ax()
 # ax2 = create_3d_ax()
 
-display_routing_grid(ax=ax1)
-display_geodesic_path(ax=ax1)
-display_wind_vectors(ax=ax1)
+# display_routing_grid(ax=ax1)
+# display_geodesic_path(ax=ax1)
+# display_wind_vectors(ax=ax1)
 display_flight_path(ax=ax1)
 # display_altitude_grid_3d(ax=ax2)
 
