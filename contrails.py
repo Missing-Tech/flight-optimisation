@@ -1,5 +1,3 @@
-from matplotlib import pyplot as plt
-import numpy as np
 import pandas as pd
 import pycontrails as pc
 from pycontrails.models.cocip import Cocip
