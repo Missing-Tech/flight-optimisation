@@ -13,6 +13,7 @@ import itertools
 import numpy as np
 import altitude_grid as ag
 import flight_path as fp
+import util
 
 warnings.filterwarnings("ignore")
 
@@ -53,9 +54,7 @@ flight_path = fp.generate_random_flight_path(altitude_grid)
 def display_flight_path(flight_path=flight_path, ax=None):
     if ax is None:
         ax = create_map_ax()
-    flight_path_df = pd.DataFrame(
-        flight_path, columns=["latitude", "longitude", "altitude"]
-    )
+    flight_path_df = pd.DataFrame(flight_path, columns=["latitude", "longitude"])
 
     ax.plot(
         flight_path_df["longitude"],
@@ -63,6 +62,31 @@ def display_flight_path(flight_path=flight_path, ax=None):
         color="green",
         markersize=10,
         linewidth=1,
+        transform=ccrs.PlateCarree(),
+    )
+
+
+def display_flight_headings(flight_path=flight_path, ax=None):
+    if ax is None:
+        ax = create_map_ax()
+    flight_path_df = pd.DataFrame(
+        flight_path, columns=["latitude", "longitude", "heading"]
+    )
+    headings = flight_path_df["heading"]
+    heading_x = []
+    heading_y = []
+    for i in range(len(headings)):
+        point = (flight_path_df["longitude"][i], flight_path_df["latitude"][i], 0)
+        x, y, _ = util.calculate_new_coordinates(point, 200, headings[i])
+        heading_x.append(x)
+        heading_y.append(y)
+
+    ax.quiver(
+        flight_path_df["longitude"],
+        flight_path_df["latitude"],
+        -(flight_path_df["longitude"] - np.array(heading_x)),
+        -(flight_path_df["latitude"] - np.array(heading_y)),
+        color="red",
         transform=ccrs.PlateCarree(),
     )
 
@@ -196,8 +220,9 @@ ax1 = create_map_ax()
 
 # display_routing_grid(ax=ax1)
 # display_geodesic_path(ax=ax1)
-# display_wind_vectors(ax=ax1)
+display_wind_vectors(ax=ax1)
 display_flight_path(ax=ax1)
+display_flight_headings(ax=ax1)
 # display_altitude_grid_3d(ax=ax2)
 
 

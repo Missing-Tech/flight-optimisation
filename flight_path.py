@@ -73,7 +73,6 @@ def generate_random_flight_path(altitude_grid):
     flight_path = calculate_climb_angle_at_points(flight_path)
     flight_path = calculate_ground_speed_at_points(flight_path)
     flight_path = calculate_time_at_points(flight_path, pd.Timestamp.now())
-    print(flight_path)
 
     return flight_path
 
@@ -83,10 +82,9 @@ def calculate_course_at_points(flight_path):
         point = flight_path[i]
         next_point = flight_path[i + 1]
         bearing = util.calculate_bearing(
-            (point["latitude"], point["longitude"], 0),
-            (next_point["latitude"], next_point["longitude"], 0),
+            (point["longitude"], point["latitude"], 0),
+            (next_point["longitude"], next_point["latitude"], 0),
         )
-
         flight_path[i]["course"] = bearing
     return flight_path
 
@@ -124,20 +122,19 @@ def calculate_true_air_speed_at_points(flight_path):
     return flight_path
 
 
-def calculate_heading(point):
+def calculate_crabbing_angle(point):
     u, v = util.get_wind_vector_at_point(point)
 
-    numerator = v * np.sin(point["course"]) - u * np.cos(point["course"])
-    crabbing_angle = (180 / np.pi) * np.arcsin(numerator / point["tas"])
-
+    numerator = (v * np.sin(point["course"])) - (u * np.cos(point["course"]))
+    crabbing_angle = np.arcsin(numerator / point["tas"])
     return crabbing_angle
 
 
 def calculate_headings_at_points(flight_path):
     for i in range(len(flight_path) - 1):
         point = flight_path[i]
-        heading = calculate_heading(point)
-        flight_path[i]["heading"] = heading
+        crabbing_angle = calculate_crabbing_angle(point)
+        flight_path[i]["heading"] = flight_path[i]["course"] - crabbing_angle
     return flight_path
 
 
