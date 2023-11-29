@@ -73,6 +73,9 @@ def generate_random_flight_path(altitude_grid):
     flight_path = calculate_climb_angle_at_points(flight_path)
     flight_path = calculate_ground_speed_at_points(flight_path)
     flight_path = calculate_time_at_points(flight_path, pd.Timestamp.now())
+    flight_path = calculate_fuel_flow_at_points(flight_path)
+
+    print(pd.DataFrame(flight_path))
 
     return flight_path
 
@@ -102,6 +105,7 @@ def calculate_time_at_points(flight_path, start_time):
         flight_path[i + 1]["time"] = time + pd.Timedelta(
             hours=distance / point["ground_speed"]
         )
+        time = flight_path[i + 1]["time"]
     return flight_path
 
 
@@ -175,5 +179,33 @@ def calculate_ground_speed_at_points(flight_path):
     for i in range(len(flight_path) - 1):
         point = flight_path[i]
         ground_speed = calculate_ground_speed(point)
-        flight_path[i]["ground_speed"] = ground_speed
+        flight_path[i]["ground_speed"] = ground_speed * 1.852  # convert from Kn to kmph
+
+    return flight_path
+
+
+# TODO: Calculate fuel flow + weight at points
+
+
+def calculate_fuel_flow(point, ac="A320", eng="CFM56-5B4"):
+    fuelflow = FuelFlow(ac, eng)
+    FF = fuelflow.enroute(
+        mass=point["mass"],
+        tas=point["tas"],
+        alt=point["altitude"],
+        path_angle=np.rad2deg(point["climb_angle"]),
+    )
+    return FF
+
+
+def calculate_fuel_flow_at_points(flight_path, ac="A320", eng="CFM56-5B4", mass=60_000):
+    flight_path[0]["mass"] = mass
+    for i in range(len(flight_path) - 1):
+        point = flight_path[i]
+        fuel_flow_kg_s = calculate_fuel_flow(point, ac, eng)
+        time_to_next_point_s = (flight_path[i + 1]["time"] - point["time"]).seconds
+        fuel_consumption_kg = fuel_flow_kg_s * time_to_next_point_s
+        flight_path[i + 1]["mass"] = point["mass"] - fuel_consumption_kg
+        flight_path[i]["fuel_flow"] = fuel_flow_kg_s
+
     return flight_path
