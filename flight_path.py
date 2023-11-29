@@ -6,7 +6,9 @@ import util
 import numpy as np
 
 
-def generate_random_flight_path(altitude_grid):
+def generate_random_flight_path(
+    altitude_grid, aircraft_type="E190", engine_type="CF34-10E5"
+):
     def get_consecutive_points(
         xi,
         yi,
@@ -62,8 +64,8 @@ def generate_random_flight_path(altitude_grid):
         point = {
             "latitude": point[0],
             "longitude": point[1],
-            "altitude": currentAltitude,
-            "mach": 0.8,
+            "altitude_ft": currentAltitude,
+            "thrust": 0.9,
         }
         flight_path.append(point)
 
@@ -72,10 +74,10 @@ def generate_random_flight_path(altitude_grid):
     flight_path = calculate_headings_at_points(flight_path)
     flight_path = calculate_climb_angle_at_points(flight_path)
     flight_path = calculate_ground_speed_at_points(flight_path)
-    flight_path = calculate_time_at_points(flight_path, pd.Timestamp.now())
-    flight_path = calculate_fuel_flow_at_points(flight_path)
-
-    print(pd.DataFrame(flight_path))
+    flight_path = calculate_time_at_points(
+        flight_path, pd.Timestamp(year=2023, month=3, day=31, hour=0)
+    )
+    flight_path = calculate_fuel_flow_at_points(flight_path, aircraft_type, engine_type)
 
     return flight_path
 
@@ -121,8 +123,8 @@ def calculate_true_air_speed(point, mach):
 def calculate_true_air_speed_at_points(flight_path):
     for i in range(len(flight_path)):
         point = flight_path[i]
-        tas = calculate_true_air_speed(point, point["mach"])
-        flight_path[i]["tas"] = tas
+        tas = calculate_true_air_speed(point, point["thrust"])
+        flight_path[i]["true_airspeed"] = tas
     return flight_path
 
 
@@ -130,7 +132,7 @@ def calculate_crabbing_angle(point):
     u, v = util.get_wind_vector_at_point(point)
 
     numerator = (v * np.sin(point["course"])) - (u * np.cos(point["course"]))
-    crabbing_angle = np.arcsin(numerator / point["tas"])
+    crabbing_angle = np.arcsin(numerator / point["true_airspeed"])
     return crabbing_angle
 
 
@@ -143,7 +145,7 @@ def calculate_headings_at_points(flight_path):
 
 
 def calculate_climb_angle(point, next_point):
-    change_in_altitude = next_point["altitude"] - point["altitude"]
+    change_in_altitude = next_point["altitude_ft"] - point["altitude_ft"]
     change_in_altitude_km = change_in_altitude / 3281
     distance = gp.distance(
         (point["latitude"], point["longitude"]),
@@ -168,7 +170,7 @@ def calculate_ground_speed(point):
     climb_angle = point["climb_angle"]
     first_component = v * np.cos(point["course"]) + u * np.sin(point["course"])
     second_component = np.sqrt(
-        np.power((point["tas"] * np.cos(climb_angle)), 2)
+        np.power((point["true_airspeed"] * np.cos(climb_angle)), 2)
         - np.power(((v * np.sin(point["course"])) - (u * np.cos(point["course"]))), 2)
     )
     ground_speed = first_component + second_component
@@ -187,25 +189,29 @@ def calculate_ground_speed_at_points(flight_path):
 # TODO: Calculate fuel flow + weight at points
 
 
-def calculate_fuel_flow(point, ac="A320", eng="CFM56-5B4"):
+def calculate_fuel_flow(point, ac="E190", eng="CF34-10E5"):
     fuelflow = FuelFlow(ac, eng)
     FF = fuelflow.enroute(
-        mass=point["mass"],
-        tas=point["tas"],
-        alt=point["altitude"],
+        mass=point["aircraft_mass"],
+        tas=point["true_airspeed"],
+        alt=point["altitude_ft"],
         path_angle=np.rad2deg(point["climb_angle"]),
     )
     return FF
 
 
-def calculate_fuel_flow_at_points(flight_path, ac="A320", eng="CFM56-5B4", mass=60_000):
-    flight_path[0]["mass"] = mass
+def calculate_fuel_flow_at_points(
+    flight_path, ac="E190", eng="CF34-10E5", mass=150_000
+):
+    flight_path[0]["aircraft_mass"] = mass
     for i in range(len(flight_path) - 1):
         point = flight_path[i]
         fuel_flow_kg_s = calculate_fuel_flow(point, ac, eng)
         time_to_next_point_s = (flight_path[i + 1]["time"] - point["time"]).seconds
         fuel_consumption_kg = fuel_flow_kg_s * time_to_next_point_s
-        flight_path[i + 1]["mass"] = point["mass"] - fuel_consumption_kg
+        flight_path[i + 1]["aircraft_mass"] = (
+            point["aircraft_mass"] - fuel_consumption_kg
+        )
         flight_path[i]["fuel_flow"] = fuel_flow_kg_s
-
+    flight_path[-1]["fuel_flow"] = calculate_fuel_flow(flight_path[-1], ac, eng)
     return flight_path

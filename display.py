@@ -13,6 +13,7 @@ import itertools
 import numpy as np
 import altitude_grid as ag
 import flight_path as fp
+import contrails as ct
 import util
 
 warnings.filterwarnings("ignore")
@@ -49,6 +50,7 @@ points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
 grid = rg.calculate_routing_grid(5, points)
 altitude_grid = ag.calculate_altitude_grid(grid)
 flight_path = fp.generate_random_flight_path(altitude_grid)
+contrails = ct.calculate_ef_from_flight_path(flight_path)
 
 
 def display_flight_path(flight_path=flight_path, ax=None):
@@ -64,6 +66,23 @@ def display_flight_path(flight_path=flight_path, ax=None):
         linewidth=1,
         transform=ccrs.PlateCarree(),
     )
+
+
+def display_contrails(contrails=contrails, ax=None):
+    if ax is None:
+        ax = create_map_ax()
+
+    ax.scatter(
+        contrails["longitude"],
+        contrails["latitude"],
+        c=contrails["ef"],
+        cmap="coolwarm",
+        vmin=-1e12,
+        vmax=1e12,
+        label="Contrail EF",
+        transform=ccrs.PlateCarree(),
+    )
+    ax.legend()
 
 
 def display_flight_headings(flight_path=flight_path, ax=None):
@@ -222,7 +241,8 @@ ax1 = create_map_ax()
 # display_geodesic_path(ax=ax1)
 display_wind_vectors(ax=ax1)
 display_flight_path(ax=ax1)
-display_flight_headings(ax=ax1)
+# display_flight_headings(ax=ax1)
+display_contrails(ax=ax1)
 # display_altitude_grid_3d(ax=ax2)
 
 

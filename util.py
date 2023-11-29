@@ -85,7 +85,7 @@ def get_pressure_levels():
 
 def get_wind_vector_at_point(point):
     weather_data = get_weather_data_at_point(point)
-    pressure = calculate_pressure_from_altitude_ft(point["altitude"])
+    pressure = calculate_pressure_from_altitude_ft(point["altitude_ft"])
     nearest_pressure = get_nearest_value_from_list(pressure, get_pressure_levels())
     u = weather_data.loc[nearest_pressure]["u"]
     v = weather_data.loc[nearest_pressure]["v"]
@@ -95,7 +95,7 @@ def get_wind_vector_at_point(point):
 
 def get_temperature_at_point(point):
     weather_data = get_weather_data_at_point(point)
-    pressure = calculate_pressure_from_altitude_ft(point["altitude"])
+    pressure = calculate_pressure_from_altitude_ft(point["altitude_ft"])
     nearest_pressure = get_nearest_value_from_list(pressure, get_pressure_levels())
 
     temperature = weather_data.loc[nearest_pressure]["t"]

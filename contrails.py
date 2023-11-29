@@ -1,25 +1,27 @@
+from matplotlib import pyplot as plt
+import numpy as np
 import pandas as pd
 import pycontrails as pc
+from pycontrails.models.cocip import Cocip
+import ecmwf
 
 
 def calculate_ef_from_flight_path(flight_path):
-    latitudes = [point[0] for point in flight_path]
-    longitudes = [point[1] for point in flight_path]
-    altitudes = [point[2] for point in flight_path]
+    flight_path_df = pd.DataFrame(flight_path)
 
     attrs = {
-        "flight_id": "fid",
-        "aircraft_type": "A359",
-        "wingspan": 64.75,
+        "flight_id": 123,
+        "aircraft_type": "E190",
+        "engine_uid": "CF34-10E5",
+        "engine_efficiency": 0.35,
+        "nvpm_ei_n": 1.897462e15,
+        "wingspan": 48,
+        "n_engine": 2,
     }
 
-    df = pd.DataFrame(
-        {
-            "longitude": longitudes,
-            "latitude": latitudes,
-            "altitude_ft": altitudes,
-            "time": pd.date_range("2021-01-01T10", "2021-01-01T15", periods=21),
-        }
-    )
+    flight = pc.Flight(data=flight_path_df, flight_id=123, attrs=attrs)
 
-    fl = pc.Flight(data=df, flight_id=123)
+    cocip = Cocip(ecmwf.met, ecmwf.rad)
+    output_flight = cocip.eval(source=flight)
+    df = output_flight.dataframe
+    return df
