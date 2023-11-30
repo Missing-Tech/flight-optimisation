@@ -10,8 +10,8 @@ def calculate_ef_from_flight_path(flight_path):
 
     attrs = {
         "flight_id": 123,
-        "aircraft_type": "E190",
-        "engine_uid": "CF34-10E5",
+        "aircraft_type": "A320",
+        "engine_uid": "CFM56-5B6",
         "engine_efficiency": 0.35,
         "nvpm_ei_n": 1.897462e15,
         "wingspan": 48,

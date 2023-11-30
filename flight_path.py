@@ -11,7 +11,7 @@ def generate_random_flight_path(
     weather_data,
     aircraft_type="A320",
     engine_type="CFM56-5B6",
-    aircraft_mass=60_000,
+    aircraft_mass=150_000,
     starting_altitude=30_000,
 ):
     def get_consecutive_points(
@@ -70,7 +70,7 @@ def generate_random_flight_path(
             "latitude": point[0],
             "longitude": point[1],
             "altitude_ft": currentAltitude,
-            "thrust": 0.85,
+            "thrust": 0.22,
         }
         flight_path.append(point)
 
@@ -78,6 +78,32 @@ def generate_random_flight_path(
         flight_path, weather_data, aircraft_type, engine_type, aircraft_mass
     )
 
+    return flight_path
+
+
+def generate_geodesic_flight_path(
+    altitude_grid,
+    weather_data,
+    aircraft_type="A320",
+    engine_type="CFM56-5B6",
+    aircraft_mass=60_000,
+    starting_altitude=30_000,
+):
+    flight_path = []
+    currentAltitude = starting_altitude
+    for currentXi in range(len(altitude_grid[currentAltitude]) - 1):
+        mid_index = len(altitude_grid[currentAltitude][currentXi]) // 2
+        point = altitude_grid[currentAltitude][currentXi][mid_index]
+        point = {
+            "latitude": point[0],
+            "longitude": point[1],
+            "altitude_ft": currentAltitude + 6000,
+            "thrust": 0.85,
+        }
+        flight_path.append(point)
+    flight_path = calculate_flight_characteristics(
+        flight_path, weather_data, aircraft_type, engine_type, aircraft_mass
+    )
     return flight_path
 
 

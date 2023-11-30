@@ -16,12 +16,13 @@ import flight_path as fp
 import contrails as ct
 import ecmwf
 import util
+import issrs
 
 warnings.filterwarnings("ignore")
 
 lon0, lat0 = 0.5, 51.4
 lon1, lat1 = -73.7, 40.6
-no_of_points = 20
+no_of_points = 100
 
 crs = ccrs.NearsidePerspective(central_latitude=51, central_longitude=-35)
 crs_proj4 = crs.proj4_init
@@ -51,7 +52,7 @@ points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
 grid = rg.calculate_routing_grid(5, points)
 altitude_grid = ag.calculate_altitude_grid(grid)
 weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
-flight_path = fp.generate_random_flight_path(altitude_grid, weather_data=weather_data)
+flight_path = fp.generate_geodesic_flight_path(altitude_grid, weather_data=weather_data)
 contrails = ct.calculate_ef_from_flight_path(flight_path)
 
 
@@ -238,6 +239,29 @@ def display_altitude_grid_3d(grid=altitude_grid, ax=None):
     return ax  # Return the modified axis
 
 
+def display_issrs(ax=None):
+    if ax is None:
+        ax = create_map_ax()
+
+    issr_geometry = [
+        Point(xy)
+        for xy in zip(
+            issrs.da["latitude"],
+            issrs.da["longitude"],
+        )
+    ]
+
+    gdf = gpd.GeoDataFrame(issrs.da, geometry=issr_geometry, crs=crs)
+
+    gdf.plot(
+        ax=ax,
+        column="issr",
+        cmap="Reds",
+        alpha=0.5,
+        transform=ccrs.PlateCarree(),
+    )
+
+
 # Create a subplots for 3D scatter plot and the map
 ax1 = create_map_ax()
 # ax2 = create_3d_ax()
@@ -247,7 +271,8 @@ ax1 = create_map_ax()
 # display_geodesic_path(ax=ax1)
 display_wind_vectors(ax=ax1)
 display_flight_path(ax=ax1)
-display_flight_headings(ax=ax1)
+# display_flight_headings(ax=ax1)
+display_issrs(ax=ax1)
 display_contrails(ax=ax1)
 # display_altitude_grid_3d(ax=ax2)
 
