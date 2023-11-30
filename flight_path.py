@@ -9,8 +9,10 @@ import numpy as np
 def generate_random_flight_path(
     altitude_grid,
     weather_data,
-    aircraft_type="E190",
-    engine_type="CF34-10E5",
+    aircraft_type="A320",
+    engine_type="CFM56-5B6",
+    aircraft_mass=60_000,
+    starting_altitude=30_000,
 ):
     def get_consecutive_points(
         xi,
@@ -50,8 +52,8 @@ def generate_random_flight_path(
     flight_path = []
 
     currentYi = 0
-    currentAltitude = 30_000
-    for currentXi in range(1, len(altitude_grid[currentAltitude]) - 1):
+    currentAltitude = starting_altitude
+    for currentXi in range(len(altitude_grid[currentAltitude]) - 1):
         points = get_consecutive_points(
             currentXi, currentYi, currentAltitude, altitude_grid
         )
@@ -68,19 +70,19 @@ def generate_random_flight_path(
             "latitude": point[0],
             "longitude": point[1],
             "altitude_ft": currentAltitude,
-            "thrust": 0.9,
+            "thrust": 0.85,
         }
         flight_path.append(point)
 
     flight_path = calculate_flight_characteristics(
-        flight_path, weather_data, aircraft_type, engine_type
+        flight_path, weather_data, aircraft_type, engine_type, aircraft_mass
     )
 
     return flight_path
 
 
 def calculate_flight_characteristics(
-    flight_path, weather_data, aircraft_type, engine_type
+    flight_path, weather_data, aircraft_type, engine_type, aircraft_mass=60_000
 ):
     for i in range(len(flight_path)):
         point = flight_path[i]
@@ -90,7 +92,8 @@ def calculate_flight_characteristics(
             point["course"] = calculate_course_at_point(point, next_point)
             point["climb_angle"] = calculate_climb_angle(point, next_point)
         else:
-            point["course"] = 0
+            previous_point = flight_path[i - 1]
+            point["course"] = previous_point["course"]
             point["climb_angle"] = 0
 
         point["true_airspeed"] = calculate_true_air_speed(
@@ -101,7 +104,7 @@ def calculate_flight_characteristics(
         point["ground_speed"] = calculate_ground_speed(point, weather_data)
 
         if i == 0:
-            point["aircraft_mass"] = 150_000
+            point["aircraft_mass"] = aircraft_mass
             point["time"] = pd.Timestamp(year=2023, month=3, day=31, hour=0)
             point["fuel_flow"] = calculate_fuel_flow(
                 point, point["aircraft_mass"], aircraft_type, engine_type
@@ -122,8 +125,10 @@ def calculate_time_at_point(point, previous_point):
     distance = gp.distance(
         (point["latitude"], point["longitude"]),
         (previous_point["latitude"], previous_point["longitude"]),
-    ).km
-    time_from_previous_point = pd.Timedelta(hours=distance / point["ground_speed"])
+    ).m
+    time_from_previous_point = pd.Timedelta(
+        seconds=distance / previous_point["ground_speed"]
+    )
     return time_from_previous_point
 
 
@@ -141,7 +146,8 @@ def calculate_true_air_speed(point, mach, weather_data):
     sea_level_temp = 288.15  # in kelvin
     air_temp_ratio = temperature / sea_level_temp
 
-    return mach * speed_of_sound * np.sqrt(air_temp_ratio)
+    true_air_speed = mach * speed_of_sound * np.sqrt(air_temp_ratio)
+    return true_air_speed  # in m/s
 
 
 def calculate_crabbing_angle(point, weather_data):
@@ -179,7 +185,7 @@ def calculate_fuel_flow(point, mass, ac="E190", eng="CF34-10E5"):
     fuelflow = FuelFlow(ac, eng)
     FF = fuelflow.enroute(
         mass=mass,
-        tas=point["true_airspeed"],
+        tas=point["true_airspeed"] * 1.944,  # convert to knots
         alt=point["altitude_ft"],
         path_angle=np.rad2deg(point["climb_angle"]),
     )
