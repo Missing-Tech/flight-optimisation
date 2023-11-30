@@ -2,6 +2,7 @@ import pandas as pd
 import pycontrails as pc
 from pycontrails.models.cocip import Cocip
 import ecmwf
+from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 
 
 def calculate_ef_from_flight_path(flight_path):
@@ -18,8 +19,12 @@ def calculate_ef_from_flight_path(flight_path):
     }
 
     flight = pc.Flight(data=flight_path_df, flight_id=123, attrs=attrs)
-
-    cocip = Cocip(ecmwf.met, ecmwf.rad)
+    params = {
+        "process_emissions": False,
+        "verbose_outputs": True,
+        "humidity_scaling": ConstantHumidityScaling(rhi_adj=0.98),
+    }
+    cocip = Cocip(ecmwf.met, ecmwf.rad, params=params)
     output_flight = cocip.eval(source=flight)
     df = output_flight.dataframe
     return df

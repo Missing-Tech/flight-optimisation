@@ -14,6 +14,7 @@ import numpy as np
 import altitude_grid as ag
 import flight_path as fp
 import contrails as ct
+import ecmwf
 import util
 
 warnings.filterwarnings("ignore")
@@ -49,7 +50,8 @@ def create_3d_ax(fig=None):
 points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
 grid = rg.calculate_routing_grid(5, points)
 altitude_grid = ag.calculate_altitude_grid(grid)
-flight_path = fp.generate_random_flight_path(altitude_grid)
+weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
+flight_path = fp.generate_random_flight_path(altitude_grid, weather_data=weather_data)
 contrails = ct.calculate_ef_from_flight_path(flight_path)
 
 
@@ -110,13 +112,16 @@ def display_flight_headings(flight_path=flight_path, ax=None):
     )
 
 
-def display_wind_vectors(downsample_factor=755, ax=None):
+def display_wind_vectors(downsample_factor=1000, ax=None):
     if ax is None:
         ax = create_map_ax()
-    wind_data = pd.read_csv("output_data.csv", sep=",")
+    wind_data = ecmwf.get_wind_vectors_at_hpa(200)
     downsampled_data = wind_data.loc[::downsample_factor, :]
-    lon, lat = downsampled_data["longitude"], downsampled_data["latitude"]
-    u, v = downsampled_data["u"], downsampled_data["v"]
+    lon, lat = (
+        downsampled_data.index.get_level_values("longitude"),
+        downsampled_data.index.get_level_values("latitude"),
+    )
+    u, v = downsampled_data["eastward_wind"], downsampled_data["northward_wind"]
 
     # Overlay wind vectors using quiver plot
     ax.streamplot(
@@ -237,11 +242,12 @@ def display_altitude_grid_3d(grid=altitude_grid, ax=None):
 ax1 = create_map_ax()
 # ax2 = create_3d_ax()
 
+
 # display_routing_grid(ax=ax1)
 # display_geodesic_path(ax=ax1)
 display_wind_vectors(ax=ax1)
 display_flight_path(ax=ax1)
-# display_flight_headings(ax=ax1)
+display_flight_headings(ax=ax1)
 display_contrails(ax=ax1)
 # display_altitude_grid_3d(ax=ax2)
 
