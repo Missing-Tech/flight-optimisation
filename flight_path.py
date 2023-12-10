@@ -3,6 +3,7 @@ from openap import FuelFlow
 from geopy import distance as gp
 import pandas as pd
 import util
+import time
 import numpy as np
 
 
@@ -11,7 +12,7 @@ def generate_random_flight_path(
     weather_data,
     aircraft_type="A320",
     engine_type="CFM56-5B6",
-    aircraft_mass=150_000,
+    aircraft_mass=60_000,
     starting_altitude=30_000,
 ):
     def get_consecutive_points(
@@ -50,7 +51,6 @@ def generate_random_flight_path(
         return altitude_points
 
     flight_path = []
-
     currentYi = 0
     currentAltitude = starting_altitude
     for currentXi in range(len(altitude_grid[currentAltitude]) - 1):
@@ -70,12 +70,17 @@ def generate_random_flight_path(
             "latitude": point[0],
             "longitude": point[1],
             "altitude_ft": currentAltitude,
-            "thrust": 0.22,
+            "thrust": 0.85,
         }
         flight_path.append(point)
 
+    flight_path_before = time.perf_counter()
     flight_path = calculate_flight_characteristics(
         flight_path, weather_data, aircraft_type, engine_type, aircraft_mass
+    )
+    flight_path_after = time.perf_counter()
+    print(
+        f"Time taken to calculate flight path 2: {flight_path_after - flight_path_before} seconds"
     )
 
     return flight_path
@@ -131,7 +136,7 @@ def calculate_flight_characteristics(
 
         if i == 0:
             point["aircraft_mass"] = aircraft_mass
-            point["time"] = pd.Timestamp(year=2023, month=3, day=31, hour=0)
+            point["time"] = pd.Timestamp(year=2023, month=3, day=31, hour=23)
             point["fuel_flow"] = calculate_fuel_flow(
                 point, point["aircraft_mass"], aircraft_type, engine_type
             )

@@ -5,10 +5,11 @@ import util
 import pandas as pd
 import xarray as xr
 
-time_bounds = ("2023-03-31 00:00:00", "2023-03-31 23:00:00")
+time_bounds = ("2023-03-31 23:00:00", "2023-04-01 11:00:00")
 pressure_levels = (300, 250, 200)
 era5pl = ERA5(
     time=time_bounds,
+    timestep_freq="1H",
     variables=Cocip.met_variables + Cocip.optional_met_variables,
     pressure_levels=pressure_levels,
 )

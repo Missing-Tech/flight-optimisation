@@ -34,9 +34,8 @@ def calculate_routing_grid(
             nlat, nlon, _ = new_point_negative
             positive_waypoints.append((plat, plon))
             negative_waypoints.append((nlat, nlon))
-
-            positive_waypoints.append((plat, plon))
-            negative_waypoints.append((nlat, nlon))
+        # reverse positive waypoints
+        positive_waypoints = list(reversed(positive_waypoints))
         potential_waypoints = positive_waypoints + [(lat, lon)] + negative_waypoints
 
         grid.append(potential_waypoints)
