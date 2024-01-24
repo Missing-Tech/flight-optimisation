@@ -58,15 +58,15 @@ weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
 flight_path_before = time.perf_counter()
 flight_path = fp.generate_random_flight_path(altitude_grid, weather_data=weather_data)
 flight_path_after = time.perf_counter()
-print(
-    f"Time taken to calculate flight path: {flight_path_after - flight_path_before} seconds"
-)
-contrails_before = time.perf_counter()
-contrails, cocip = ct.calculate_ef_from_flight_path(flight_path)
-contrails_after = time.perf_counter()
-print(
-    f"Time taken to calculate contrails: {contrails_after - contrails_before} seconds"
-)
+# print(
+#     f"Time taken to calculate flight path: {flight_path_after - flight_path_before} seconds"
+# )
+# contrails_before = time.perf_counter()
+# contrails, cocip = ct.calculate_ef_from_flight_path(flight_path)
+# contrails_after = time.perf_counter()
+# print(
+#     f"Time taken to calculate contrails: {contrails_after - contrails_before} seconds"
+# )
 
 
 def display_flight_path(flight_path=flight_path, ax=None):
@@ -84,18 +84,19 @@ def display_flight_path(flight_path=flight_path, ax=None):
     )
 
 
-def display_contrails(contrails=contrails, ax=None):
-    if ax is None:
-        _, ax = create_map_ax()
-
-    cocip.contrail.plot.scatter(
-        "longitude",
-        "latitude",
-        c="rf_lw",
-        cmap="Reds",
-        ax=ax,
-        transform=ccrs.PlateCarree(),
-    )
+# def display_contrails(contrails=contrails, ax=None):
+# def display_contrails(contrails=contrails, ax=None):
+#     if ax is None:
+#         _, ax = create_map_ax()
+#
+#     cocip.contrail.plot.scatter(
+#         "longitude",
+#         "latitude",
+#         c="rf_lw",
+#         cmap="Reds",
+#         ax=ax,
+#         transform=ccrs.PlateCarree(),
+#     )
 
 
 def display_flight_headings(flight_path=flight_path, ax=None):
@@ -326,7 +327,7 @@ def display_flight_path_3d(flight_path=flight_path, ax=None):
 
 # Create a subplots for 3D scatter plot and the map
 fig1, ax1 = create_map_ax()
-fig2, ax2 = create_3d_ax()
+# fig2, ax2 = create_3d_ax()
 
 
 display_routing_grid(ax=ax1)
@@ -335,8 +336,8 @@ display_wind_vectors(ax=ax1)
 display_flight_path(ax=ax1)
 # display_flight_headings(ax=ax1)
 # display_issrs(ax=ax1)
-display_contrails(ax=ax1)
-display_altitude_grid_3d(ax=ax2)
-display_flight_path_3d(ax=ax2)
+# display_contrails(ax=ax1)
+# display_altitude_grid_3d(ax=ax2)
+# display_flight_path_3d(ax=ax2)
 
 plt.show()
