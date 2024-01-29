@@ -74,7 +74,7 @@ def get_nearest_value_from_list(value, list):
 def convert_indices_to_points(index_path, altitude_grid):
     path = []
     for point in index_path:
-        altitude_point = altitude_grid[point[2]][point[0]][point[2]]
+        altitude_point = altitude_grid[point[2]][point[0]][point[1]]
         path_point = {
             "latitude": altitude_point[0],
             "longitude": altitude_point[1],
