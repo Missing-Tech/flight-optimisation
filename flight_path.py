@@ -78,7 +78,11 @@ def generate_geodesic_flight_path(
 
 
 def calculate_flight_characteristics(
-    flight_path, weather_data, aircraft_type, engine_type, aircraft_mass=60_000
+    flight_path,
+    weather_data,
+    aircraft_type="A320",
+    engine_type="CFM56-5B6",
+    aircraft_mass=60_000,
 ):
     for i in range(len(flight_path)):
         point = flight_path[i]

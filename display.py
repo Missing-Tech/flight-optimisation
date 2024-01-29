@@ -57,20 +57,15 @@ points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
 grid = rg.calculate_routing_grid(5, points)
 altitude_grid = ag.calculate_altitude_grid(grid)
 weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
-flight_path_before = time.perf_counter()
 # flight_path = fp.generate_random_flight_path(altitude_grid, weather_data=weather_data)
-flight_path_after = time.perf_counter()
-# print(
-#     f"Time taken to calculate flight path: {flight_path_after - flight_path_before} seconds"
-# )
 # contrails_before = time.perf_counter()
 # contrails, cocip = ct.calculate_ef_from_flight_path(flight_path)
 # contrails_after = time.perf_counter()
 # print(
 #     f"Time taken to calculate contrails: {contrails_after - contrails_before} seconds"
 # )
-routing_graph = rgraph.calculate_routing_graph(altitude_grid)
-ant_path = aco.run_aco_colony(100, 100, routing_graph)
+
+ant_path = aco.run_aco_colony(1, 10, altitude_grid)
 optimised_path = util.convert_indices_to_points(ant_path, altitude_grid)
 
 
@@ -175,13 +170,13 @@ def display_optimised_path(optimised_path=optimised_path, ax=None):
     print(optimised_path)
 
     routing_grid_df = pd.DataFrame(
-        optimised_path, columns=["Latitude", "Longitude", "Altitude"]
+        optimised_path, columns=["latitude", "longitude", "altitude"]
     )
     routing_grid_geometry = [
         Point(xy)
         for xy in zip(
-            routing_grid_df["Longitude"],
-            routing_grid_df["Latitude"],
+            routing_grid_df["longitude"],
+            routing_grid_df["latitude"],
         )
     ]
     gdf = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=wgs84)
@@ -189,8 +184,8 @@ def display_optimised_path(optimised_path=optimised_path, ax=None):
     gdf_ae = gdf.to_crs(crs_proj4)
 
     ax.plot(
-        routing_grid_df["Longitude"],
-        routing_grid_df["Latitude"],
+        routing_grid_df["longitude"],
+        routing_grid_df["latitude"],
         color="k",
         markersize=10,
         linewidth=1,

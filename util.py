@@ -74,7 +74,14 @@ def get_nearest_value_from_list(value, list):
 def convert_indices_to_points(index_path, altitude_grid):
     path = []
     for point in index_path:
-        path.append((*altitude_grid[point[2]][point[0]][point[1]], point[2]))
+        altitude_point = altitude_grid[point[2]][point[0]][point[2]]
+        path_point = {
+            "latitude": altitude_point[0],
+            "longitude": altitude_point[1],
+            "altitude_ft": point[2],
+            "thrust": 0.85,
+        } 
+        path.append(path_point)
 
     return path
 
@@ -91,11 +98,11 @@ def get_consecutive_points(
     if xi == len(grid[altitude]) - 1:
         return None
     min_i = max(yi - max_lateral_var, 0)
-    max_i = min(yi + max_lateral_var, len(grid[altitude][xi]) - 1)
+    max_i = min(yi + max_lateral_var, len(grid[altitude][xi + 1]) - 1)
 
     points = []
     if max_i > 0:
-        for i in range(min_i, max_i + 1):
+        for i in range(min_i, max_i ):
             points.append((xi + 1, i))
     else:
         points.append((xi + 1, 0))

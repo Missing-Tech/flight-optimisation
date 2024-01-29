@@ -9,8 +9,6 @@ def calculate_routing_graph(altitude_grid):
     for altitude in altitude_grid:
         for step in altitude_grid[altitude]:
             for point in step:
-                # if point is None:
-                #     continue
 
                 xi = altitude_grid[altitude].index(step)
                 yi = step.index(point)
@@ -22,7 +20,6 @@ def calculate_routing_graph(altitude_grid):
                 if consecutive_points is None:
                     continue
                 for next_point in consecutive_points:
-                    # if next_point is not None:
                     graph.add_edge(
                         (xi, yi, altitude),
                         (next_point[0], next_point[1], next_point[2]),

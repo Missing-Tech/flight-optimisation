@@ -101,7 +101,7 @@ def calculate_path(no_of_points, p1, p2):
     angle1 = __calculate_angle_1(alpha1, phi1)
     equator_longitude = __calculate_equator_longitude(azimuth, angle1, lambda1)
 
-    points = [(lat0, lon0, 0)]
+    points = []
 
     for i in range(no_of_points):
         total_distance = util.R * central_angle

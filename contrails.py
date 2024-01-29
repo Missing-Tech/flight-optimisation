@@ -26,8 +26,14 @@ def calculate_ef_from_flight_path(flight_path):
     }
     cocip = Cocip(ecmwf.met, ecmwf.rad, params=params)
     output_flight = cocip.eval(source=flight)
+
     df = output_flight.dataframe
-    return df
+    if not df['ef'].empty:
+        ef = df['ef'].sum()
+    else:
+        ef = 0
+    # return df
+    return ef
 
 
 # TODO: Implement 4D contrail formation fields for quicker lookup
