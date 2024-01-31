@@ -105,7 +105,7 @@ def calculate_flight_characteristics(
 
         if i == 0:
             point["aircraft_mass"] = aircraft_mass
-            point["time"] = pd.Timestamp(year=2023, month=3, day=31, hour=23)
+            point["time"] = pd.Timestamp(year=2023, month=5, day=17, hour=23)
             point["fuel_flow"] = calculate_fuel_flow(
                 point, point["aircraft_mass"], aircraft_type, engine_type
             )
