@@ -14,7 +14,7 @@ def calculate_routing_grid(
         for i in range(1, grid_width + 1):
             index = path.index(point)
 
-            if index - i <= 0:
+            if index - i < 0:
                 continue
 
             if index + i > len(path) - 1:

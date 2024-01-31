@@ -80,7 +80,7 @@ def convert_indices_to_points(index_path, altitude_grid):
             "longitude": altitude_point[1],
             "altitude_ft": point[2],
             "thrust": 0.85,
-        } 
+        }
         path.append(path_point)
 
     return path
@@ -99,10 +99,9 @@ def get_consecutive_points(
         return None
     min_i = max(yi - max_lateral_var, 0)
     max_i = min(yi + max_lateral_var, len(grid[altitude][xi + 1]) - 1)
-
     points = []
     if max_i > 0:
-        for i in range(min_i, max_i ):
+        for i in range(min_i, max_i + 1):
             points.append((xi + 1, i))
     else:
         points.append((xi + 1, 0))

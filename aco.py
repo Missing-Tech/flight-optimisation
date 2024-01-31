@@ -85,6 +85,7 @@ def calculate_probability_at_neighbour(
             neighbours[n]["pheromone"], alpha
         ) * math.pow(routing_graph.nodes[n]["heuristic"], beta)
 
-    # probability = math.pow(pheromone, alpha) * math.pow(heuristic, beta) / total_neighbour_factor
-    probability = 0.1
+    probability = (
+        math.pow(pheromone, alpha) * math.pow(heuristic, beta) / total_neighbour_factor
+    )
     return probability

@@ -22,8 +22,8 @@ def calculate_routing_graph(altitude_grid):
                 for next_point in consecutive_points:
                     graph.add_edge(
                         (xi, yi, altitude),
-                        (next_point[0], next_point[1], next_point[2]),
-                        pheromone=99,
+                        (next_point[0], next_point[1], altitude),
+                        pheromone=10,
                     )
                     graph.add_node((xi, yi, altitude), heuristic=random.random())
                     graph.add_node(next_point, heuristic=random.random())
