@@ -1,4 +1,5 @@
 import display
+import contrails as ct
 import warnings
 import geodesic_path as gp
 import routing_grid as rg
@@ -7,6 +8,9 @@ import ecmwf
 import util
 import aco
 import routing_graph as rgraph
+from dotenv import load_dotenv
+
+load_dotenv()
 
 warnings.filterwarnings("ignore")
 
@@ -27,6 +31,7 @@ for path in ant_paths:
     optimised_path = util.convert_indices_to_points(path, altitude_grid)
     display.display_optimised_path(optimised_path, ax1)
 
+contrails = ct.download_contrail_grid(grid)
 display.display_routing_grid(grid, ax1)
 
 

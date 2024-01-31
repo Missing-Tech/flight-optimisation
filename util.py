@@ -2,7 +2,6 @@ import numpy as np
 import ecmwf
 
 R = 6371  # Earth radius in km
-ds = ecmwf.met
 
 
 def reduce_angle(angle):

@@ -1,8 +1,12 @@
 import pandas as pd
+import requests
+import xarray as xr
 import pycontrails as pc
 from pycontrails.models.cocip import Cocip
 import ecmwf
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
+import os
+import tempfile
 
 
 def calculate_ef_from_flight_path(flight_path):
@@ -28,12 +32,54 @@ def calculate_ef_from_flight_path(flight_path):
     output_flight = cocip.eval(source=flight)
 
     df = output_flight.dataframe
-    if not df['ef'].empty:
-        ef = df['ef'].sum()
+    if not df["ef"].empty:
+        ef = df["ef"].sum()
     else:
         ef = 0
     # return df
     return ef, df, cocip
+
+
+def download_contrail_grid(routing_grid):
+    if os.path.exists("contrail_grid.nc"):
+        ds_disk = xr.open_dataset("contrail_grid.nc")
+        return ds_disk
+
+    URL = os.getenv("API_URL_BASE")  # https://api.contrails.org/v0
+    api_key = os.getenv("API_KEY")  # put in your API key here
+    headers = {"x-api-key": api_key}
+    grid = sum(routing_grid, [])
+
+    grid_df = pd.DataFrame(grid, columns=["Latitude", "Longitude"])
+    params = {
+        # Give the bbox a small buffer
+        "bbox": [
+            grid_df["Longitude"].min() - 1,
+            grid_df["Latitude"].min() - 1,
+            grid_df["Longitude"].max() + 1,
+            grid_df["Latitude"].max() + 1,
+        ],
+        "aircraft_type": "A320",
+    }
+
+    ds_list = []
+    time = ecmwf.time_bounds
+    times = pd.date_range(time[0], time[1], freq="1H")
+    for t in times:
+        params["time"] = str(t)
+        r = requests.get(f"{URL}/grid/cocip", params=params, headers=headers)
+        print(f"HTTP Response Code: {r.status_code} {r.reason}")
+
+        # Save request to disk, open with xarray, append grid to ds_list
+        with tempfile.NamedTemporaryFile() as tmp, open(tmp.name, "wb") as file_obj:
+            file_obj.write(r.content)
+            ds = xr.load_dataset(tmp.name, engine="netcdf4", decode_timedelta=False)
+        ds_list.append(ds)
+
+    # Concatenate all grids into a single xr.Dataset
+    ds = xr.concat(ds_list, dim="time")
+    ds.to_netcdf("contrail_grid.nc")
+    return ds
 
 
 # TODO: Implement 4D contrail formation fields for quicker lookup
