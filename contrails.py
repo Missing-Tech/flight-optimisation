@@ -33,7 +33,7 @@ def calculate_ef_from_flight_path(flight_path):
     else:
         ef = 0
     # return df
-    return ef
+    return ef, df, cocip
 
 
 # TODO: Implement 4D contrail formation fields for quicker lookup
