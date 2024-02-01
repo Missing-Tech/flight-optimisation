@@ -8,6 +8,7 @@ import ecmwf
 import util
 import aco
 import routing_graph as rgraph
+from cartopy import crs as ccrs
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,17 +23,18 @@ points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
 grid = rg.calculate_routing_grid(5, points)
 altitude_grid = ag.calculate_altitude_grid(grid)
 weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
+contrail_grid = ct.download_contrail_grid(altitude_grid)
 routing_graph = rgraph.calculate_routing_graph(altitude_grid)
 
+
 fig1, ax1 = display.create_map_ax()
+da = contrail_grid["ef_per_m"]
+display.display_contrail_grid(da, ax1)
 
-ant_paths = aco.run_aco_colony(20, 3, routing_graph, altitude_grid)
-# for path in ant_paths:
-#     display.display_optimised_path(path, ax1)
+ant_paths = aco.run_aco_colony(10, 10, routing_graph, altitude_grid)
+for path in ant_paths:
+    display.display_optimised_path(path, ax1)
 
-display.display_optimised_path(ant_paths, ax1)
-ef, contrails, cocip = ct.calculate_ef_from_flight_path(ant_paths)
-display.display_contrails(contrails, cocip, ax1)
 
 display.display_routing_grid(grid, ax1)
 

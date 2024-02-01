@@ -41,9 +41,21 @@ def calculate_ef_from_flight_path(flight_path):
     return ef, df, cocip
 
 
+def interpolate_contrail_point(contrail_grid, point):  # Extract 4-D grid of interest
+    da = contrail_grid["ef_per_m"]
+    # Run the interpolation
+    ef_per_m = da.interp(
+        latitude=point[0], longitude=point[1], flight_level=point[2] / 100
+    )
+
+    # Convert from ef per meter to ef per waypoint
+    return ef_per_m.sum().item()
+
+
 def interpolate_contrail_grid(
     contrail_grid, flight_path
 ):  # Extract 4-D grid of interest
+
     da = contrail_grid["ef_per_m"]
 
     flight_path = pd.DataFrame(
@@ -53,36 +65,45 @@ def interpolate_contrail_grid(
     # Convert pd.DataFrame to xr.Dataset
     fl_ds = flight_path.copy()
     fl_ds["flight_level"] = fl_ds.pop("altitude_ft") / 100
-    # here, interp_dim is the common dimension mentioned in the xarray documentation
-    fl_ds = fl_ds.rename_axis("interp_dim")
     fl_ds = xr.Dataset.from_dataframe(fl_ds)
 
     # Run the interpolation
     ef_per_m = da.interp(**fl_ds.data_vars)
 
     # Convert from ef per meter to ef per waypoint
-    return ef_per_m.sum()
+    return ef_per_m.sum().item()
 
 
-def download_contrail_grid(routing_grid):
+def download_contrail_grid(altitude_grid):
     if os.path.exists("contrail_grid.nc"):
         ds_disk = xr.open_dataset("contrail_grid.nc")
         return ds_disk
 
-    URL = os.getenv("API_URL_BASE")  # https://api.contrails.org/v0
-    api_key = os.getenv("API_KEY")  # put in your API key here
+    URL = os.getenv("API_URL_BASE")
+    api_key = os.getenv("API_KEY")
     headers = {"x-api-key": api_key}
-    grid = sum(routing_grid, [])
+    for alt in altitude_grid:
+        altitude_grid[alt] = [x for x in sum(altitude_grid[alt], []) if x is not None]
 
-    grid_df = pd.DataFrame(grid, columns=["Latitude", "Longitude"])
+    flight_path = pd.DataFrame(
+        [
+            (alt, *coords)
+            for alt, coords_list in altitude_grid.items()
+            for coords in coords_list
+        ],
+        columns=["altitude_ft", "latitude", "longitude"],
+    )
+
+    grid_df = pd.DataFrame(flight_path, columns=["latitude", "longitude"])
     params = {
         # Give the bbox a small buffer
         "bbox": [
-            grid_df["Longitude"].min() - 1,
-            grid_df["Latitude"].min() - 1,
-            grid_df["Longitude"].max() + 1,
-            grid_df["Latitude"].max() + 1,
+            grid_df["longitude"].min() - 1,
+            grid_df["latitude"].min() - 1,
+            grid_df["longitude"].max() + 1,
+            grid_df["latitude"].max() + 1,
         ],
+        "flight_level": [300, 320, 340, 360, 380, 400],
         "aircraft_type": "A320",
     }
 
@@ -93,7 +114,6 @@ def download_contrail_grid(routing_grid):
         params["time"] = str(t)
         r = requests.get(f"{URL}/grid/cocip", params=params, headers=headers)
         print(f"HTTP Response Code: {r.status_code} {r.reason}")
-
         # Save request to disk, open with xarray, append grid to ds_list
         with tempfile.NamedTemporaryFile() as tmp, open(tmp.name, "wb") as file_obj:
             file_obj.write(r.content)
@@ -103,6 +123,7 @@ def download_contrail_grid(routing_grid):
     # Concatenate all grids into a single xr.Dataset
     ds = xr.concat(ds_list, dim="time")
     ds.to_netcdf("contrail_grid.nc")
+
     return ds
 
 

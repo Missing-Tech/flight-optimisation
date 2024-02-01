@@ -10,10 +10,9 @@ import networkx as nx
 
 
 def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid):
-    ants = []
-    flight_paths = []
     best_solution = None
     best_flight_path = None
+    flight_paths = []
     ef_values = {}
     for _ in range(iterations):
         before = time.perf_counter()
@@ -47,13 +46,13 @@ def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid):
 
         after = time.perf_counter()
         print(f"time taken: {after-before}")
-    return best_flight_path
+    return flight_paths
 
 
 def objective_function(solution, altitude_grid):
-    contrail_grid = ct.download_contrail_grid(altitude_grid)
-    ef = ct.interpolate_contrail_grid(contrail_grid, solution)
-    return ef
+    # contrail_grid = ct.download_contrail_grid(altitude_grid)
+    # ef = ct.interpolate_contrail_grid(contrail_grid, solution)
+    return random.random()
 
 
 def pheromone_update(
