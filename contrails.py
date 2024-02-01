@@ -1,4 +1,5 @@
 import pandas as pd
+from scipy.interpolate import griddata
 import requests
 import xarray as xr
 import pycontrails as pc
@@ -38,6 +39,29 @@ def calculate_ef_from_flight_path(flight_path):
         ef = 0
     # return df
     return ef, df, cocip
+
+
+def interpolate_contrail_grid(
+    contrail_grid, flight_path
+):  # Extract 4-D grid of interest
+    da = contrail_grid["ef_per_m"]
+
+    flight_path = pd.DataFrame(
+        flight_path, columns=["latitude", "longitude", "altitude_ft"]
+    )
+
+    # Convert pd.DataFrame to xr.Dataset
+    fl_ds = flight_path.copy()
+    fl_ds["flight_level"] = fl_ds.pop("altitude_ft") / 100
+    # here, interp_dim is the common dimension mentioned in the xarray documentation
+    fl_ds = fl_ds.rename_axis("interp_dim")
+    fl_ds = xr.Dataset.from_dataframe(fl_ds)
+
+    # Run the interpolation
+    ef_per_m = da.interp(**fl_ds.data_vars)
+
+    # Convert from ef per meter to ef per waypoint
+    return ef_per_m.sum()
 
 
 def download_contrail_grid(routing_grid):

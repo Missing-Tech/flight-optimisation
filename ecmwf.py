@@ -2,6 +2,7 @@ import os
 from pycontrails.models.cocip import Cocip
 from pycontrails.datalib.ecmwf import ERA5
 import util
+import time
 import pandas as pd
 import xarray as xr
 
@@ -25,15 +26,30 @@ class MetAltitudeGrid:
 
     def init_weather_data_along_path(self, routing_grid):
         if not os.path.exists("weather_data.nc"):
-            df = pd.DataFrame(
-                sum(routing_grid[30000], []), columns=["latitude", "longitude"]
+
+            for alt in routing_grid:
+                routing_grid[alt] = [
+                    x for x in sum(routing_grid[alt], []) if x is not None
+                ]
+
+            flight_path = pd.DataFrame(
+                [
+                    (alt, *coords)
+                    for alt, coords_list in routing_grid.items()
+                    for coords in coords_list
+                ],
+                columns=["altitude_ft", "latitude", "longitude"],
             )
-            lat = df["latitude"]
-            lon = df["longitude"]
-            weather_data = met.data.sel(
-                latitude=slice(lat.min(), lat.max()),
-                longitude=slice(lon.min(), lon.max()),
-            ).to_netcdf("weather_data.nc")
+
+            fl_ds = flight_path.copy()
+            fl_ds = fl_ds.set_index(["altitude_ft", "latitude", "longitude"])
+            # fl_ds["level"] = util.calculate_pressure_from_altitude_ft(
+            #     fl_ds.pop("altitude_ft")
+            # )
+            fl_ds = xr.Dataset.from_dataframe(fl_ds)
+            weather = met.data.interp(**fl_ds.data_vars)
+
+            weather.to_netcdf("weather_data.nc")
 
         weather_data = xr.open_dataset("weather_data.nc")
 
@@ -49,18 +65,13 @@ class MetAltitudeGrid:
         return data.isel(time=0)
 
     def get_wind_vector_at_point(self, point):
-        nearest_pressure = get_nearest_pressure_level_at_point(point)
-        data = self.get_weather_data_at_point(point, nearest_pressure)
-        u = data["eastward_wind"].values
-        v = data["northward_wind"].values
+        u = point["eastward_wind"].values
+        v = point["northward_wind"].values
 
         return (u, v)
 
     def get_temperature_at_point(self, point):
-        nearest_pressure = get_nearest_pressure_level_at_point(point)
-        temperature = self.get_weather_data_at_point(point, nearest_pressure)[
-            "air_temperature"
-        ].values
+        temperature = point["air_temperature"].values
         return temperature
 
 

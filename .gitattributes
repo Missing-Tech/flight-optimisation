@@ -1,0 +1,2 @@
+contrail_grid.nc filter=lfs diff=lfs merge=lfs -text
+weather_data.nc filter=lfs diff=lfs merge=lfs -text

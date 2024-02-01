@@ -26,12 +26,14 @@ routing_graph = rgraph.calculate_routing_graph(altitude_grid)
 
 fig1, ax1 = display.create_map_ax()
 
-ant_paths = aco.run_aco_colony(50, 50, routing_graph)
-for path in ant_paths:
-    optimised_path = util.convert_indices_to_points(path, altitude_grid)
-    display.display_optimised_path(optimised_path, ax1)
+ant_paths = aco.run_aco_colony(20, 3, routing_graph, altitude_grid)
+# for path in ant_paths:
+#     display.display_optimised_path(path, ax1)
 
-contrails = ct.download_contrail_grid(grid)
+display.display_optimised_path(ant_paths, ax1)
+ef, contrails, cocip = ct.calculate_ef_from_flight_path(ant_paths)
+display.display_contrails(contrails, cocip, ax1)
+
 display.display_routing_grid(grid, ax1)
 
 

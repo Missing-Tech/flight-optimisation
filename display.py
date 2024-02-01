@@ -79,13 +79,14 @@ def display_flight_path(flight_path, ax=None):
     )
 
 
-def display_contrails(contrails, ax=None):
+def display_contrails(contrails, cocip, ax=None):
     if ax is None:
         _, ax = create_map_ax()
 
-    cocip.contrail.plot.scatter(
-        "longitude", "latitude", c="rf_lw", ax=ax, transform=ccrs.PlateCarree()
-    ),
+    if cocip.contrail is not None:
+        cocip.contrail.plot.scatter(
+            "longitude", "latitude", c="rf_lw", ax=ax, transform=ccrs.PlateCarree()
+        ),
 
 
 def display_flight_headings(flight_path, ax=None):
