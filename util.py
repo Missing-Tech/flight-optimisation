@@ -90,31 +90,33 @@ def get_consecutive_points(
     yi,
     altitude,
     grid,
-    max_lateral_var=2,
+    max_lateral_var=1,
     max_altitude_var=2_000,
     altitude_step=2_000,
 ):
-    if xi == len(grid[altitude]) - 1:
-        return None
-    min_i = max(yi - max_lateral_var, 0)
-    max_i = min(yi + max_lateral_var, len(grid[altitude][xi + 1]) - 1)
-    points = []
-    if max_i > 0:
-        for i in range(min_i, max_i + 1):
-            points.append((xi + 1, i))
-    else:
-        points.append((xi + 1, 0))
 
     max_alt = altitude + max_altitude_var  # Adding 4000 feet
     min_alt = altitude - max_altitude_var  # Subtracting 4000 feet
     max_alt = max(30000, min(max_alt, 40000))  # Cap between 30000 and 40000
     min_alt = max(30000, min_alt)  # Cap between 30000 and 40000
 
-    altitude_points = []
+    points = []
     current_altitude = min_alt
     while current_altitude <= max_alt and current_altitude >= min_alt:
-        for point in points:
-            altitude_points.append((*point, current_altitude))
+
+        if xi + 1 == len(grid[current_altitude]):
+            return None
+        current_layer_length = len(grid[current_altitude][xi]) - 1
+        next_layer_length = len(grid[current_altitude][xi + 1]) - 1
+        min_i = min(max(yi - max_lateral_var, 0), next_layer_length)
+        max_i = min(yi + max_lateral_var, next_layer_length)
+        if next_layer_length > current_layer_length:
+            min_i = yi
+            max_i = yi + max_lateral_var * 2
+        if min_i > max_i:
+            print(max_i, min_i)
+        for i in range(min_i, max_i + 1):
+            points.append((xi + 1, i, current_altitude))
         current_altitude += altitude_step
 
-    return altitude_points
+    return points
