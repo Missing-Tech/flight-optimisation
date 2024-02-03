@@ -41,19 +41,18 @@ def calculate_ef_from_flight_path(flight_path):
     return ef, df, cocip
 
 
-def interpolate_contrail_point(contrail_grid, point):  # Extract 4-D grid of interest
+def interpolate_contrail_point(
+    contrail_grid, point, distance
+):  # Extract 4-D grid of interest
     da = contrail_grid["ef_per_m"]
-    # Run the interpolation
     ef_per_m = da.interp(
         latitude=point[0], longitude=point[1], flight_level=point[2] / 100
     )
-
-    # Convert from ef per meter to ef per waypoint
-    return ef_per_m.sum().item()
+    return ef_per_m.sum().item() * distance
 
 
 def interpolate_contrail_grid(
-    contrail_grid, flight_path
+    contrail_grid, flight_path, distance
 ):  # Extract 4-D grid of interest
 
     da = contrail_grid["ef_per_m"]
@@ -71,7 +70,7 @@ def interpolate_contrail_grid(
     ef_per_m = da.interp(**fl_ds.data_vars)
 
     # Convert from ef per meter to ef per waypoint
-    return ef_per_m.sum().item()
+    return ef_per_m.sum().item() * distance
 
 
 def download_contrail_grid(altitude_grid):

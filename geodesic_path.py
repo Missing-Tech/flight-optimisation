@@ -80,6 +80,25 @@ def __find_point_distance_along_great_circle(distance, azimuth, equator_longitud
     return (util.reduce_angle(phi), util.reduce_angle(lambda1), local_azimuth)
 
 
+def calculate_distance_between_points(no_of_points, p1, p2):
+    lat0, lon0, _ = p1
+    lat1, lon1, _ = p2
+
+    phi1 = np.radians(lat0)
+    lambda1 = np.radians(lon0)
+    phi2 = np.radians(lat1)
+    lambda2 = np.radians(lon1)
+
+    delta = lambda2 - lambda1
+    delta = util.reduce_angle(delta)
+
+    central_angle = __calculate_central_angle(phi1, phi2, delta)
+
+    total_distance = util.R * central_angle
+    step = total_distance / no_of_points
+    return step
+
+
 def calculate_path(no_of_points, p1, p2):
     lat0, lon0, _ = p1
     lat1, lon1, _ = p2
@@ -103,9 +122,9 @@ def calculate_path(no_of_points, p1, p2):
 
     points = [(lat0, lon0, 0)]
 
+    total_distance = util.R * central_angle
+    step = total_distance / no_of_points
     for i in range(1, no_of_points):
-        total_distance = util.R * central_angle
-        step = total_distance / no_of_points
         distance = angle1 + ((i * step) / util.R)
         points.append(
             __find_point_distance_along_great_circle(

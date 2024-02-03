@@ -5,7 +5,7 @@ import util
 import numpy as np
 
 
-def calculate_routing_graph(altitude_grid):
+def calculate_routing_graph(altitude_grid, distance):
     graph = nx.DiGraph()
 
     contrail_grid = ct.download_contrail_grid(altitude_grid)
@@ -16,7 +16,7 @@ def calculate_routing_graph(altitude_grid):
                 if point is None:
                     continue
                 contrails = ct.interpolate_contrail_point(
-                    contrail_grid, (*point, altitude)
+                    contrail_grid, (*point, altitude), distance
                 )
 
                 xi = altitude_grid[altitude].index(step)
