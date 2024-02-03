@@ -15,8 +15,14 @@ def calculate_routing_graph(altitude_grid, distance):
             for point in step:
                 if point is None:
                     continue
-                contrails = ct.interpolate_contrail_point(
-                    contrail_grid, (*point, altitude), distance
+                contrails = (
+                    -(
+                        ct.interpolate_contrail_point(
+                            contrail_grid, (*point, altitude), distance
+                        )
+                        / 1e12
+                    )
+                    - 1
                 )
 
                 xi = altitude_grid[altitude].index(step)
@@ -34,7 +40,7 @@ def calculate_routing_graph(altitude_grid, distance):
                         (next_point[0], next_point[1], next_point[2]),
                         pheromone=10,
                     )
-                    graph.add_node((xi, yi, altitude), heuristic=contrails + 1)
-                    graph.add_node(next_point, heuristic=contrails + 1)
+                    graph.add_node((xi, yi, altitude), heuristic=contrails)
+                    graph.add_node(next_point, heuristic=contrails)
 
     return graph

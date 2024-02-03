@@ -34,12 +34,13 @@ fig1, ax1 = display.create_map_ax()
 da = contrail_grid["ef_per_m"]
 display.display_contrail_grid(da, ax1)
 
-ant_paths = aco.run_aco_colony(
-    50, 5, routing_graph, altitude_grid, distance_between_points
+ant_paths, best_path = aco.run_aco_colony(
+    50, 3, routing_graph, altitude_grid, distance_between_points
 )
-for path in ant_paths:
-    display.display_optimised_path(path, ax1)
+# for path in ant_paths:
+#     display.display_optimised_path(path, ax1, linewidth=0.5)
 
+display.display_optimised_path(best_path, ax1)
 
 display.display_routing_grid(grid, ax1)
 

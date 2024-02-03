@@ -1,6 +1,7 @@
 import random
 import ecmwf
 from openap import polymer
+from openap import FuelFlow
 from geopy import distance as gp
 import pandas as pd
 import util
@@ -188,7 +189,7 @@ def calculate_ground_speed(point, weather_data, weather_at_point):
 
 
 def calculate_fuel_flow(point, mass, flight, previous_point):
-    # fuelflow = FuelFlow(ac, eng)
+    # fuelflow = FuelFlow('A320', 'CFM56-5B6')
     # FF = fuelflow.enroute(
     #     mass=mass,
     #     tas=point["true_airspeed"] * 1.944,  # convert to knots
@@ -200,4 +201,5 @@ def calculate_fuel_flow(point, mass, flight, previous_point):
         (point["latitude"], point["longitude"]),
     ).km
     fuel_flow = flight.fuel(distance=distance, mass=mass)
+    # return FF
     return fuel_flow

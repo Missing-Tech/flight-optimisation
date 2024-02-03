@@ -37,19 +37,23 @@ def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distanc
             routing_graph = pheromone_update(
                 best_solution, routing_graph, best_objective
             )
-
         after = time.perf_counter()
-        print(f"time taken: {after-before}")
-    return flight_paths
+        print(f"time: {after-before}")
+
+    return flight_paths, best_flight_path
 
 
 def objective_function(flight_path, distance, contrail_grid):
+    co2_weight = 1
+    contrail_weight = 3
     fuel_burned = 60000 - flight_path[-1]["aircraft_mass"]
     co2_per_kg = 4.70e9
 
     contrail_ef = ct.interpolate_contrail_grid(contrail_grid, flight_path, distance)
 
-    return fuel_burned * co2_per_kg
+    return (
+        (fuel_burned * co2_per_kg * co2_weight) + (contrail_ef * contrail_weight)
+    ) / 1e14
 
 
 def pheromone_update(solution, routing_graph, best_objective):
@@ -57,12 +61,12 @@ def pheromone_update(solution, routing_graph, best_objective):
     tau_min = 1
     tau_max = 10
 
-    solution_edges = zip(solution[:-1], solution[1:])
+    solution_edges = list(nx.utils.pairwise(solution))
 
     for u, v in routing_graph.edges():
         delta = 0
         edge = routing_graph[u][v]
-        if u in solution_edges and v in solution_edges:
+        if (u, v) in solution_edges:
             delta = 1 / (1 + best_objective)
 
         new_pheromone = (1 - evaporation_rate) * (edge["pheromone"] + delta)

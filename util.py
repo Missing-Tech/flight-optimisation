@@ -113,8 +113,6 @@ def get_consecutive_points(
         if next_layer_length > current_layer_length:
             min_i = yi
             max_i = yi + max_lateral_var * 2
-        if min_i > max_i:
-            print(max_i, min_i)
         for i in range(min_i, max_i + 1):
             points.append((xi + 1, i, current_altitude))
         current_altitude += altitude_step

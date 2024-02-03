@@ -49,7 +49,7 @@ def display_contrail_grid(contrail_grid, ax=None):
     )
 
 
-def display_optimised_path(optimised_path, ax=None):
+def display_optimised_path(optimised_path, ax=None, linewidth=1):
     if ax is None:
         _, ax = create_map_ax()
 
@@ -71,8 +71,7 @@ def display_optimised_path(optimised_path, ax=None):
         routing_grid_df["longitude"],
         routing_grid_df["latitude"],
         color="k",
-        markersize=10,
-        linewidth=1,
+        linewidth=linewidth,
         transform=ccrs.PlateCarree(),
     )
 

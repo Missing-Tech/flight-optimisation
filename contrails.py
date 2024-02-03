@@ -51,9 +51,7 @@ def interpolate_contrail_point(
     return ef_per_m.sum().item() * distance
 
 
-def interpolate_contrail_grid(
-    contrail_grid, flight_path, distance
-):  # Extract 4-D grid of interest
+def interpolate_contrail_grid(contrail_grid, flight_path, distance):
 
     da = contrail_grid["ef_per_m"]
 
@@ -61,15 +59,12 @@ def interpolate_contrail_grid(
         flight_path, columns=["latitude", "longitude", "altitude_ft"]
     )
 
-    # Convert pd.DataFrame to xr.Dataset
     fl_ds = flight_path.copy()
     fl_ds["flight_level"] = fl_ds.pop("altitude_ft") / 100
     fl_ds = xr.Dataset.from_dataframe(fl_ds)
 
-    # Run the interpolation
     ef_per_m = da.interp(**fl_ds.data_vars)
 
-    # Convert from ef per meter to ef per waypoint
     return ef_per_m.sum().item() * distance
 
 
