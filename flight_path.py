@@ -92,7 +92,25 @@ def calculate_flight_characteristics(
         point = flight_path[i]
 
         pressure = ecmwf.get_nearest_pressure_level_at_point(point)
-        weather_at_point = weather_data.get_weather_data_at_point(point, pressure)
+
+        if i == 0:
+            point["aircraft_mass"] = aircraft_mass
+            point["time"] = pd.Timestamp(year=2023, month=5, day=17, hour=23)
+            point["fuel_flow"] = 0
+        else:
+            previous_point = flight_path[i - 1]
+            point["aircraft_mass"] = previous_point[
+                "aircraft_mass"
+            ] - calculate_fuel_flow(
+                point, previous_point["aircraft_mass"], flight, previous_point
+            )
+            time_elapsed = calculate_time_at_point(point, previous_point)
+            point["time"] = previous_point["time"] + time_elapsed.round("s")
+
+        weather_at_point = weather_data.get_weather_data_at_point(
+            point,
+            pressure,
+        )
 
         if i != len(flight_path) - 1:
             next_point = flight_path[i + 1]
@@ -112,19 +130,6 @@ def calculate_flight_characteristics(
             point, weather_data, weather_at_point
         )
 
-        if i == 0:
-            point["aircraft_mass"] = aircraft_mass
-            point["time"] = pd.Timestamp(year=2023, month=5, day=17, hour=23)
-            point["fuel_flow"] = 0
-        else:
-            previous_point = flight_path[i - 1]
-            point["aircraft_mass"] = previous_point[
-                "aircraft_mass"
-            ] - calculate_fuel_flow(
-                point, previous_point["aircraft_mass"], flight, previous_point
-            )
-            time_elapsed = calculate_time_at_point(point, previous_point)
-            point["time"] = previous_point["time"] + time_elapsed.round("s")
     return flight_path
 
 

@@ -59,10 +59,11 @@ class MetAltitudeGrid:
         data = self.weather_data.sel(
             latitude=point["latitude"],
             longitude=point["longitude"],
+            time=point["time"],
             level=pressure,
             method="nearest",
         )
-        return data.isel(time=0)
+        return data
 
     def get_wind_vector_at_point(self, point):
         u = point["eastward_wind"].values
