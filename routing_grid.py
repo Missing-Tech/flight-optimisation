@@ -1,8 +1,8 @@
 import util
+import config
 
 
 def calculate_routing_grid(
-    grid_width,
     path,
 ):
     grid = []
@@ -11,7 +11,7 @@ def calculate_routing_grid(
         positive_waypoints = []
         negative_waypoints = []
         potential_waypoints = []
-        for i in range(1, grid_width + 1):
+        for i in range(1, config.GRID_WIDTH + 1):
             index = path.index(point)
 
             if index - i < 0:
@@ -23,12 +23,11 @@ def calculate_routing_grid(
             bearing = util.calculate_bearing(path[index], path[index + i])
             bearing = util.calculate_normal_bearing(bearing)
 
-            distance = 100  # distance in km
             new_point_positive = util.calculate_new_coordinates(
-                point, distance * i, bearing
+                point, config.GRID_SPACING * i, bearing
             )
             new_point_negative = util.calculate_new_coordinates(
-                point, distance * i * -1, bearing
+                point, config.GRID_SPACING * i * -1, bearing
             )
             plat, plon, _ = new_point_positive
             nlat, nlon, _ = new_point_negative

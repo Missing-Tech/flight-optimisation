@@ -8,6 +8,7 @@ import ecmwf
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 import os
 import tempfile
+import config
 
 
 def calculate_ef_from_flight_path(flight_path):
@@ -15,12 +16,12 @@ def calculate_ef_from_flight_path(flight_path):
 
     attrs = {
         "flight_id": 123,
-        "aircraft_type": "A320",
-        "engine_uid": "CFM56-5B6",
-        "engine_efficiency": 0.35,
+        "aircraft_type": config.AIRCRAFT_TYPE,
+        "engine_uid": config.ENGINE_TYPE,
+        "engine_efficiency": config.ENGINE_EFFICIENCY,
         "nvpm_ei_n": 1.897462e15,
-        "wingspan": 48,
-        "n_engine": 2,
+        "wingspan": config.WINGSPAN,
+        "n_engine": config.N_ENGINES,
     }
 
     flight = pc.Flight(data=flight_path_df, flight_id=123, attrs=attrs)
@@ -97,8 +98,8 @@ def download_contrail_grid(altitude_grid):
             grid_df["longitude"].max() + 1,
             grid_df["latitude"].max() + 1,
         ],
-        "flight_level": [300, 320, 340, 360, 380, 400],
-        "aircraft_type": "A320",
+        "flight_level": config.FLIGHT_LEVELS,
+        "aircraft_type": config.AIRCRAFT_TYPE,
     }
 
     ds_list = []
@@ -119,6 +120,3 @@ def download_contrail_grid(altitude_grid):
     ds.to_netcdf("contrail_grid.nc")
 
     return ds
-
-
-# TODO: Implement 4D contrail formation fields for quicker lookup

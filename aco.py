@@ -1,4 +1,5 @@
 import numpy as np
+import config
 import time
 import contrails as ct
 import ecmwf
@@ -7,6 +8,7 @@ import math
 import random
 import util
 import networkx as nx
+import pandas as pd
 
 
 def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distance):
@@ -44,22 +46,25 @@ def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distanc
 
 
 def objective_function(flight_path, distance, contrail_grid):
-    co2_weight = 1
-    contrail_weight = 3
-    fuel_burned = 60000 - flight_path[-1]["aircraft_mass"]
+    co2_weight = config.CO2_WEIGHT
+    contrail_weight = config.CONTRAIL_WEIGHT
+    fuel_burned = config.STARTING_WEIGHT - flight_path[-1]["aircraft_mass"]
     co2_per_kg = 4.70e9
+
+    start_time = config.DEPARTURE_DATE
 
     contrail_ef = ct.interpolate_contrail_grid(contrail_grid, flight_path, distance)
 
-    return (
+    ef_penalty = (
         (fuel_burned * co2_per_kg * co2_weight) + (contrail_ef * contrail_weight)
-    ) / 1e14
+    ) / 1e13
+    return ef_penalty
 
 
 def pheromone_update(solution, routing_graph, best_objective):
-    evaporation_rate = 0.5
-    tau_min = 1
-    tau_max = 10
+    evaporation_rate = config.EVAPORATION_RATE
+    tau_min = config.TAU_MIN
+    tau_max = config.TAU_MAX
 
     solution_edges = list(nx.utils.pairwise(solution))
 
@@ -84,7 +89,12 @@ def construct_solution(routing_graph):
         choice = None
         for n in neighbours:
             probability = calculate_probability_at_neighbour(
-                n, routing_graph, 1, 4, neighbours[n]["pheromone"], solution
+                n,
+                routing_graph,
+                config.PHEROMONE_WEIGHT,
+                config.HEURISTIC_WEIGHT,
+                neighbours[n]["pheromone"],
+                solution,
             )
             if probability == -1:
                 # reached the destination

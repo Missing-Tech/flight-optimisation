@@ -1,8 +1,11 @@
+import config
+
+
 def calculate_altitude_grid(
     grid,
-    base_altitude=30_000,
-    altitude_step=2_000,
-    max_altitude=40_000,
+    base_altitude=config.STARTING_ALTITUDE,
+    altitude_step=config.ALTITUDE_STEP,
+    max_altitude=config.MAX_ALTITUDE,
 ):
     def calculate_altitudes():
         altitudes = []

@@ -1,4 +1,5 @@
 import random
+import config
 import ecmwf
 from openap import polymer
 from openap import FuelFlow
@@ -12,10 +13,10 @@ import numpy as np
 def generate_random_flight_path(
     altitude_grid,
     weather_data,
-    aircraft_type="A320",
-    engine_type="CFM56-5B6",
-    aircraft_mass=60_000,
-    starting_altitude=30_000,
+    aircraft_type=config.AIRCRAFT_TYPE,
+    engine_type=config.ENGINE_TYPE,
+    aircraft_mass=config.STARTING_WEIGHT,
+    starting_altitude=config.STARTING_ALTITUDE,
 ):
     flight_path = []
     currentYi = 0
@@ -37,7 +38,7 @@ def generate_random_flight_path(
             "latitude": point[0],
             "longitude": point[1],
             "altitude_ft": currentAltitude,
-            "thrust": 0.85,
+            "thrust": config.INITIAL_THRUST,
         }
         flight_path.append(point)
 
@@ -56,10 +57,10 @@ def generate_random_flight_path(
 def generate_geodesic_flight_path(
     altitude_grid,
     weather_data,
-    aircraft_type="A320",
-    engine_type="CFM56-5B6",
-    aircraft_mass=60_000,
-    starting_altitude=30_000,
+    aircraft_type=config.AIRCRAFT_TYPE,
+    engine_type=config.ENGINE_TYPE,
+    aircraft_mass=config.STARTING_WEIGHT,
+    starting_altitude=config.STARTING_ALTITUDE,
 ):
     flight_path = []
     currentAltitude = starting_altitude
@@ -70,7 +71,7 @@ def generate_geodesic_flight_path(
             "latitude": point[0],
             "longitude": point[1],
             "altitude_ft": currentAltitude + 6000,
-            "thrust": 0.85,
+            "thrust": config.INITIAL_THRUST,
         }
         flight_path.append(point)
     flight_path = calculate_flight_characteristics(
@@ -82,11 +83,8 @@ def generate_geodesic_flight_path(
 def calculate_flight_characteristics(
     flight_path,
     weather_data,
-    aircraft_type="A320",
-    engine_type="CFM56-5B6",
-    aircraft_mass=60_000,
 ):
-    flight = polymer.Flight(aircraft_type)
+    polymer_flight = polymer.Flight(config.AIRCRAFT_TYPE)
     for i in range(len(flight_path)):
 
         point = flight_path[i]
@@ -94,15 +92,15 @@ def calculate_flight_characteristics(
         pressure = ecmwf.get_nearest_pressure_level_at_point(point)
 
         if i == 0:
-            point["aircraft_mass"] = aircraft_mass
-            point["time"] = pd.Timestamp(year=2023, month=5, day=17, hour=23)
+            point["aircraft_mass"] = config.STARTING_WEIGHT
+            point["time"] = config.DEPARTURE_DATE
             point["fuel_flow"] = 0
         else:
             previous_point = flight_path[i - 1]
             point["aircraft_mass"] = previous_point[
                 "aircraft_mass"
             ] - calculate_fuel_flow(
-                point, previous_point["aircraft_mass"], flight, previous_point
+                point, previous_point["aircraft_mass"], polymer_flight, previous_point
             )
             time_elapsed = calculate_time_at_point(point, previous_point)
             point["time"] = previous_point["time"] + time_elapsed.round("s")

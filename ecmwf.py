@@ -5,9 +5,10 @@ import util
 import time
 import pandas as pd
 import xarray as xr
+import config
 
-time_bounds = ("2023-05-17 21:00:00", "2023-05-18 11:00:00")
-pressure_levels = (300, 250, 200)
+time_bounds = (config.DEPARTURE_DATE, config.DEPARTURE_DATE + config.WEATHER_BOUND)
+pressure_levels = config.PRESSURE_LEVELS
 era5pl = ERA5(
     time=time_bounds,
     timestep_freq="1H",

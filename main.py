@@ -1,4 +1,5 @@
 import display
+import config
 import contrails as ct
 import warnings
 import geodesic_path as gp
@@ -15,15 +16,14 @@ load_dotenv()
 
 warnings.filterwarnings("ignore")
 
-lon0, lat0 = 0.5, 51.4
-lon1, lat1 = -73.7, 40.6
-no_of_points = 25
+lat0, lon0 = config.DEPARTURE_AIRPORT
+lat1, lon1 = config.DESTINATION_AIRPORT
 distance_between_points = gp.calculate_distance_between_points(
-    no_of_points, (lat0, lon0, 0), (lat1, lon1, 0)
+    config.NO_OF_POINTS, (lat0, lon0, 0), (lat1, lon1, 0)
 )
 
-points = gp.calculate_path(no_of_points, (lat0, lon0, 0), (lat1, lon1, 0))
-grid = rg.calculate_routing_grid(5, points)
+points = gp.calculate_path(config.NO_OF_POINTS, (lat0, lon0, 0), (lat1, lon1, 0))
+grid = rg.calculate_routing_grid(points)
 altitude_grid = ag.calculate_altitude_grid(grid)
 weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
 contrail_grid = ct.download_contrail_grid(altitude_grid)
@@ -35,7 +35,11 @@ da = contrail_grid["ef_per_m"]
 display.display_contrail_grid(da, ax1)
 
 ant_paths, best_path = aco.run_aco_colony(
-    50, 3, routing_graph, altitude_grid, distance_between_points
+    config.NO_OF_ITERATIONS,
+    config.NO_OF_ANTS,
+    routing_graph,
+    altitude_grid,
+    distance_between_points,
 )
 # for path in ant_paths:
 #     display.display_optimised_path(path, ax1, linewidth=0.5)

@@ -1,4 +1,5 @@
 import numpy as np
+import config
 import ecmwf
 
 R = 6371  # Earth radius in km
@@ -78,7 +79,7 @@ def convert_indices_to_points(index_path, altitude_grid):
             "latitude": altitude_point[0],
             "longitude": altitude_point[1],
             "altitude_ft": point[2],
-            "thrust": 0.85,
+            "thrust": config.INITIAL_THRUST,
         }
         path.append(path_point)
 
@@ -90,15 +91,17 @@ def get_consecutive_points(
     yi,
     altitude,
     grid,
-    max_lateral_var=1,
-    max_altitude_var=2_000,
-    altitude_step=2_000,
+    max_lateral_var=config.OFFSET_VAR,
+    max_altitude_var=config.MAX_ALTITUDE_VAR,
+    altitude_step=config.ALTITUDE_STEP,
 ):
 
     max_alt = altitude + max_altitude_var  # Adding 4000 feet
     min_alt = altitude - max_altitude_var  # Subtracting 4000 feet
-    max_alt = max(30000, min(max_alt, 40000))  # Cap between 30000 and 40000
-    min_alt = max(30000, min_alt)  # Cap between 30000 and 40000
+    max_alt = max(
+        config.STARTING_ALTITUDE, min(max_alt, config.MAX_ALTITUDE)
+    )  # Cap between 30000 and 40000
+    min_alt = max(config.STARTING_ALTITUDE, min_alt)  # Cap between 30000 and 40000
 
     points = []
     current_altitude = min_alt

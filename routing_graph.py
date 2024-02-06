@@ -1,4 +1,5 @@
 import networkx as nx
+import config
 import contrails as ct
 import random
 import util
@@ -38,7 +39,7 @@ def calculate_routing_graph(altitude_grid, distance):
                     graph.add_edge(
                         (xi, yi, altitude),
                         (next_point[0], next_point[1], next_point[2]),
-                        pheromone=10,
+                        pheromone=config.TAU_MAX,
                     )
                     graph.add_node((xi, yi, altitude), heuristic=contrails)
                     graph.add_node(next_point, heuristic=contrails)
