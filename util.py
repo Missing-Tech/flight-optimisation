@@ -1,4 +1,5 @@
 import numpy as np
+from datetime import datetime
 import config
 import ecmwf
 
@@ -80,6 +81,22 @@ def convert_indices_to_points(index_path, altitude_grid):
             "longitude": altitude_point[1],
             "altitude_ft": point[2],
             "thrust": config.INITIAL_THRUST,
+        }
+        path.append(path_point)
+
+    return path
+
+
+def convert_real_flight_path(df):
+    path = []
+    for index, row in df.iterrows():
+        time = datetime.strptime(row["DateTime"], "%Y-%m-%d %H:%M:%S")
+        path_point = {
+            "latitude": row["Latitude"],
+            "longitude": row["Longitude"],
+            "altitude_ft": row["AltMSL"],
+            "thrust": config.INITIAL_THRUST,
+            "time": time,
         }
         path.append(path_point)
 

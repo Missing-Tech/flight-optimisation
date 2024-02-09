@@ -103,7 +103,7 @@ def download_contrail_grid(altitude_grid):
     }
 
     ds_list = []
-    time = ecmwf.time_bounds
+    time = [config.DEPARTURE_DATE, config.DEPARTURE_DATE + config.WEATHER_BOUND]
     times = pd.date_range(time[0], time[1], freq="1H")
     for t in times:
         params["time"] = str(t)

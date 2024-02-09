@@ -38,7 +38,7 @@ def create_3d_ax(fig=None):
 
 def display_contrail_grid(contrail_grid, ax=None):
 
-    contrail_grid.isel(flight_level=3, time=4).plot(
+    contrail_grid.isel(flight_level=4, time=6).plot(
         x="longitude",
         y="latitude",
         vmin=-2e8,
