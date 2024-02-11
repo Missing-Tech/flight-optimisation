@@ -29,6 +29,13 @@ def create_map_ax(fig=None):
     return fig, ax
 
 
+def create_blank_ax(fig=None):
+    if fig is None:
+        fig = plt.figure()
+    ax = fig.add_subplot(111)
+    return fig, ax
+
+
 def create_3d_ax(fig=None):
     if fig is None:
         fig = plt.figure()
@@ -38,7 +45,7 @@ def create_3d_ax(fig=None):
 
 def display_contrail_grid(contrail_grid, ax=None):
 
-    contrail_grid.isel(flight_level=4, time=6).plot(
+    contrail_grid.isel(flight_level=5, time=2).plot(
         x="longitude",
         y="latitude",
         vmin=-2e8,
@@ -47,6 +54,21 @@ def display_contrail_grid(contrail_grid, ax=None):
         ax=ax,
         transform=ccrs.PlateCarree(),
     )
+
+
+def display_flight_altitude(flight_path, ax=None, color="k"):
+    if ax is None:
+        _, ax = create_blank_ax()
+
+    flight_path_df = pd.DataFrame(
+        flight_path, columns=["latitude", "longitude", "altitude_ft", "time"]
+    )
+    ax.plot(
+        flight_path_df["time"], flight_path_df["altitude_ft"], color=color, linewidth=1
+    )
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Altitude (ft)")
+    ax.set_title("Flight Altitude")
 
 
 def display_optimised_path(optimised_path, ax=None, linewidth=1):
