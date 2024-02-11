@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.style as mplstyle
 import time
 
+from matplotlib.animation import FuncAnimation
 
 crs = ccrs.NearsidePerspective(central_latitude=51, central_longitude=-35)
 crs_proj4 = crs.proj4_init
@@ -40,7 +41,69 @@ def create_3d_ax(fig=None):
     if fig is None:
         fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
+
     return fig, ax
+
+
+def create_flight_frame(timestep, flight_path, contrail_grid, line, grid, ax=None):
+
+    long = flight_path["longitude"][:timestep]
+    lat = flight_path["latitude"][:timestep]
+    ax.set_title(f"Flight Path at Timestep {flight_path['time'][timestep]}")
+    line.set_xdata(long)
+    line.set_ydata(lat)
+    timestamps = contrail_grid["time"]
+
+    # Interpolate contrail grid data at the given timestamp
+    nearest_timestamp_index = np.argmin(
+        np.abs(timestamps - np.datetime64(flight_path["time"][timestep])).values
+    )
+    interpolated_grid = contrail_grid.isel(flight_level=3, time=nearest_timestamp_index)
+
+    transposed = interpolated_grid["ef_per_m"].transpose().values
+    grid.set_array(transposed.ravel())
+    return line, grid
+
+
+def create_flight_animation(
+    flight_path, contrail_grid, fig=None, ax=None, interval=200, repeat_delay=1000
+):
+
+    if ax is None:
+        fig, ax = create_map_ax()
+
+    flight_path_df = pd.DataFrame(
+        flight_path, columns=["latitude", "longitude", "time"]
+    )
+    line = ax.plot(
+        flight_path_df["longitude"][0],
+        flight_path_df["latitude"][0],
+        transform=ccrs.PlateCarree(),
+        color="k",
+    )[0]
+    contrail_data = contrail_grid.isel(flight_level=5, time=0)
+    grid = ax.pcolormesh(
+        contrail_data["longitude"],
+        contrail_data["latitude"],
+        contrail_data["ef_per_m"].transpose(),
+        shading="gourard",
+        vmin=-2e8,
+        vmax=2e8,
+        cmap="coolwarm",
+        transform=ccrs.PlateCarree(),
+    )
+
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ani = FuncAnimation(
+        fig,
+        create_flight_frame,
+        frames=len(flight_path),
+        interval=interval,
+        fargs=(flight_path_df, contrail_grid, line, grid, ax),
+        blit=False,
+    )
+    return ani
 
 
 def display_contrail_grid(contrail_grid, ax=None):
