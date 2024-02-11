@@ -113,8 +113,8 @@ def get_consecutive_points(
     altitude_step=config.ALTITUDE_STEP,
 ):
 
-    max_alt = altitude + max_altitude_var  # Adding 4000 feet
-    min_alt = altitude - max_altitude_var  # Subtracting 4000 feet
+    max_alt = altitude + max_altitude_var
+    min_alt = altitude
     max_alt = max(
         config.STARTING_ALTITUDE, min(max_alt, config.MAX_ALTITUDE)
     )  # Cap between 30000 and 40000
