@@ -9,7 +9,9 @@ import numpy as np
 def calculate_routing_graph(altitude_grid, distance):
     graph = nx.DiGraph()
 
-    contrail_grid = ct.download_contrail_grid(altitude_grid)
+    contrail_grid = ct.download_contrail_grid(
+        altitude_grid, "contrail_grid.nc", "netcdf"
+    )
 
     for altitude in altitude_grid:
         for step in altitude_grid[altitude]:

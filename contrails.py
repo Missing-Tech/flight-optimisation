@@ -1,13 +1,16 @@
 import pandas as pd
 from scipy.interpolate import griddata
 import requests
+from shapely.geometry import geo
 import xarray as xr
 import pycontrails as pc
 from pycontrails.models.cocip import Cocip
+from xarray.core import combine
 import ecmwf
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 import os
 import tempfile
+import json
 import config
 
 
@@ -69,9 +72,14 @@ def interpolate_contrail_grid(contrail_grid, flight_path, distance):
     return ef_per_m.sum().item() * distance
 
 
-def download_contrail_grid(altitude_grid):
-    if os.path.exists("contrail_grid.nc"):
-        ds_disk = xr.open_dataset("contrail_grid.nc")
+def download_contrail_grid(altitude_grid, filename, format):
+    if os.path.exists(filename):
+        if format == "netcdf":
+            ds_disk = xr.open_dataset(filename)
+        else:
+            with open(filename, "r") as f:
+                ds_disk = json.load(f)
+
         return ds_disk
 
     URL = os.getenv("API_URL_BASE")
@@ -100,23 +108,40 @@ def download_contrail_grid(altitude_grid):
         ],
         "flight_level": config.FLIGHT_LEVELS,
         "aircraft_type": config.AIRCRAFT_TYPE,
+        "format": format,
     }
 
     ds_list = []
     time = [config.DEPARTURE_DATE, config.DEPARTURE_DATE + config.WEATHER_BOUND]
-    times = pd.date_range(time[0], time[1], freq="1H")
+    times = pd.date_range(time[0], time[1], freq="1h")
     for t in times:
         params["time"] = str(t)
         r = requests.get(f"{URL}/grid/cocip", params=params, headers=headers)
         print(f"HTTP Response Code: {r.status_code} {r.reason}")
         # Save request to disk, open with xarray, append grid to ds_list
-        with tempfile.NamedTemporaryFile() as tmp, open(tmp.name, "wb") as file_obj:
-            file_obj.write(r.content)
-            ds = xr.load_dataset(tmp.name, engine="netcdf4", decode_timedelta=False)
-        ds_list.append(ds)
+        if format == "netcdf":
+            with tempfile.NamedTemporaryFile() as tmp, open(tmp.name, "wb") as file_obj:
+                file_obj.write(r.content)
+                ds = xr.load_dataset(tmp.name, engine="netcdf4", decode_timedelta=False)
+            ds_list.append(ds)
+        else:
+            geojson = r.json()
+            for feature in geojson["features"]:
+                for coords in feature["geometry"]["coordinates"]:
+                    for poly in coords:
+                        for point in poly:
+                            del point[2]
+                ds_list.append(feature)
 
     # Concatenate all grids into a single xr.Dataset
-    ds = xr.concat(ds_list, dim="time")
-    ds.to_netcdf("contrail_grid.nc")
+    if format == "netcdf":
+        ds = xr.concat(ds_list, dim="time")
+    if format == "geojson":
+        combined_dict = {"polys": ds_list}
+        with open(filename, "w") as f:
+            json.dump(combined_dict, f)
+        ds = combined_dict
+    else:
+        ds = ds.to_netcdf(filename)
 
     return ds

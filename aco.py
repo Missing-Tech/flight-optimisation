@@ -16,7 +16,9 @@ def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distanc
     best_flight_path = None
     best_objective = None
     flight_paths = []
-    contrail_grid = ct.download_contrail_grid(altitude_grid)
+    contrail_grid = ct.download_contrail_grid(
+        altitude_grid, "contrail_grid.nc", "netcdf"
+    )
     for _ in range(iterations):
         before = time.perf_counter()
         flight_paths = []
