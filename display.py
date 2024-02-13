@@ -1,4 +1,5 @@
 from matplotlib.collections import LineCollection, PolyCollection, PatchCollection
+from datetime import datetime
 from matplotlib.patches import Polygon
 import config
 import shapely
@@ -53,7 +54,9 @@ def create_3d_ax(fig=None):
     return fig, ax
 
 
-def create_3d_flight_frame(timestep, flight_path, contrail_grid, line, ax=None):
+def create_3d_flight_frame(
+    timestep, flight_path, contrail_grid, contrail_polys, line, ax=None
+):
 
     long = flight_path["longitude"][:timestep]
     lat = flight_path["latitude"][:timestep]
@@ -62,22 +65,53 @@ def create_3d_flight_frame(timestep, flight_path, contrail_grid, line, ax=None):
     line.set_xdata(long)
     line.set_ydata(lat)
     line.set_3d_properties(alt)
-    # timestamps = contrail_grid["time"]
-    #
-    # # Interpolate contrail grid data at the given timestamp
-    # nearest_timestamp_index = np.argmin(
-    #     np.abs(timestamps - np.datetime64(flight_path["time"][timestep])).values
-    # )
-    # interpolated_grid = contrail_grid.isel(flight_level=3, time=nearest_timestamp_index)
-    #
-    # transposed = interpolated_grid["ef_per_m"].transpose().values
-    # grid.set_array(transposed.ravel())
+    timestamps = contrail_grid["time"]
+
+    # Interpolate contrail grid data at the given timestamp
+    nearest_timestamp_index = np.argmin(
+        np.abs(timestamps - np.datetime64(flight_path["time"][timestep])).values
+    )
+    time = convert_time_string(contrail_grid["time"][nearest_timestamp_index].values)
+    polys = get_contrail_polys_at_time(contrail_polys, time)
+    for col in ax.collections:
+        if isinstance(col, PolyCollection):
+            col.remove()
+    for level in polys:
+        ax.add_collection3d(polys[level], zs=level * 100, zdir="z")
+
     return line
+
+
+def get_contrail_polys_at_time(contrail_polys, time):
+    collections = {}
+    polys = contrail_polys["polys"]
+    for level in config.FLIGHT_LEVELS:
+        patches = []
+        for poly in polys:
+            if (
+                poly["properties"]["level"] == level
+                and poly["properties"]["time"] == time
+            ):
+                multipoly = shapely.from_geojson(json.dumps(poly))
+                for geom in multipoly.geoms:
+                    geom = geom.simplify(0.1)
+                    x, y = geom.exterior.coords.xy
+                    patches.append(np.asarray(tuple(zip(x, y))))
+        collection = PolyCollection(patches, facecolor="red", alpha=0.5)
+        collections[level] = collection
+
+    return collections
+
+
+def convert_time_string(time):
+    new_time_str = np.datetime_as_string(time, unit="s") + "Z"
+    return new_time_str
 
 
 def create_3d_flight_animation(
     flight_path,
     contrail_grid,
+    contrail_polys,
     fig=None,
     ax=None,
     interval=200,
@@ -96,6 +130,11 @@ def create_3d_flight_animation(
         color="b",
     )[0]
 
+    time = convert_time_string(contrail_grid["time"][0].values)
+    polys = get_contrail_polys_at_time(contrail_polys, time)
+    for level in polys:
+        ax.add_collection3d(polys[level], zs=level * 100, zdir="z")
+
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
     ax.set_zlabel("Altitude")
@@ -104,7 +143,7 @@ def create_3d_flight_animation(
         create_3d_flight_frame,
         frames=len(flight_path),
         interval=interval,
-        fargs=(flight_path_df, contrail_grid, line, ax),
+        fargs=(flight_path_df, contrail_grid, contrail_polys, line, polys, ax),
         blit=False,
     )
     return ani
@@ -175,27 +214,6 @@ def create_flight_animation(
     return ani
 
 
-def display_contrail_polys(contrail_polys, ax=None):
-    if ax is None:
-        _, ax = create_3d_ax()
-
-    polys = contrail_polys["polys"]
-    for level in config.FLIGHT_LEVELS:
-        patches = []
-        for poly in polys:
-            if (
-                poly["properties"]["level"] == level
-                and poly["properties"]["time"] == "2023-12-20T02:00:00Z"
-            ):
-                multipoly = shapely.from_geojson(json.dumps(poly))
-                for geom in multipoly.geoms:
-                    geom = geom.simplify(0.1)
-                    x, y = geom.exterior.coords.xy
-                    patches.append(np.asarray(tuple(zip(x, y))))
-        collection = PolyCollection(patches, facecolor="red", alpha=0.5)
-        ax.add_collection3d(collection, zs=level * 100, zdir="z")
-
-
 def display_contrail_grid(contrail_grid, ax=None):
 
     contrail_grid.isel(flight_level=5, time=2).plot(
@@ -224,33 +242,6 @@ def display_flight_altitude(flight_path, ax=None, color="k"):
     ax.set_title("Flight Altitude")
 
 
-def display_optimised_path(optimised_path, ax=None, linewidth=1):
-    if ax is None:
-        _, ax = create_map_ax()
-
-    routing_grid_df = pd.DataFrame(
-        optimised_path, columns=["latitude", "longitude", "altitude"]
-    )
-    routing_grid_geometry = [
-        Point(xy)
-        for xy in zip(
-            routing_grid_df["longitude"],
-            routing_grid_df["latitude"],
-        )
-    ]
-    gdf = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=wgs84)
-
-    gdf_ae = gdf.to_crs(crs_proj4)
-
-    ax.plot(
-        routing_grid_df["longitude"],
-        routing_grid_df["latitude"],
-        color="k",
-        linewidth=linewidth,
-        transform=ccrs.PlateCarree(),
-    )
-
-
 def display_flight_path(flight_path, ax=None):
     if ax is None:
         _, ax = create_map_ax()
@@ -263,49 +254,6 @@ def display_flight_path(flight_path, ax=None):
         markersize=10,
         linewidth=1,
         transform=ccrs.PlateCarree(),
-    )
-
-
-def display_contrails(contrails, cocip, ax=None):
-    if ax is None:
-        _, ax = create_map_ax()
-
-    if cocip.contrail is not None:
-        cocip.contrail.plot.scatter(
-            "longitude", "latitude", c="rf_lw", ax=ax, transform=ccrs.PlateCarree()
-        ),
-
-
-def display_flight_headings(flight_path, ax=None):
-    if ax is None:
-        _, ax = create_map_ax()
-    flight_path_df = pd.DataFrame(
-        flight_path, columns=["latitude", "longitude", "heading"]
-    )
-    headings = flight_path_df["heading"]
-    heading_x = []
-    heading_y = []
-    for i in range(len(headings)):
-        point = (flight_path_df["longitude"][i], flight_path_df["latitude"][i], 0)
-        x, y, _ = util.calculate_new_coordinates(point, 200, headings[i])
-        heading_x.append(x)
-        heading_y.append(y)
-
-    ax.quiver(
-        downsampled_data.index.get_level_values("latitude"),
-    )
-    u, v = downsampled_data["eastward_wind"], downsampled_data["northward_wind"]
-
-    # Overlay wind vectors using quiver plot
-    ax.streamplot(
-        lon,
-        lat,
-        u,
-        v,
-        color=(0.561, 0.898, 1, 0.42),
-        transform=ccrs.PlateCarree(),
-        density=1,
-        linewidth=1,
     )
 
 
@@ -403,28 +351,6 @@ def display_altitude_grid_3d(grid, ax=None):
         marker="o",  # Set marker style
         alpha=0.2,
         depthshade=True,  # Enable depth shading for better visualization
-    )
-
-    flight_path_df = pd.DataFrame(
-        flight_path, columns=["latitude", "longitude", "altitude_ft"]
-    )
-    flight_path_geometry = [
-        Point(xyz)
-        for xyz in zip(
-            flight_path_df["latitude"],
-            flight_path_df["longitude"],
-            flight_path_df["altitude_ft"],
-        )
-    ]
-    gdf = gpd.GeoDataFrame(flight_path_df, geometry=flight_path_geometry, crs=crs)
-
-    ax.plot(
-        gdf["longitude"],
-        gdf["latitude"],
-        gdf["altitude_ft"],
-        color="k",
-        markersize=10,
-        linewidth=5,
     )
 
     ax.set_zlim(bottom=28_000)
