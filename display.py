@@ -1,4 +1,7 @@
-from matplotlib.collections import LineCollection
+from matplotlib.collections import LineCollection, PolyCollection, PatchCollection
+from matplotlib.patches import Polygon
+import config
+import shapely
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import pandas as pd
@@ -8,8 +11,8 @@ from cartopy.feature import BORDERS, COASTLINE
 from cartopy.mpl.patch import geos_to_path
 import itertools
 import numpy as np
-import matplotlib.style as mplstyle
-import time
+import json
+from shapely.ops import unary_union
 
 from matplotlib.animation import FuncAnimation
 
@@ -42,7 +45,69 @@ def create_3d_ax(fig=None):
         fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
 
+    lc = extract_map_geometry()
+    ax.add_collection3d(lc, zs=28_000, zdir="z")
+
+    ax.set_zlim(30000, 40000)
+
     return fig, ax
+
+
+def create_3d_flight_frame(timestep, flight_path, contrail_grid, line, ax=None):
+
+    long = flight_path["longitude"][:timestep]
+    lat = flight_path["latitude"][:timestep]
+    alt = flight_path["altitude_ft"][:timestep]
+    ax.set_title(f"Flight Path at Timestep {flight_path['time'][timestep]}")
+    line.set_xdata(long)
+    line.set_ydata(lat)
+    line.set_3d_properties(alt)
+    # timestamps = contrail_grid["time"]
+    #
+    # # Interpolate contrail grid data at the given timestamp
+    # nearest_timestamp_index = np.argmin(
+    #     np.abs(timestamps - np.datetime64(flight_path["time"][timestep])).values
+    # )
+    # interpolated_grid = contrail_grid.isel(flight_level=3, time=nearest_timestamp_index)
+    #
+    # transposed = interpolated_grid["ef_per_m"].transpose().values
+    # grid.set_array(transposed.ravel())
+    return line
+
+
+def create_3d_flight_animation(
+    flight_path,
+    contrail_grid,
+    fig=None,
+    ax=None,
+    interval=200,
+):
+
+    if ax is None:
+        fig, ax = create_3d_ax()
+
+    flight_path_df = pd.DataFrame(
+        flight_path, columns=["latitude", "longitude", "altitude_ft", "time"]
+    )
+    line = ax.plot(
+        flight_path_df["longitude"][0],
+        flight_path_df["latitude"][0],
+        flight_path_df["altitude_ft"][0],
+        color="b",
+    )[0]
+
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.set_zlabel("Altitude")
+    ani = FuncAnimation(
+        fig,
+        create_3d_flight_frame,
+        frames=len(flight_path),
+        interval=interval,
+        fargs=(flight_path_df, contrail_grid, line, ax),
+        blit=False,
+    )
+    return ani
 
 
 def create_flight_frame(timestep, flight_path, contrail_grid, line, grid, ax=None):
@@ -66,7 +131,11 @@ def create_flight_frame(timestep, flight_path, contrail_grid, line, grid, ax=Non
 
 
 def create_flight_animation(
-    flight_path, contrail_grid, fig=None, ax=None, interval=200, repeat_delay=1000
+    flight_path,
+    contrail_grid,
+    fig=None,
+    ax=None,
+    interval=200,
 ):
 
     if ax is None:
@@ -79,9 +148,9 @@ def create_flight_animation(
         flight_path_df["longitude"][0],
         flight_path_df["latitude"][0],
         transform=ccrs.PlateCarree(),
-        color="k",
+        color="b",
     )[0]
-    contrail_data = contrail_grid.isel(flight_level=5, time=0)
+    contrail_data = contrail_grid.isel(flight_level=4, time=0)
     grid = ax.pcolormesh(
         contrail_data["longitude"],
         contrail_data["latitude"],
@@ -104,6 +173,27 @@ def create_flight_animation(
         blit=False,
     )
     return ani
+
+
+def display_contrail_polys(contrail_polys, ax=None):
+    if ax is None:
+        _, ax = create_3d_ax()
+
+    polys = contrail_polys["polys"]
+    for level in config.FLIGHT_LEVELS:
+        patches = []
+        for poly in polys:
+            if (
+                poly["properties"]["level"] == level
+                and poly["properties"]["time"] == "2023-12-20T02:00:00Z"
+            ):
+                multipoly = shapely.from_geojson(json.dumps(poly))
+                for geom in multipoly.geoms:
+                    geom = geom.simplify(0.1)
+                    x, y = geom.exterior.coords.xy
+                    patches.append(np.asarray(tuple(zip(x, y))))
+        collection = PolyCollection(patches, facecolor="red", alpha=0.5)
+        ax.add_collection3d(collection, zs=level * 100, zdir="z")
 
 
 def display_contrail_grid(contrail_grid, ax=None):
@@ -225,13 +315,14 @@ def display_geodesic_path(points, ax=None):
     geodesic_path_df = pd.DataFrame(
         points, columns=["Latitude", "Longitude", "Azimuth"]
     )
-    geodesic_path_geometry = [
-        Point(xy)
-        for xy in zip(geodesic_path_df["Longitude"], geodesic_path_df["Latitude"])
-    ]
-    gdf = gpd.GeoDataFrame(geodesic_path_df, geometry=geodesic_path_geometry, crs=wgs84)
-    gdf_ae = gdf.to_crs(crs_proj4)
-    gdf_ae.plot(ax=ax, color="red", markersize=5)
+    ax.plot(
+        geodesic_path_df["Longitude"],
+        geodesic_path_df["Latitude"],
+        transform=ccrs.PlateCarree(),
+        color="green",
+        linestyle="dashed",
+        linewidth=1,
+    )
 
 
 def display_routing_grid(grid, ax=None):
@@ -350,48 +441,16 @@ def display_flight_path_3d(flight_path, ax=None):
     if ax is None:
         fig, ax = create_3d_ax()
     flight_path_df = pd.DataFrame(
-        flight_path, columns=["Latitude", "Longitude", "Altitude"]
+        flight_path, columns=["latitude", "longitude", "altitude_ft"]
     )
-    flight_path_geometry = [
-        Point(xyz)
-        for xyz in zip(
-            flight_path_df["Latitude"],
-            flight_path_df["Longitude"],
-            flight_path_df["Altitude"],
-        )
-    ]
-    gdf = gpd.GeoDataFrame(flight_path_df, geometry=flight_path_geometry, crs=crs)
 
     ax.plot(
-        gdf["Longitude"],
-        gdf["Latitude"],
-        gdf["Altitude"],
+        flight_path_df["longitude"],
+        flight_path_df["latitude"],
+        flight_path_df["altitude_ft"],
         color="k",
         markersize=10,
         linewidth=1,
-    )
-
-
-def display_issrs(ax=None):
-    if ax is None:
-        ax = create_map_ax()
-
-    issr_geometry = [
-        Point(xy)
-        for xy in zip(
-            issrs.da["latitude"],
-            issrs.da["longitude"],
-        )
-    ]
-
-    gdf = gpd.GeoDataFrame(issrs.da, geometry=issr_geometry, crs=crs)
-
-    gdf.plot(
-        ax=ax,
-        column="issr",
-        cmap="Reds",
-        alpha=0.5,
-        transform=ccrs.PlateCarree(),
     )
 
 
