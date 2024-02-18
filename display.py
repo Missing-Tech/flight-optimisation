@@ -143,7 +143,7 @@ def create_3d_flight_animation(
         create_3d_flight_frame,
         frames=len(flight_path),
         interval=interval,
-        fargs=(flight_path_df, contrail_grid, contrail_polys, line, polys, ax),
+        fargs=(flight_path_df, contrail_grid, contrail_polys, line, ax),
         blit=False,
     )
     return ani

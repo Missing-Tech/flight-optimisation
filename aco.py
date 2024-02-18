@@ -82,7 +82,7 @@ def pheromone_update(solution, routing_graph, best_objective):
 
 
 def construct_solution(routing_graph):
-    solution = [(0, 0, 30000)]
+    solution = [(0, 0, config.STARTING_ALTITUDE)]
 
     neighbours = routing_graph[solution[0]]
 
