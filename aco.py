@@ -8,7 +8,6 @@ import math
 import random
 import util
 import networkx as nx
-import pandas as pd
 
 
 def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distance):
@@ -23,20 +22,28 @@ def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distanc
         before = time.perf_counter()
         flight_paths = []
         ants = []
-        for ant in range(no_of_ants):
+        for _ in range(no_of_ants):
             solution = construct_solution(routing_graph)
             ants.append(solution)
 
-            flight_path = util.convert_indices_to_points(solution, altitude_grid)
-            weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
-            flight_path = fp.calculate_flight_characteristics(flight_path, weather_data)
-            flight_paths.append(flight_path)
-            objective = objective_function(flight_path, distance, contrail_grid)
+            thrusts = np.arange(
+                config.INITIAL_THRUST, config.MAX_THRUST, config.MAX_THRUST_VAR
+            )
+            for thrust in thrusts:
+                flight_path = util.convert_indices_to_points(
+                    solution, altitude_grid, thrust=thrust
+                )
+                weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
+                flight_path = fp.calculate_flight_characteristics(
+                    flight_path, weather_data
+                )
+                flight_paths.append(flight_path)
+                objective = objective_function(flight_path, distance, contrail_grid)
 
-            if best_solution is None or objective < best_objective:
-                best_solution = solution
-                best_objective = objective
-                best_flight_path = flight_path
+                if best_solution is None or objective < best_objective:
+                    best_solution = solution
+                    best_objective = objective
+                    best_flight_path = flight_path
 
             routing_graph = pheromone_update(
                 best_solution, routing_graph, best_objective
@@ -53,14 +60,20 @@ def objective_function(flight_path, distance, contrail_grid):
     fuel_burned = config.STARTING_WEIGHT - flight_path[-1]["aircraft_mass"]
     co2_per_kg = 4.70e9
 
-    start_time = config.DEPARTURE_DATE
-
     contrail_ef = ct.interpolate_contrail_grid(contrail_grid, flight_path, distance)
 
     ef_penalty = (
         (fuel_burned * co2_per_kg * co2_weight) + (contrail_ef * contrail_weight)
     ) / 1e13
-    return ef_penalty
+
+    time_weight = config.TIME_WEIGHT
+    flight_time_penalty = (
+        time_weight * (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600
+    )
+
+    total_penalty = ef_penalty + flight_time_penalty
+
+    return total_penalty
 
 
 def pheromone_update(solution, routing_graph, best_objective):
@@ -93,10 +106,7 @@ def construct_solution(routing_graph):
             probability = calculate_probability_at_neighbour(
                 n,
                 routing_graph,
-                config.PHEROMONE_WEIGHT,
-                config.HEURISTIC_WEIGHT,
                 neighbours[n]["pheromone"],
-                solution,
             )
             if probability == -1:
                 # reached the destination
@@ -112,11 +122,17 @@ def construct_solution(routing_graph):
 
 
 def calculate_probability_at_neighbour(
-    node, routing_graph, alpha, beta, pheromone, solution
+    node,
+    routing_graph,
+    pheromone,
 ):
     heuristic = routing_graph.nodes[node]["heuristic"]
     total_neighbour_factor = 0
     neighbours = routing_graph[node]
+
+    alpha = config.PHEROMONE_WEIGHT
+    beta = config.HEURISTIC_WEIGHT
+
     if not neighbours:
         return -1
     for n in neighbours:

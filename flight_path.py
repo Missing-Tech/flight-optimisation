@@ -1,83 +1,10 @@
-import random
 import config
 import ecmwf
 from openap import polymer
-from openap import FuelFlow
 from geopy import distance as gp
 import pandas as pd
 import util
-import time
 import numpy as np
-
-
-def generate_random_flight_path(
-    altitude_grid,
-    weather_data,
-    aircraft_type=config.AIRCRAFT_TYPE,
-    engine_type=config.ENGINE_TYPE,
-    aircraft_mass=config.STARTING_WEIGHT,
-    starting_altitude=config.STARTING_ALTITUDE,
-):
-    flight_path = []
-    currentYi = 0
-    currentAltitude = starting_altitude
-    for currentXi in range(len(altitude_grid[currentAltitude]) - 1):
-        points = util.get_consecutive_points(
-            currentXi, currentYi, currentAltitude, altitude_grid
-        )
-        next_point = random.choice(points)
-
-        currentXi = next_point[0]
-        currentAltitude = next_point[2]
-        currentYi = min(
-            next_point[1], len(altitude_grid[currentAltitude][currentXi]) - 1
-        )
-
-        point = altitude_grid[currentAltitude][currentXi][currentYi]
-        point = {
-            "latitude": point[0],
-            "longitude": point[1],
-            "altitude_ft": currentAltitude,
-            "thrust": config.INITIAL_THRUST,
-        }
-        flight_path.append(point)
-
-    flight_path_before = time.perf_counter()
-    flight_path = calculate_flight_characteristics(
-        flight_path, weather_data, aircraft_type, engine_type, aircraft_mass
-    )
-    flight_path_after = time.perf_counter()
-    print(
-        f"Time taken to calculate flight path 2: {flight_path_after - flight_path_before} seconds"
-    )
-
-    return flight_path
-
-
-def generate_geodesic_flight_path(
-    altitude_grid,
-    weather_data,
-    aircraft_type=config.AIRCRAFT_TYPE,
-    engine_type=config.ENGINE_TYPE,
-    aircraft_mass=config.STARTING_WEIGHT,
-    starting_altitude=config.STARTING_ALTITUDE,
-):
-    flight_path = []
-    currentAltitude = starting_altitude
-    for currentXi in range(len(altitude_grid[currentAltitude]) - 1):
-        mid_index = len(altitude_grid[currentAltitude][currentXi]) // 2
-        point = altitude_grid[currentAltitude][currentXi][mid_index]
-        point = {
-            "latitude": point[0],
-            "longitude": point[1],
-            "altitude_ft": currentAltitude + 6000,
-            "thrust": config.INITIAL_THRUST,
-        }
-        flight_path.append(point)
-    flight_path = calculate_flight_characteristics(
-        flight_path, weather_data, aircraft_type, engine_type, aircraft_mass
-    )
-    return flight_path
 
 
 def calculate_flight_characteristics(
@@ -120,7 +47,7 @@ def calculate_flight_characteristics(
             point["climb_angle"] = 0
 
         point["true_airspeed"] = calculate_true_air_speed(
-            point, point["thrust"], weather_data, weather_at_point
+            point["thrust"], weather_data, weather_at_point
         )
         crabbing_angle = calculate_crabbing_angle(point, weather_data, weather_at_point)
         point["heading"] = point["course"] - crabbing_angle
@@ -150,7 +77,7 @@ def calculate_course_at_point(point, next_point):
     return bearing
 
 
-def calculate_true_air_speed(point, mach, weather_data, weather_at_point):
+def calculate_true_air_speed(mach, weather_data, weather_at_point):
     speed_of_sound = 340.29
     temperature = weather_data.get_temperature_at_point(weather_at_point)
     sea_level_temp = 288.15  # in kelvin

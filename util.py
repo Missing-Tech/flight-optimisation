@@ -72,7 +72,7 @@ def get_nearest_value_from_list(value, list):
     return min(list, key=lambda x: abs(x - value))
 
 
-def convert_indices_to_points(index_path, altitude_grid):
+def convert_indices_to_points(index_path, altitude_grid, thrust=config.INITIAL_THRUST):
     path = []
     for point in index_path:
         altitude_point = altitude_grid[point[2]][point[0]][point[1]]
@@ -80,7 +80,7 @@ def convert_indices_to_points(index_path, altitude_grid):
             "latitude": altitude_point[0],
             "longitude": altitude_point[1],
             "altitude_ft": point[2],
-            "thrust": config.INITIAL_THRUST,
+            "thrust": thrust,
         }
         path.append(path_point)
 

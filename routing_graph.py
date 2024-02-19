@@ -1,9 +1,7 @@
 import networkx as nx
 import config
 import contrails as ct
-import random
 import util
-import numpy as np
 
 
 def calculate_routing_graph(altitude_grid, distance):
