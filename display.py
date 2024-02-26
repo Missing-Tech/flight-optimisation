@@ -1,6 +1,4 @@
-from matplotlib.collections import LineCollection, PolyCollection, PatchCollection
-from datetime import datetime
-from matplotlib.patches import Polygon
+from matplotlib.collections import LineCollection, PolyCollection
 import config
 import shapely
 import matplotlib.pyplot as plt
@@ -13,8 +11,6 @@ from cartopy.mpl.patch import geos_to_path
 import itertools
 import numpy as np
 import json
-from shapely.ops import unary_union
-
 from matplotlib.animation import FuncAnimation
 
 crs = ccrs.NearsidePerspective(central_latitude=51, central_longitude=-35)
@@ -52,6 +48,43 @@ def create_3d_ax(fig=None):
     ax.set_zlim(30000, 40000)
 
     return fig, ax
+
+
+def display_flight_ef_comparison(flight_path_cocip, aco_cocip, ax=None):
+
+    flight_path_cocip.source.dataframe.plot(
+        "longitude",
+        "latitude",
+        color="r",
+        ax=ax,
+        label="Real Flight path",
+    )
+    flight_path_cocip.contrail.plot.scatter(
+        "longitude",
+        "latitude",
+        c="ef",
+        cmap="coolwarm",
+        # vmin=-1e12,
+        # vmax=1e12,
+        ax=ax,
+    )
+    # aco_cocip.source.dataframe.plot(
+    #     "longitude",
+    #     "latitude",
+    #     color="k",
+    #     ax=ax,
+    #     label="ACO Path",
+    # )
+    # aco_cocip.contrail.plot.scatter(
+    #     "longitude",
+    #     "latitude",
+    #     c="ef",
+    #     cmap="coolwarm",
+    #     vmin=-1e12,
+    #     vmax=1e12,
+    #     ax=ax,
+    # )
+    return
 
 
 def create_3d_flight_frame(
@@ -153,7 +186,9 @@ def create_flight_frame(timestep, flight_path, contrail_grid, line, grid, ax=Non
 
     long = flight_path["longitude"][:timestep]
     lat = flight_path["latitude"][:timestep]
-    ax.set_title(f"Flight Path at Timestep {flight_path['time'][timestep]}")
+    ax.set_title(
+        f"Flight Path at Timestep {flight_path['time'][timestep].strftime('%H:%M')}, Altitude: {flight_path['altitude_ft'][timestep]} ft"
+    )
     line.set_xdata(long)
     line.set_ydata(lat)
     timestamps = contrail_grid["time"]
@@ -162,7 +197,13 @@ def create_flight_frame(timestep, flight_path, contrail_grid, line, grid, ax=Non
     nearest_timestamp_index = np.argmin(
         np.abs(timestamps - np.datetime64(flight_path["time"][timestep])).values
     )
-    interpolated_grid = contrail_grid.isel(flight_level=3, time=nearest_timestamp_index)
+
+    nearest_flight_level_index = np.argmin(
+        np.abs(config.FLIGHT_LEVELS - flight_path["altitude_ft"][timestep] / 100)
+    )
+    interpolated_grid = contrail_grid.isel(
+        flight_level=nearest_flight_level_index, time=nearest_timestamp_index
+    )
 
     transposed = interpolated_grid["ef_per_m"].transpose().values
     grid.set_array(transposed.ravel())
@@ -181,7 +222,7 @@ def create_flight_animation(
         fig, ax = create_map_ax()
 
     flight_path_df = pd.DataFrame(
-        flight_path, columns=["latitude", "longitude", "time"]
+        flight_path, columns=["latitude", "longitude", "time", "altitude_ft"]
     )
     line = ax.plot(
         flight_path_df["longitude"][0],
