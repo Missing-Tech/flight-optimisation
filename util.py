@@ -1,7 +1,7 @@
 import numpy as np
 from datetime import datetime
 import config
-import ecmwf
+import contrails as ct
 
 R = 6371  # Earth radius in km
 
@@ -56,14 +56,17 @@ def calculate_new_coordinates(p1, distance, bearing):
 
 # From https://pvlib-python.readthedocs.io/en/v0.2.2/_modules/pvlib/atmosphere.html
 def calculate_altitude_ft_from_pressure(pressure):
+    pressure_pa = pressure * 100  # Convert to Pa
     # Use the international barometric formula
-    altitude = 44331.5 - 4946.62 * pressure ** (0.190263)
-    return altitude
+    altitude = 44331.5 - 4946.62 * pressure_pa ** (0.190263)
+    return altitude * 3.28084
 
 
 # From https://pvlib-python.readthedocs.io/en/v0.2.2/_modules/pvlib/atmosphere.html
 def calculate_pressure_from_altitude_ft(altitude_ft):
-    pressure = 100 * ((44331.514 - altitude_ft) / 11880.516) ** (1 / 0.1902632)
+    # convert altitude to meters
+    altitude_m = altitude_ft / 3.28084
+    pressure = ((44331.514 - altitude_m) / 11880.516) ** (1 / 0.1902632)
 
     return pressure
 
@@ -82,6 +85,7 @@ def convert_indices_to_points(index_path, altitude_grid, thrust=config.INITIAL_T
             "altitude_ft": point[2],
             "thrust": thrust,
         }
+
         path.append(path_point)
 
     return path
@@ -89,7 +93,7 @@ def convert_indices_to_points(index_path, altitude_grid, thrust=config.INITIAL_T
 
 def convert_real_flight_path(df):
     path = []
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         time = datetime.strptime(row["DateTime"], "%Y-%m-%d %H:%M:%S")
         path_point = {
             "latitude": row["Latitude"],
@@ -98,6 +102,7 @@ def convert_real_flight_path(df):
             "thrust": config.INITIAL_THRUST,
             "time": time,
         }
+        path_point["fuel_flow"] = ct.get_fuel_flow_at_point(path_point)
         path.append(path_point)
 
     return path
