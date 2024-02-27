@@ -30,6 +30,30 @@ def create_map_ax(fig=None):
     return fig, ax
 
 
+def create_side_by_side_ax(fig=None):
+    if fig is None:
+        fig = plt.figure(figsize=(10, 5))
+
+    # Define projection
+    crs = ccrs.PlateCarree()
+
+    # Create first subplot
+    ax1 = fig.add_subplot(121, projection=crs)
+    ax1.set_extent([10, -90, 25, 60])
+    ax1.add_feature(BORDERS, lw=0.5, color="gray")
+    ax1.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
+    ax1.coastlines(resolution="50m", lw=0.5, color="gray")
+
+    # Create second subplot
+    ax2 = fig.add_subplot(122, projection=crs)
+    ax2.set_extent([10, -90, 25, 60])
+    ax2.add_feature(BORDERS, lw=0.5, color="gray")
+    ax2.gridlines(draw_labels=True, color="gray", alpha=0.5, linestyle="--")
+    ax2.coastlines(resolution="50m", lw=0.5, color="gray")
+
+    return fig, ax1, ax2
+
+
 def create_blank_ax(fig=None):
     if fig is None:
         fig = plt.figure()
@@ -50,41 +74,17 @@ def create_3d_ax(fig=None):
     return fig, ax
 
 
-def display_flight_ef_comparison(flight_path_cocip, aco_cocip, ax=None):
-
-    flight_path_cocip.source.dataframe.plot(
-        "longitude",
-        "latitude",
-        color="r",
-        ax=ax,
-        label="Real Flight path",
-    )
+def display_flight_ef(flight_path_cocip, ax=None):
     flight_path_cocip.contrail.plot.scatter(
         "longitude",
         "latitude",
         c="ef",
+        vmin=-1e12,
+        vmax=1e12,
+        transform=ccrs.PlateCarree(),
         cmap="coolwarm",
-        # vmin=-1e12,
-        # vmax=1e12,
         ax=ax,
     )
-    # aco_cocip.source.dataframe.plot(
-    #     "longitude",
-    #     "latitude",
-    #     color="k",
-    #     ax=ax,
-    #     label="ACO Path",
-    # )
-    # aco_cocip.contrail.plot.scatter(
-    #     "longitude",
-    #     "latitude",
-    #     c="ef",
-    #     cmap="coolwarm",
-    #     vmin=-1e12,
-    #     vmax=1e12,
-    #     ax=ax,
-    # )
-    return
 
 
 def create_3d_flight_frame(
@@ -182,24 +182,30 @@ def create_3d_flight_animation(
     return ani
 
 
-def create_flight_frame(timestep, flight_path, contrail_grid, line, grid, ax=None):
+def create_flight_frame(hours, flight_path, contrail_grid, line, grid, title, ax=None):
 
-    long = flight_path["longitude"][:timestep]
-    lat = flight_path["latitude"][:timestep]
+    time = flight_path["time"].iloc[0] + pd.Timedelta(hours=hours * 2)
+
+    flight_path_before_time = flight_path[flight_path["time"] <= time]
+
+    long = flight_path_before_time["longitude"]
+    lat = flight_path_before_time["latitude"]
+
     ax.set_title(
-        f"Flight Path at Timestep {flight_path['time'][timestep].strftime('%H:%M')}, Altitude: {flight_path['altitude_ft'][timestep]} ft"
+        f"{title} at Timestep {time.strftime('%H:%M')}, Altitude: {flight_path_before_time['altitude_ft'].iloc[-1]} ft"
     )
     line.set_xdata(long)
     line.set_ydata(lat)
     timestamps = contrail_grid["time"]
 
     # Interpolate contrail grid data at the given timestamp
-    nearest_timestamp_index = np.argmin(
-        np.abs(timestamps - np.datetime64(flight_path["time"][timestep])).values
-    )
+    nearest_timestamp_index = np.argmin(np.abs(timestamps - np.datetime64(time)).values)
 
     nearest_flight_level_index = np.argmin(
-        np.abs(config.FLIGHT_LEVELS - flight_path["altitude_ft"][timestep] / 100)
+        np.abs(
+            config.FLIGHT_LEVELS
+            - (flight_path_before_time["altitude_ft"].iloc[-1] / 100)
+        )
     )
     interpolated_grid = contrail_grid.isel(
         flight_level=nearest_flight_level_index, time=nearest_timestamp_index
@@ -213,9 +219,10 @@ def create_flight_frame(timestep, flight_path, contrail_grid, line, grid, ax=Non
 def create_flight_animation(
     flight_path,
     contrail_grid,
+    title="Flight path",
     fig=None,
     ax=None,
-    interval=200,
+    interval=1000,
 ):
 
     if ax is None:
@@ -236,8 +243,8 @@ def create_flight_animation(
         contrail_data["latitude"],
         contrail_data["ef_per_m"].transpose(),
         shading="gourard",
-        vmin=-2e8,
-        vmax=2e8,
+        vmin=-1e9,
+        vmax=1e9,
         cmap="coolwarm",
         transform=ccrs.PlateCarree(),
     )
@@ -247,9 +254,9 @@ def create_flight_animation(
     ani = FuncAnimation(
         fig,
         create_flight_frame,
-        frames=len(flight_path),
+        frames=5,
         interval=interval,
-        fargs=(flight_path_df, contrail_grid, line, grid, ax),
+        fargs=(flight_path_df, contrail_grid, line, grid, title, ax),
         blit=False,
     )
     return ani
@@ -257,7 +264,7 @@ def create_flight_animation(
 
 def display_contrail_grid(contrail_grid, ax=None):
 
-    contrail_grid.isel(flight_level=5, time=2).plot(
+    contrail_grid.isel(flight_level=4, time=0).plot(
         x="longitude",
         y="latitude",
         vmin=-2e8,
@@ -283,7 +290,7 @@ def display_flight_altitude(flight_path, ax=None, color="k"):
     ax.set_title("Flight Altitude")
 
 
-def display_flight_path(flight_path, ax=None, linewidth=0.5):
+def display_flight_path(flight_path, ax=None, linewidth=1):
     if ax is None:
         _, ax = create_map_ax()
     flight_path_df = pd.DataFrame(flight_path, columns=["latitude", "longitude"])

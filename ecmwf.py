@@ -1,13 +1,10 @@
 import os
-import pycontrails as ct
 from pycontrails.models.cocip import Cocip
 from pycontrails.datalib.ecmwf import ERA5
 import util
-import time
 import pandas as pd
 import xarray as xr
 import config
-import cdsapi
 
 
 time_bounds = (config.DEPARTURE_DATE, config.DEPARTURE_DATE + config.WEATHER_BOUND)
@@ -17,22 +14,10 @@ era5pl = ERA5(
     timestep_freq="1h",
     variables=Cocip.met_variables + Cocip.optional_met_variables,
     pressure_levels=pressure_levels,
-    # area=[
-    #     56.8,
-    #     -91.2,
-    #     21.9,
-    #     19.5,
-    # ],
 )
 era5sl = ERA5(time=time_bounds, variables=Cocip.rad_variables)
 met = era5pl.open_metdataset()
 rad = era5sl.open_metdataset()
-# weather = xr.open_dataset("weather_data.nc")
-# print(weather["time"])
-# met = era5pl._process_dataset(weather)
-# radiation = xr.open_dataset("radiation.nc")
-# rad = era5sl._preprocess_era5_dataset(radiation)
-# rad = era5sl._process_dataset(rad)
 
 
 class MetAltitudeGrid:
@@ -59,9 +44,6 @@ class MetAltitudeGrid:
 
             fl_ds = flight_path.copy()
             fl_ds = fl_ds.set_index(["altitude_ft", "latitude", "longitude"])
-            # fl_ds["level"] = util.calculate_pressure_from_altitude_ft(
-            #     fl_ds.pop("altitude_ft")
-            # )
             fl_ds = xr.Dataset.from_dataframe(fl_ds)
             weather = met.data.interp(**fl_ds.data_vars)
 

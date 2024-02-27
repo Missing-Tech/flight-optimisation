@@ -5,13 +5,28 @@ from geopy import distance as gp
 import pandas as pd
 import util
 import numpy as np
+from openap import FuelFlow
+import contrails as ct
+
+
+def calculate_flight_fuel_flow(flight_path):
+    # fuelflow = FuelFlow(config.AIRCRAFT_TYPE)
+    # for point in flight_path:
+    #     FF = fuelflow.enroute(
+    #         mass=point["aircraft_mass"],
+    #         tas=point["true_airspeed"] * 1.944,  # convert to knots
+    #         alt=point["altitude_ft"],
+    #         path_angle=point["heading"],
+    #     )
+    #     point["fuel_flow"] = FF
+
+    return flight_path
 
 
 def calculate_flight_characteristics(
     flight_path,
     weather_data,
 ):
-    polymer_flight = polymer.Flight(config.AIRCRAFT_TYPE)
     for i in range(len(flight_path)):
 
         point = flight_path[i]
@@ -21,16 +36,16 @@ def calculate_flight_characteristics(
         if i == 0:
             point["aircraft_mass"] = config.STARTING_WEIGHT
             point["time"] = config.DEPARTURE_DATE
-            point["fuel_flow"] = 0
         else:
             previous_point = flight_path[i - 1]
-            point["aircraft_mass"] = previous_point[
-                "aircraft_mass"
-            ] - calculate_fuel_flow(
-                point, previous_point["aircraft_mass"], polymer_flight, previous_point
-            )
             time_elapsed = calculate_time_at_point(point, previous_point)
             point["time"] = previous_point["time"] + time_elapsed.round("s")
+            point["fuel_flow"] = ct.get_fuel_flow_at_point(point)
+            point["engine_efficiency"] = ct.get_engine_efficiency_at_point(point)
+            point["aircraft_mass"] = (
+                previous_point["aircraft_mass"]
+                - point["fuel_flow"] * time_elapsed.total_seconds()
+            )
 
         weather_at_point = weather_data.get_weather_data_at_point(
             point,
@@ -126,10 +141,13 @@ def calculate_fuel_flow(point, mass, flight, previous_point):
     #     alt=point["altitude_ft"],
     #     path_angle=np.rad2deg(point["climb_angle"]),
     # )
-    distance = gp.distance(
-        (previous_point["latitude"], previous_point["longitude"]),
-        (point["latitude"], point["longitude"]),
-    ).km
-    fuel_flow = flight.fuel(distance=distance, mass=mass)
+    # distance = gp.distance(
+    #     (previous_point["latitude"], previous_point["longitude"]),
+    #     (point["latitude"], point["longitude"]),
+    # ).km
+    # fuel_flow = flight.fuel(distance=distance, mass=mass)
+    #
+    fuel_flow = ct.get_fuel_flow_at_point(point)
+
     # return FF
     return fuel_flow

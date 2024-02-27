@@ -1,17 +1,60 @@
 import pandas as pd
-from scipy.interpolate import griddata
 import requests
-from shapely.geometry import geo
 import xarray as xr
 import pycontrails as pc
 from pycontrails.models.cocip import Cocip
-from xarray.core import combine
 import ecmwf
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 import os
 import tempfile
 import json
 import config
+from pycontrails.models.ps_model import PSGrid
+import matplotlib.pyplot as plt
+import util
+
+
+def get_ps_grid():
+    if os.path.exists("ps_grid.nc"):
+        return xr.open_dataset("ps_grid.nc")
+    else:
+        ps_grid = PSGrid(ecmwf.met, aircraft_type=config.AIRCRAFT_TYPE).eval()
+        ps_grid.data.to_netcdf("ps_grid.nc")
+        return xr.open_dataset("ps_grid.nc")
+
+
+ps_grid = get_ps_grid()
+
+# ps_grid["fuel_flow"].isel(time=0, level=1).plot(x="longitude", y="latitude")
+# plt.gca().invert_yaxis()
+
+
+def get_engine_efficiency_at_point(point):
+    level = util.calculate_pressure_from_altitude_ft(point["altitude_ft"])
+    level = max(min(level, config.PRESSURE_LEVELS[0]), config.PRESSURE_LEVELS[-1])
+
+    engine_efficiency = ps_grid["engine_efficiency"].interp(
+        latitude=point["latitude"],
+        longitude=point["longitude"],
+        level=level,
+        time=point["time"],
+    )
+
+    return engine_efficiency.item()
+
+
+def get_fuel_flow_at_point(point):
+    level = util.calculate_pressure_from_altitude_ft(point["altitude_ft"])
+    level = max(min(level, config.PRESSURE_LEVELS[0]), config.PRESSURE_LEVELS[-1])
+
+    fuel_flow = ps_grid["fuel_flow"].interp(
+        latitude=point["latitude"],
+        longitude=point["longitude"],
+        level=level,
+        time=point["time"],
+    )
+
+    return fuel_flow.item()
 
 
 def calculate_ef_from_flight_path(flight_path):
@@ -20,17 +63,17 @@ def calculate_ef_from_flight_path(flight_path):
     attrs = {
         "flight_id": 123,
         "aircraft_type": config.AIRCRAFT_TYPE,
-        "engine_uid": config.ENGINE_TYPE,
-        "engine_efficiency": config.ENGINE_EFFICIENCY,
-        "nvpm_ei_n": 1.897462e15,
         "wingspan": config.WINGSPAN,
+        "nvpm_ei_n": 1.897264e15,
         "n_engine": config.N_ENGINES,
     }
 
     flight = pc.Flight(data=flight_path_df, flight_id=123, attrs=attrs)
     params = {
         "process_emissions": False,
-        "verbose_outputs": True,
+        "filter_sac": False,
+        "radiative_heating_effects": True,
+        "filter_initially_persistent": False,
         "humidity_scaling": ConstantHumidityScaling(rhi_adj=0.98),
     }
     cocip = Cocip(ecmwf.met, ecmwf.rad, params=params)
@@ -41,7 +84,7 @@ def calculate_ef_from_flight_path(flight_path):
         ef = df["ef"].sum()
     else:
         ef = 0
-    # return df
+
     return ef, df, cocip
 
 
@@ -52,7 +95,7 @@ def interpolate_contrail_point(
     ef_per_m = da.interp(
         latitude=point[0], longitude=point[1], flight_level=point[2] / 100
     )
-    return ef_per_m.sum().item() * distance
+    return ef_per_m.sum().item() * distance * 1000
 
 
 def interpolate_contrail_grid(contrail_grid, flight_path, distance):
@@ -69,7 +112,7 @@ def interpolate_contrail_grid(contrail_grid, flight_path, distance):
 
     ef_per_m = da.interp(**fl_ds.data_vars)
 
-    return ef_per_m.sum().item() * distance
+    return ef_per_m.sum().item() * distance * 1000
 
 
 def download_contrail_grid(altitude_grid, filename, format):
@@ -107,12 +150,14 @@ def download_contrail_grid(altitude_grid, filename, format):
             grid_df["latitude"].max() + 1,
         ],
         "flight_level": config.FLIGHT_LEVELS,
-        "aircraft_type": config.AIRCRAFT_TYPE,
+        "aircraft_type": "A320",
         "format": format,
     }
 
     ds_list = []
     time = [config.DEPARTURE_DATE, config.DEPARTURE_DATE + config.WEATHER_BOUND]
+    date = pd.Timestamp(year=2024, month=1, day=31, hour=20)
+    # time = [date,date + config.WEATHER_BOUND]
     times = pd.date_range(time[0], time[1], freq="1h")
     for t in times:
         params["time"] = str(t)

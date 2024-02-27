@@ -1,7 +1,6 @@
 import numpy as np
 from datetime import datetime
 import config
-import contrails as ct
 
 R = 6371  # Earth radius in km
 
@@ -99,10 +98,9 @@ def convert_real_flight_path(df):
             "latitude": row["Latitude"],
             "longitude": row["Longitude"],
             "altitude_ft": row["AltMSL"],
-            "thrust": config.INITIAL_THRUST,
+            "thrust": config.MAX_THRUST,
             "time": time,
         }
-        path_point["fuel_flow"] = ct.get_fuel_flow_at_point(path_point)
         path.append(path_point)
 
     return path
