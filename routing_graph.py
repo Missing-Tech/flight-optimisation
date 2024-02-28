@@ -2,25 +2,22 @@ import networkx as nx
 import config
 import contrails as ct
 import util
+import os
+import altitude_grid as ag
 
 
-def calculate_routing_graph(altitude_grid, distance):
+def calculate_routing_graph(altitude_grid, contrail_grid):
     graph = nx.DiGraph()
-
-    contrail_grid = ct.download_contrail_grid(
-        altitude_grid, "contrail_grid.nc", "netcdf"
-    )
 
     for altitude in altitude_grid:
         for step in altitude_grid[altitude]:
             for point in step:
                 if point is None:
                     continue
+
                 contrails = (
                     -(
-                        ct.interpolate_contrail_point(
-                            contrail_grid, (*point, altitude), distance
-                        )
+                        ct.interpolate_contrail_point(contrail_grid, (*point, altitude))
                         / 1e12
                     )
                     - 1
@@ -45,3 +42,21 @@ def calculate_routing_graph(altitude_grid, distance):
                     graph.add_node(next_point, heuristic=contrails)
 
     return graph
+
+
+def parse_node(s):
+    # Assuming the input format is like '(0, 0, 31000)'
+    parts = s.strip("()").split(",")
+    return tuple(map(int, parts))
+
+
+def get_routing_graph():
+    if os.path.exists("routing_graph.gml"):
+        return nx.read_gml("routing_graph.gml", destringizer=parse_node)
+    else:
+        rg = calculate_routing_graph(
+            ag.get_altitude_grid(),
+            ct.get_contrail_grid(),
+        )
+        nx.write_gml(rg, "routing_graph.gml")
+        return rg

@@ -1,5 +1,58 @@
 import util
 import config
+import os
+import pickle
+import geodesic_path as gp
+import numpy as np
+
+
+def get_routing_grid():
+    if os.path.exists("routing_grid.p"):
+        return pickle.load(open("routing_grid.p", "rb"))
+    else:
+        rg = calculate_routing_grid(gp.get_geodesic_path())
+        pickle.dump(rg, open("routing_grid.p", "wb"))
+        return rg
+
+
+def calculate_normal_bearing(bearing):
+    return (bearing + np.pi / 2) % (2 * np.pi)
+
+
+# Formula from https://www.movable-type.co.uk/scripts/latlong.html
+def calculate_bearing(p1, p2):
+    lat1, lon1, _ = p1
+    lat2, lon2, _ = p2
+    delta_lon = lon2 - lon1
+
+    lat1 = np.radians(lat1)
+    lat2 = np.radians(lat2)
+    delta_lon = np.radians(delta_lon)
+
+    x = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(delta_lon)
+    y = np.sin(delta_lon) * np.cos(lat1)
+    z = np.arctan2(y, x) % (2 * np.pi)  # Convert to range [0, 2pi]
+
+    return z
+
+
+# Formula from https://www.movable-type.co.uk/scripts/latlong.html
+def calculate_new_coordinates(p1, distance, bearing):
+    lat1, lon1, _ = p1
+
+    lat1 = np.radians(lat1)
+    lon1 = np.radians(lon1)
+
+    lat2 = np.arcsin(
+        np.sin(lat1) * np.cos(distance / util.R)
+        + np.cos(lat1) * np.sin(distance / util.R) * np.cos(bearing)
+    )
+    lon2 = lon1 + np.arctan2(
+        np.sin(bearing) * np.sin(distance / util.R) * np.cos(lat1),
+        np.cos(distance / util.R) - np.sin(lat1) * np.sin(lat2),
+    )
+
+    return np.degrees(lat2), np.degrees(lon2), bearing
 
 
 def calculate_routing_grid(
@@ -20,13 +73,13 @@ def calculate_routing_grid(
             if index + i > len(path) - 1:
                 continue
 
-            bearing = util.calculate_bearing(path[index], path[index + i])
-            bearing = util.calculate_normal_bearing(bearing)
+            bearing = calculate_bearing(path[index], path[index + i])
+            bearing = calculate_normal_bearing(bearing)
 
-            new_point_positive = util.calculate_new_coordinates(
+            new_point_positive = calculate_new_coordinates(
                 point, config.GRID_SPACING * i, bearing
             )
-            new_point_negative = util.calculate_new_coordinates(
+            new_point_negative = calculate_new_coordinates(
                 point, config.GRID_SPACING * i * -1, bearing
             )
             plat, plon, _ = new_point_positive

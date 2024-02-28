@@ -1,5 +1,8 @@
 import util
+import config
 import numpy as np
+import os
+import csv
 
 # Equations from Wikipedia https://en.wikipedia.org/wiki/Great-circle_navigation
 
@@ -80,9 +83,9 @@ def __find_point_distance_along_great_circle(distance, azimuth, equator_longitud
     return (util.reduce_angle(phi), util.reduce_angle(lambda1), local_azimuth)
 
 
-def calculate_distance_between_points(no_of_points, p1, p2):
-    lat0, lon0, _ = p1
-    lat1, lon1, _ = p2
+def calculate_distance_between_airports():
+    lat0, lon0 = config.DEPARTURE_AIRPORT
+    lat1, lon1 = config.DESTINATION_AIRPORT
 
     phi1 = np.radians(lat0)
     lambda1 = np.radians(lon0)
@@ -95,13 +98,13 @@ def calculate_distance_between_points(no_of_points, p1, p2):
     central_angle = __calculate_central_angle(phi1, phi2, delta)
 
     total_distance = util.R * central_angle
-    step = total_distance / no_of_points
+    step = total_distance / config.NO_OF_POINTS
     return step
 
 
 def calculate_path(no_of_points, p1, p2):
-    lat0, lon0, _ = p1
-    lat1, lon1, _ = p2
+    lat0, lon0 = p1
+    lat1, lon1 = p2
 
     phi1 = np.radians(lat0)
     lambda1 = np.radians(lon0)
@@ -135,3 +138,18 @@ def calculate_path(no_of_points, p1, p2):
     points.append((lat1, lon1, 0))
 
     return points
+
+
+def get_geodesic_path():
+    if os.path.exists("geodesic_path.csv"):
+        with open("geodesic_path.csv", newline="") as csvfile:
+            reader = csv.reader(csvfile)
+            return list(reader)
+    else:
+        path = calculate_path(
+            config.NO_OF_POINTS, config.DEPARTURE_AIRPORT, config.DESTINATION_AIRPORT
+        )
+        with open("geodesic_path.csv", "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerows(path)
+        return path

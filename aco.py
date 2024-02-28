@@ -8,16 +8,22 @@ import math
 import random
 import util
 import networkx as nx
+import altitude_grid as ag
+import routing_graph as rg
 
 
-def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distance):
+def run_aco_colony(
+    iterations,
+    no_of_ants,
+):
     best_solution = None
     best_flight_path = None
     best_objective = None
     flight_paths = []
-    contrail_grid = ct.download_contrail_grid(
-        altitude_grid, "contrail_grid.nc", "netcdf"
-    )
+    contrail_grid = ct.get_contrail_grid()
+    altitude_grid = ag.get_altitude_grid()
+    routing_graph = rg.get_routing_graph()
+
     for _ in range(iterations):
         before = time.perf_counter()
         flight_paths = []
@@ -38,7 +44,7 @@ def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distanc
                     flight_path, weather_data
                 )
                 flight_paths.append(flight_path)
-                objective = objective_function(flight_path, distance, contrail_grid)
+                objective = objective_function(flight_path, contrail_grid)
 
                 if best_solution is None or objective < best_objective:
                     best_solution = solution
@@ -54,13 +60,13 @@ def run_aco_colony(iterations, no_of_ants, routing_graph, altitude_grid, distanc
     return flight_paths, best_flight_path
 
 
-def objective_function(flight_path, distance, contrail_grid):
+def objective_function(flight_path, contrail_grid):
     co2_weight = config.CO2_WEIGHT
     contrail_weight = config.CONTRAIL_WEIGHT
     fuel_burned = config.STARTING_WEIGHT - flight_path[-1]["aircraft_mass"]
     co2_per_kg = 4.70e9
 
-    contrail_ef = ct.interpolate_contrail_grid(contrail_grid, flight_path, distance)
+    contrail_ef = ct.interpolate_contrail_grid(contrail_grid, flight_path)
 
     ef_penalty = (
         (fuel_burned * co2_per_kg * co2_weight) + (contrail_ef * contrail_weight)

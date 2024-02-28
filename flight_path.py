@@ -1,9 +1,8 @@
 import config
 import ecmwf
-from openap import polymer
 from geopy import distance as gp
 import pandas as pd
-import util
+import routing_grid as rg
 import numpy as np
 from openap import FuelFlow
 import contrails as ct
@@ -85,7 +84,7 @@ def calculate_time_at_point(point, previous_point):
 
 
 def calculate_course_at_point(point, next_point):
-    bearing = util.calculate_bearing(
+    bearing = rg.calculate_bearing(
         (point["longitude"], point["latitude"], 0),
         (next_point["longitude"], next_point["latitude"], 0),
     )

@@ -1,4 +1,6 @@
 import pandas as pd
+import geodesic_path as gp
+import altitude_grid as ag
 import requests
 import xarray as xr
 import pycontrails as pc
@@ -12,6 +14,7 @@ import config
 from pycontrails.models.ps_model import PSGrid
 import matplotlib.pyplot as plt
 import util
+import time
 
 
 def get_ps_grid():
@@ -53,7 +56,6 @@ def get_fuel_flow_at_point(point):
         level=level,
         time=point["time"],
     )
-
     return fuel_flow.item()
 
 
@@ -89,16 +91,21 @@ def calculate_ef_from_flight_path(flight_path):
 
 
 def interpolate_contrail_point(
-    contrail_grid, point, distance
+    contrail_grid,
+    point,
 ):  # Extract 4-D grid of interest
     da = contrail_grid["ef_per_m"]
     ef_per_m = da.interp(
         latitude=point[0], longitude=point[1], flight_level=point[2] / 100
     )
+    distance = gp.calculate_distance_between_airports()
     return ef_per_m.sum().item() * distance * 1000
 
 
-def interpolate_contrail_grid(contrail_grid, flight_path, distance):
+def interpolate_contrail_grid(
+    contrail_grid,
+    flight_path,
+):
 
     da = contrail_grid["ef_per_m"]
 
@@ -112,22 +119,39 @@ def interpolate_contrail_grid(contrail_grid, flight_path, distance):
 
     ef_per_m = da.interp(**fl_ds.data_vars)
 
+    distance = gp.calculate_distance_between_airports()
     return ef_per_m.sum().item() * distance * 1000
 
 
-def download_contrail_grid(altitude_grid, filename, format):
-    if os.path.exists(filename):
-        if format == "netcdf":
-            ds_disk = xr.open_dataset(filename)
-        else:
-            with open(filename, "r") as f:
-                ds_disk = json.load(f)
+def get_contrail_grid():
+    if os.path.exists("contrail_grid.nc"):
+        return xr.open_dataset("contrail_grid.nc")
+    else:
+        contrail_grid = download_contrail_grid(
+            ag.get_altitude_grid(), "contrail_grid.nc", "netcdf"
+        )
+        ds = contrail_grid.to_netcdf("contrail_grid.nc")
+        return ds
 
-        return ds_disk
 
+def get_contrail_polys():
+    if os.path.exists("contrail_polys.json"):
+        with open("contrail_polys.json", "r") as f:
+            return json.load(f)
+    else:
+        contrail_polys = download_contrail_grid(
+            ag.get_altitude_grid(), "contrail_polys.json", "geojson"
+        )
+        with open("contrail_polys.json", "w") as f:
+            json.dump(contrail_polys, f)
+        return contrail_polys
+
+
+def download_contrail_grid(altitude_grid, format):
     URL = os.getenv("API_URL_BASE")
     api_key = os.getenv("API_KEY")
     headers = {"x-api-key": api_key}
+
     for alt in altitude_grid:
         altitude_grid[alt] = [x for x in sum(altitude_grid[alt], []) if x is not None]
 
@@ -142,7 +166,6 @@ def download_contrail_grid(altitude_grid, filename, format):
 
     grid_df = pd.DataFrame(flight_path, columns=["latitude", "longitude"])
     params = {
-        # Give the bbox a small buffer
         "bbox": [
             grid_df["longitude"].min() - 1,
             grid_df["latitude"].min() - 1,
@@ -150,15 +173,13 @@ def download_contrail_grid(altitude_grid, filename, format):
             grid_df["latitude"].max() + 1,
         ],
         "flight_level": config.FLIGHT_LEVELS,
-        "aircraft_type": "A320",
+        "aircraft_type": config.AIRCRAFT_TYPE,
         "format": format,
     }
 
     ds_list = []
-    time = [config.DEPARTURE_DATE, config.DEPARTURE_DATE + config.WEATHER_BOUND]
-    date = pd.Timestamp(year=2024, month=1, day=31, hour=20)
-    # time = [date,date + config.WEATHER_BOUND]
-    times = pd.date_range(time[0], time[1], freq="1h")
+    timerange = [config.DEPARTURE_DATE, config.DEPARTURE_DATE + config.WEATHER_BOUND]
+    times = pd.date_range(timerange[0], timerange[1], freq="1h")
     for t in times:
         params["time"] = str(t)
         r = requests.get(f"{URL}/grid/cocip", params=params, headers=headers)
@@ -183,10 +204,6 @@ def download_contrail_grid(altitude_grid, filename, format):
         ds = xr.concat(ds_list, dim="time")
     if format == "geojson":
         combined_dict = {"polys": ds_list}
-        with open(filename, "w") as f:
-            json.dump(combined_dict, f)
         ds = combined_dict
-    else:
-        ds = ds.to_netcdf(filename)
 
     return ds

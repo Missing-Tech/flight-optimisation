@@ -21,22 +21,22 @@ rad = era5sl.open_metdataset()
 
 
 class MetAltitudeGrid:
-    def __init__(self, routing_grid):
-        self.flight_path = routing_grid
-        self.weather_data = self.init_weather_data_along_path(routing_grid)
+    def __init__(self, altitude_grid):
+        self.flight_path = altitude_grid
+        self.weather_data = self.init_weather_data_along_path(altitude_grid)
 
-    def init_weather_data_along_path(self, routing_grid):
+    def init_weather_data_along_path(self, altitude_grid):
         if not os.path.exists("weather_data.nc"):
 
-            for alt in routing_grid:
-                routing_grid[alt] = [
-                    x for x in sum(routing_grid[alt], []) if x is not None
+            for alt in altitude_grid:
+                altitude_grid[alt] = [
+                    x for x in sum(altitude_grid[alt], []) if x is not None
                 ]
 
             flight_path = pd.DataFrame(
                 [
                     (alt, *coords)
-                    for alt, coords_list in routing_grid.items()
+                    for alt, coords_list in altitude_grid.items()
                     for coords in coords_list
                 ],
                 columns=["altitude_ft", "latitude", "longitude"],
