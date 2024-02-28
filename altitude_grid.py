@@ -5,11 +5,11 @@ import routing_grid as rg
 
 
 def get_altitude_grid():
-    if os.path.exists("altitude_grid.p"):
-        return pickle.load(open("altitude_grid.p", "rb"))
+    if os.path.exists("data/altitude_grid.p"):
+        return pickle.load(open("data/altitude_grid.p", "rb"))
     else:
         ag = calculate_altitude_grid(rg.get_routing_grid())
-        pickle.dump(ag, open("altitude_grid.p", "wb"))
+        pickle.dump(ag, open("data/altitude_grid.p", "wb"))
         return ag
 
 

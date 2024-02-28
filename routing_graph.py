@@ -51,12 +51,12 @@ def parse_node(s):
 
 
 def get_routing_graph():
-    if os.path.exists("routing_graph.gml"):
-        return nx.read_gml("routing_graph.gml", destringizer=parse_node)
+    if os.path.exists("data/routing_graph.gml"):
+        return nx.read_gml("data/routing_graph.gml", destringizer=parse_node)
     else:
         rg = calculate_routing_graph(
             ag.get_altitude_grid(),
             ct.get_contrail_grid(),
         )
-        nx.write_gml(rg, "routing_graph.gml")
+        nx.write_gml(rg, "data/routing_graph.gml")
         return rg

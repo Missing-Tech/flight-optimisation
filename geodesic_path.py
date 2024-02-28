@@ -141,15 +141,15 @@ def calculate_path(no_of_points, p1, p2):
 
 
 def get_geodesic_path():
-    if os.path.exists("geodesic_path.csv"):
-        with open("geodesic_path.csv", newline="") as csvfile:
+    if os.path.exists("data/geodesic_path.csv"):
+        with open("data/geodesic_path.csv", newline="") as csvfile:
             reader = csv.reader(csvfile)
             return list(reader)
     else:
         path = calculate_path(
             config.NO_OF_POINTS, config.DEPARTURE_AIRPORT, config.DESTINATION_AIRPORT
         )
-        with open("geodesic_path.csv", "w", newline="") as csvfile:
+        with open("data/geodesic_path.csv", "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerows(path)
         return path

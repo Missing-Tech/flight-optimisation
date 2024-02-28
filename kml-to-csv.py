@@ -6,8 +6,7 @@ from lxml import etree as ET
 
 # From https://github.com/aleiby/kml2g1000
 
-# Download path for FlightAware KML files.
-srcDir = r""
+srcDir = r"data/"
 
 
 # Returns an array containing the texts of all the specified child nodes of root.

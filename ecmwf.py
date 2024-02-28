@@ -26,7 +26,7 @@ class MetAltitudeGrid:
         self.weather_data = self.init_weather_data_along_path(altitude_grid)
 
     def init_weather_data_along_path(self, altitude_grid):
-        if not os.path.exists("weather_data.nc"):
+        if not os.path.exists("data/weather_data.nc"):
 
             for alt in altitude_grid:
                 altitude_grid[alt] = [
@@ -47,9 +47,9 @@ class MetAltitudeGrid:
             fl_ds = xr.Dataset.from_dataframe(fl_ds)
             weather = met.data.interp(**fl_ds.data_vars)
 
-            weather.to_netcdf("weather_data.nc")
+            weather.to_netcdf("data/weather_data.nc")
 
-        weather_data = xr.open_dataset("weather_data.nc")
+        weather_data = xr.open_dataset("data/weather_data.nc")
 
         return weather_data
 

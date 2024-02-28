@@ -22,7 +22,7 @@ contrail_grid = ct.get_contrail_grid()
 contrail_polys = ct.get_contrail_polys()
 routing_graph = rgraph.get_routing_graph()
 
-flight_path_df = pd.read_csv("jan-31.csv")
+flight_path_df = pd.read_csv("data/jan-31.csv")
 flight_path_df = flight_path_df[flight_path_df["AltMSL"] > 30000]
 
 # _, ax_blank = display.create_blank_ax()

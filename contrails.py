@@ -16,12 +16,12 @@ import util
 
 
 def get_ps_grid():
-    if os.path.exists("ps_grid.nc"):
-        return xr.open_dataset("ps_grid.nc")
+    if os.path.exists("data/ps_grid.nc"):
+        return xr.open_dataset("data/ps_grid.nc")
     else:
         ps_grid = PSGrid(ecmwf.met, aircraft_type=config.AIRCRAFT_TYPE).eval()
-        ps_grid.data.to_netcdf("ps_grid.nc")
-        return xr.open_dataset("ps_grid.nc")
+        ps_grid.data.to_netcdf("data/ps_grid.nc")
+        return xr.open_dataset("data/ps_grid.nc")
 
 
 ps_grid = get_ps_grid()
@@ -71,9 +71,7 @@ def calculate_ef_from_flight_path(flight_path):
     flight = pc.Flight(data=flight_path_df, flight_id=123, attrs=attrs)
     params = {
         "process_emissions": False,
-        "filter_sac": False,
         "radiative_heating_effects": True,
-        "filter_initially_persistent": False,
         "humidity_scaling": ConstantHumidityScaling(rhi_adj=0.98),
     }
     cocip = Cocip(ecmwf.met, ecmwf.rad, params=params)
@@ -122,25 +120,21 @@ def interpolate_contrail_grid(
 
 
 def get_contrail_grid():
-    if os.path.exists("contrail_grid.nc"):
-        return xr.open_dataset("contrail_grid.nc")
+    if os.path.exists("data/contrail_grid.nc"):
+        return xr.open_dataset("data/contrail_grid.nc")
     else:
-        contrail_grid = download_contrail_grid(
-            ag.get_altitude_grid(), "contrail_grid.nc", "netcdf"
-        )
-        ds = contrail_grid.to_netcdf("contrail_grid.nc")
+        contrail_grid = download_contrail_grid(ag.get_altitude_grid(), "netcdf")
+        ds = contrail_grid.to_netcdf("data/contrail_grid.nc")
         return ds
 
 
 def get_contrail_polys():
-    if os.path.exists("contrail_polys.json"):
-        with open("contrail_polys.json", "r") as f:
+    if os.path.exists("data/contrail_polys.json"):
+        with open("data/contrail_polys.json", "r") as f:
             return json.load(f)
     else:
-        contrail_polys = download_contrail_grid(
-            ag.get_altitude_grid(), "contrail_polys.json", "geojson"
-        )
-        with open("contrail_polys.json", "w") as f:
+        contrail_polys = download_contrail_grid(ag.get_altitude_grid(), "geojson")
+        with open("data/contrail_polys.json", "w") as f:
             json.dump(contrail_polys, f)
         return contrail_polys
 
