@@ -4,7 +4,6 @@ from geopy import distance as gp
 import pandas as pd
 import routing_grid as rg
 import numpy as np
-from openap import FuelFlow
 import contrails as ct
 
 

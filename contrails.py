@@ -12,9 +12,7 @@ import tempfile
 import json
 import config
 from pycontrails.models.ps_model import PSGrid
-import matplotlib.pyplot as plt
 import util
-import time
 
 
 def get_ps_grid():
