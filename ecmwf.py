@@ -1,4 +1,7 @@
 import os
+import numpy as np
+import time
+from pandas._libs.tslibs import np_datetime
 from pycontrails.models.cocip import Cocip
 from pycontrails.datalib.ecmwf import ERA5
 import util
@@ -23,9 +26,9 @@ rad = era5sl.open_metdataset()
 class MetAltitudeGrid:
     def __init__(self, altitude_grid):
         self.flight_path = altitude_grid
-        self.weather_data = self.init_weather_data_along_path(altitude_grid)
+        self.weather_data = self.init_weather_data_along_grid(altitude_grid)
 
-    def init_weather_data_along_path(self, altitude_grid):
+    def init_weather_data_along_grid(self, altitude_grid):
         if not os.path.exists("data/weather_data.nc"):
 
             for alt in altitude_grid:
@@ -53,12 +56,12 @@ class MetAltitudeGrid:
 
         return weather_data
 
-    def get_weather_data_at_point(self, point, pressure):
+    def get_weather_data_at_point(self, point):
         data = self.weather_data.sel(
             latitude=point["latitude"],
             longitude=point["longitude"],
             time=point["time"],
-            level=pressure,
+            level=point["level"],
             method="nearest",
         )
         return data

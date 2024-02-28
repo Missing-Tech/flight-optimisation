@@ -1,24 +1,16 @@
 import config
+import util
 import ecmwf
 from geopy import distance as gp
 import pandas as pd
 import routing_grid as rg
 import numpy as np
-import contrails as ct
+import time
 
 
-def calculate_flight_fuel_flow(flight_path):
-    # fuelflow = FuelFlow(config.AIRCRAFT_TYPE)
-    # for point in flight_path:
-    #     FF = fuelflow.enroute(
-    #         mass=point["aircraft_mass"],
-    #         tas=point["true_airspeed"] * 1.944,  # convert to knots
-    #         alt=point["altitude_ft"],
-    #         path_angle=point["heading"],
-    #     )
-    #     point["fuel_flow"] = FF
-
-    return flight_path
+def convert_altitude_to_pressure_bounded(altitude):
+    pressure = util.calculate_pressure_from_altitude_ft(altitude)
+    return max(config.PRESSURE_LEVELS[-1], min(pressure, config.PRESSURE_LEVELS[0]))
 
 
 def calculate_flight_characteristics(
@@ -26,10 +18,9 @@ def calculate_flight_characteristics(
     weather_data,
 ):
     for i in range(len(flight_path)):
-
         point = flight_path[i]
 
-        pressure = ecmwf.get_nearest_pressure_level_at_point(point)
+        point["level"] = convert_altitude_to_pressure_bounded(point["altitude_ft"])
 
         if i == 0:
             point["aircraft_mass"] = config.STARTING_WEIGHT
@@ -38,17 +29,19 @@ def calculate_flight_characteristics(
             previous_point = flight_path[i - 1]
             time_elapsed = calculate_time_at_point(point, previous_point)
             point["time"] = previous_point["time"] + time_elapsed.round("s")
-            point["fuel_flow"] = ct.get_fuel_flow_at_point(point)
-            point["engine_efficiency"] = ct.get_engine_efficiency_at_point(point)
+
+            # performance_data = ct.get_performance_data_at_point(point)
+
+            point["fuel_flow"] = config.NOMINAL_FUEL_FLOW
+            point["engine_efficiency"] = config.NOMINAL_ENGINE_EFFICIENCY
             point["aircraft_mass"] = (
                 previous_point["aircraft_mass"]
                 - point["fuel_flow"] * time_elapsed.total_seconds()
             )
-
-        weather_at_point = weather_data.get_weather_data_at_point(
-            point,
-            pressure,
-        )
+        weather_at_point = weather_data.get_weather_data_at_point(point)
+        temperature = weather_at_point["air_temperature"].values.item()
+        u = weather_at_point["eastward_wind"].values.item()
+        v = weather_at_point["northward_wind"].values.item()
 
         if i != len(flight_path) - 1:
             next_point = flight_path[i + 1]
@@ -59,15 +52,10 @@ def calculate_flight_characteristics(
             point["course"] = previous_point["course"]
             point["climb_angle"] = 0
 
-        point["true_airspeed"] = calculate_true_air_speed(
-            point["thrust"], weather_data, weather_at_point
-        )
-        crabbing_angle = calculate_crabbing_angle(point, weather_data, weather_at_point)
+        point["true_airspeed"] = calculate_true_air_speed(point["thrust"], temperature)
+        crabbing_angle = calculate_crabbing_angle(point, u, v)
         point["heading"] = point["course"] - crabbing_angle
-        point["ground_speed"] = calculate_ground_speed(
-            point, weather_data, weather_at_point
-        )
-
+        point["ground_speed"] = calculate_ground_speed(point, u, v)
     return flight_path
 
 
@@ -90,9 +78,8 @@ def calculate_course_at_point(point, next_point):
     return bearing
 
 
-def calculate_true_air_speed(mach, weather_data, weather_at_point):
+def calculate_true_air_speed(mach, temperature):
     speed_of_sound = 340.29
-    temperature = weather_data.get_temperature_at_point(weather_at_point)
     sea_level_temp = 288.15  # in kelvin
     air_temp_ratio = temperature / sea_level_temp
 
@@ -100,8 +87,7 @@ def calculate_true_air_speed(mach, weather_data, weather_at_point):
     return true_air_speed  # in m/s
 
 
-def calculate_crabbing_angle(point, weather_data, weather_at_point):
-    u, v = weather_data.get_wind_vector_at_point(weather_at_point)
+def calculate_crabbing_angle(point, u, v):
 
     numerator = (v * np.sin(point["course"])) - (u * np.cos(point["course"]))
     crabbing_angle = np.arcsin(numerator / point["true_airspeed"])
@@ -119,8 +105,7 @@ def calculate_climb_angle(point, next_point):
     return angle
 
 
-def calculate_ground_speed(point, weather_data, weather_at_point):
-    u, v = weather_data.get_wind_vector_at_point(weather_at_point)
+def calculate_ground_speed(point, u, v):
     climb_angle = point["climb_angle"]
     first_component = v * np.cos(point["course"]) + u * np.sin(point["course"])
     second_component = np.sqrt(
@@ -129,23 +114,3 @@ def calculate_ground_speed(point, weather_data, weather_at_point):
     )
     ground_speed = first_component + second_component
     return ground_speed
-
-
-def calculate_fuel_flow(point, mass, flight, previous_point):
-    # fuelflow = FuelFlow('A320', 'CFM56-5B6')
-    # FF = fuelflow.enroute(
-    #     mass=mass,
-    #     tas=point["true_airspeed"] * 1.944,  # convert to knots
-    #     alt=point["altitude_ft"],
-    #     path_angle=np.rad2deg(point["climb_angle"]),
-    # )
-    # distance = gp.distance(
-    #     (previous_point["latitude"], previous_point["longitude"]),
-    #     (point["latitude"], point["longitude"]),
-    # ).km
-    # fuel_flow = flight.fuel(distance=distance, mass=mass)
-    #
-    fuel_flow = ct.get_fuel_flow_at_point(point)
-
-    # return FF
-    return fuel_flow

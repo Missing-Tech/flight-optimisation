@@ -1,4 +1,6 @@
+import openap
 import pandas as pd
+from pycontrails.core import flight
 import geodesic_path as gp
 import altitude_grid as ag
 import requests
@@ -26,35 +28,19 @@ def get_ps_grid():
 
 ps_grid = get_ps_grid()
 
-# ps_grid["fuel_flow"].isel(time=0, level=1).plot(x="longitude", y="latitude")
-# plt.gca().invert_yaxis()
 
-
-def get_engine_efficiency_at_point(point):
+def get_performance_data_at_point(point):
     level = util.calculate_pressure_from_altitude_ft(point["altitude_ft"])
     level = max(min(level, config.PRESSURE_LEVELS[0]), config.PRESSURE_LEVELS[-1])
 
-    engine_efficiency = ps_grid["engine_efficiency"].interp(
+    performance_data = ps_grid.interp(
         latitude=point["latitude"],
         longitude=point["longitude"],
         level=level,
         time=point["time"],
     )
 
-    return engine_efficiency.item()
-
-
-def get_fuel_flow_at_point(point):
-    level = util.calculate_pressure_from_altitude_ft(point["altitude_ft"])
-    level = max(min(level, config.PRESSURE_LEVELS[0]), config.PRESSURE_LEVELS[-1])
-
-    fuel_flow = ps_grid["fuel_flow"].interp(
-        latitude=point["latitude"],
-        longitude=point["longitude"],
-        level=level,
-        time=point["time"],
-    )
-    return fuel_flow.item()
+    return performance_data
 
 
 def calculate_ef_from_flight_path(flight_path):

@@ -24,6 +24,7 @@ def run_aco_colony(
     altitude_grid = ag.get_altitude_grid()
     routing_graph = rg.get_routing_graph()
 
+    weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
     for _ in range(iterations):
         before = time.perf_counter()
         flight_paths = []
@@ -39,11 +40,16 @@ def run_aco_colony(
                 flight_path = util.convert_indices_to_points(
                     solution, altitude_grid, thrust=thrust
                 )
-                weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
+
+                b_before = time.perf_counter()
                 flight_path = fp.calculate_flight_characteristics(
                     flight_path, weather_data
                 )
+                b_after = time.perf_counter()
+
+                print(f"weather data time: {b_after-b_before}")
                 flight_paths.append(flight_path)
+
                 objective = objective_function(flight_path, contrail_grid)
 
                 if best_solution is None or objective < best_objective:
@@ -67,15 +73,17 @@ def objective_function(flight_path, contrail_grid):
     co2_per_kg = 4.70e9
 
     contrail_ef = ct.interpolate_contrail_grid(contrail_grid, flight_path)
+    contrail_penalty = (contrail_ef * contrail_weight) / 1e16
+    co2_penalty = (fuel_burned * co2_per_kg * co2_weight) / (
+        config.STARTING_WEIGHT * co2_per_kg / 10
+    )
 
-    ef_penalty = (
-        (fuel_burned * co2_per_kg * co2_weight) + (contrail_ef * contrail_weight)
-    ) / 1e13
+    ef_penalty = contrail_penalty + co2_penalty
 
     time_weight = config.TIME_WEIGHT
     flight_time_penalty = (
         time_weight * (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600
-    )
+    ) / 2
 
     total_penalty = ef_penalty + flight_time_penalty
 

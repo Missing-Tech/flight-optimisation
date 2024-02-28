@@ -38,8 +38,6 @@ ant_paths, aco_path = aco.run_aco_colony(
 
 real_flight_path = util.convert_real_flight_path(flight_path_df)
 real_flight_path = fp.calculate_flight_characteristics(real_flight_path, weather_data)
-real_flight_path = fp.calculate_flight_fuel_flow(real_flight_path)
-aco_path = fp.calculate_flight_fuel_flow(aco_path)
 
 fp_ef, fp_df, fp_cocip = ct.calculate_ef_from_flight_path(real_flight_path)
 aco_ef, aco_df, aco_cocip = ct.calculate_ef_from_flight_path(aco_path)
@@ -55,6 +53,7 @@ aco_ef, aco_df, aco_cocip = ct.calculate_ef_from_flight_path(aco_path)
 # ani_3d = display.create_3d_flight_animation(
 #     aco_path, contrail_grid, contrail_polys, fig=fig_3d, ax=ax_3d
 # )
+
 ani = display.create_flight_animation(
     aco_path, contrail_grid, fig=fig_side, ax=ax_side_3, title="ACO Flight Path"
 )
