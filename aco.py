@@ -1,4 +1,5 @@
 import numpy as np
+import csv
 import config
 import time
 import contrails as ct
@@ -8,8 +9,29 @@ import math
 import random
 import util
 import networkx as nx
+from concurrent.futures import ProcessPoolExecutor
 import altitude_grid as ag
+import functools
 import routing_graph as rg
+
+
+def run_ant(routing_graph, altitude_grid, contrail_grid, weather_data, ant_index):
+    solution = construct_solution(routing_graph)
+
+    thrusts = np.arange(config.INITIAL_THRUST, config.MAX_THRUST, config.MAX_THRUST_VAR)
+    best_flight_path = None
+    best_objective = None
+    for thrust in thrusts:
+        flight_path = util.convert_indices_to_points(
+            solution, altitude_grid, thrust=thrust
+        )
+        flight_path = fp.calculate_flight_characteristics(flight_path, weather_data)
+        objective = objective_function(flight_path, contrail_grid)
+        if best_flight_path is None or objective < best_objective:
+            best_flight_path = flight_path
+            best_objective = objective
+
+    return best_flight_path, best_objective
 
 
 def run_aco_colony(
@@ -23,45 +45,47 @@ def run_aco_colony(
     contrail_grid = ct.get_contrail_grid()
     altitude_grid = ag.get_altitude_grid()
     routing_graph = rg.get_routing_graph()
+    objectives = []
 
     weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
-    for _ in range(iterations):
-        before = time.perf_counter()
-        flight_paths = []
-        ants = []
-        for _ in range(no_of_ants):
-            solution = construct_solution(routing_graph)
-            ants.append(solution)
+    before2 = time.perf_counter()
+    with ProcessPoolExecutor(max_workers=3) as executor:
+        for _ in range(iterations):
+            before = time.perf_counter()
+            flight_paths = []
 
-            thrusts = np.arange(
-                config.INITIAL_THRUST, config.MAX_THRUST, config.MAX_THRUST_VAR
+            run_ant_partial = functools.partial(
+                run_ant,
+                routing_graph,
+                altitude_grid,
+                contrail_grid,
+                weather_data,
             )
-            for thrust in thrusts:
-                flight_path = util.convert_indices_to_points(
-                    solution, altitude_grid, thrust=thrust
-                )
 
-                b_before = time.perf_counter()
-                flight_path = fp.calculate_flight_characteristics(
-                    flight_path, weather_data
-                )
-                b_after = time.perf_counter()
+            # Run the ants
+            ants = list(executor.map(run_ant_partial, range(no_of_ants)))
 
-                print(f"weather data time: {b_after-b_before}")
+            # Get the results
+            for ant in ants:
+                flight_path, objective = ant
                 flight_paths.append(flight_path)
-
-                objective = objective_function(flight_path, contrail_grid)
-
                 if best_solution is None or objective < best_objective:
-                    best_solution = solution
+                    best_solution = flight_path
                     best_objective = objective
+                    objectives.append(best_objective)
                     best_flight_path = flight_path
 
             routing_graph = pheromone_update(
                 best_solution, routing_graph, best_objective
             )
-        after = time.perf_counter()
-        print(f"time: {after-before}")
+            after = time.perf_counter()
+            print(f"iteration time: {after-before}")
+    with open("data/objectives.csv", "w") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(objectives)
+
+    after2 = time.perf_counter()
+    print(f"total time: {after2-before2}")
 
     return flight_paths, best_flight_path
 
