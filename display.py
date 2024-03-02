@@ -35,8 +35,8 @@ def create_side_by_side_ax(fig=None):
         fig = plt.figure(figsize=(10, 5))
 
     # Define projection
-    crs = ccrs.PlateCarree()
-
+    # crs = ccrs.PlateCarree()
+    #
     # Create first subplot
     ax1 = fig.add_subplot(121, projection=crs)
     ax1.set_extent([10, -90, 25, 60])
@@ -327,18 +327,13 @@ def display_routing_grid(grid, ax=None):
     grid = sum(grid, [])
 
     routing_grid_df = pd.DataFrame(grid, columns=["Latitude", "Longitude"])
-    routing_grid_geometry = [
-        Point(xy)
-        for xy in zip(
-            routing_grid_df["Longitude"],
-            routing_grid_df["Latitude"],
-        )
-    ]
-    gdf = gpd.GeoDataFrame(routing_grid_df, geometry=routing_grid_geometry, crs=wgs84)
 
-    gdf_ae = gdf.to_crs(crs_proj4)
-
-    gdf_ae.plot(ax=ax, color="blue", markersize=1)
+    ax.scatter(
+        routing_grid_df["Longitude"],
+        routing_grid_df["Latitude"],
+        transform=ccrs.PlateCarree(),
+        color="blue",
+    )
 
 
 def extract_map_geometry():

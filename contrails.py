@@ -80,7 +80,7 @@ def interpolate_contrail_point(
     ef_per_m = da.interp(
         latitude=point[0], longitude=point[1], flight_level=point[2] / 100
     )
-    distance = gp.calculate_distance_between_airports()
+    distance = gp.calculate_step_between_airports()
     return ef_per_m.sum().item() * distance * 1000
 
 
@@ -101,7 +101,7 @@ def interpolate_contrail_grid(
 
     ef_per_m = da.interp(**fl_ds.data_vars)
 
-    distance = gp.calculate_distance_between_airports()
+    distance = gp.calculate_step_between_airports()
     return ef_per_m.sum().item() * distance * 1000
 
 
@@ -151,7 +151,7 @@ def download_contrail_grid(altitude_grid, format):
             grid_df["latitude"].max() + 1,
         ],
         "flight_level": config.FLIGHT_LEVELS,
-        "aircraft_type": config.AIRCRAFT_TYPE,
+        "aircraft_type": "B737",
         "format": format,
     }
 

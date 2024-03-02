@@ -83,9 +83,9 @@ def __find_point_distance_along_great_circle(distance, azimuth, equator_longitud
     return (util.reduce_angle(phi), util.reduce_angle(lambda1), local_azimuth)
 
 
-def calculate_distance_between_airports():
-    lat0, lon0 = config.DEPARTURE_AIRPORT
-    lat1, lon1 = config.DESTINATION_AIRPORT
+def calculate_distance_between_points(p1, p2):
+    lat0, lon0 = p1
+    lat1, lon1 = p2
 
     phi1 = np.radians(lat0)
     lambda1 = np.radians(lon0)
@@ -98,6 +98,20 @@ def calculate_distance_between_airports():
     central_angle = __calculate_central_angle(phi1, phi2, delta)
 
     total_distance = util.R * central_angle
+    return total_distance
+
+
+def calculate_distance_between_airports():
+
+    total_distance = calculate_distance_between_points(
+        config.DEPARTURE_AIRPORT, config.DESTINATION_AIRPORT
+    )
+
+    return total_distance
+
+
+def calculate_step_between_airports():
+    total_distance = calculate_distance_between_airports()
     step = total_distance / config.NO_OF_POINTS
     return step
 
@@ -141,15 +155,8 @@ def calculate_path(no_of_points, p1, p2):
 
 
 def get_geodesic_path():
-    if os.path.exists("data/geodesic_path.csv"):
-        with open("data/geodesic_path.csv", newline="") as csvfile:
-            reader = csv.reader(csvfile)
-            return list(reader)
-    else:
-        path = calculate_path(
-            config.NO_OF_POINTS, config.DEPARTURE_AIRPORT, config.DESTINATION_AIRPORT
-        )
-        with open("data/geodesic_path.csv", "w", newline="") as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerows(path)
-        return path
+    path = calculate_path(
+        config.NO_OF_POINTS, config.DEPARTURE_AIRPORT, config.DESTINATION_AIRPORT
+    )
+
+    return path

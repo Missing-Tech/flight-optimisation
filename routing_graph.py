@@ -4,23 +4,27 @@ import contrails as ct
 import util
 import os
 import altitude_grid as ag
+import geodesic_path as gp
 
 
 def calculate_routing_graph(altitude_grid, contrail_grid):
     graph = nx.DiGraph()
 
+    total_distance = gp.calculate_distance_between_airports()
     for altitude in altitude_grid:
         for step in altitude_grid[altitude]:
             for point in step:
                 if point is None:
                     continue
 
-                contrails = (
-                    -(
-                        ct.interpolate_contrail_point(contrail_grid, (*point, altitude))
-                        / 1e12
-                    )
-                    - 1
+                # contrails = (
+                #     ct.interpolate_contrail_point(contrail_grid, (*point, altitude))
+                #     / 1e15
+                # ) - 0.01
+                #
+
+                distance_to_destination = gp.calculate_distance_between_points(
+                    point, config.DESTINATION_AIRPORT
                 )
 
                 xi = altitude_grid[altitude].index(step)
@@ -38,8 +42,22 @@ def calculate_routing_graph(altitude_grid, contrail_grid):
                         (next_point[0], next_point[1], next_point[2]),
                         pheromone=config.TAU_MAX,
                     )
-                    graph.add_node((xi, yi, altitude), heuristic=contrails)
-                    graph.add_node(next_point, heuristic=contrails)
+                    graph.add_node(
+                        (xi, yi, altitude),
+                        heuristic=max(
+                            2 - (distance_to_destination / total_distance), 0.01
+                        ),
+                    )
+                    next_lat, next_lon, _ = next_point
+                    next_distance_to_destination = gp.calculate_distance_between_points(
+                        (next_lat, next_lon), config.DESTINATION_AIRPORT
+                    )
+                    graph.add_node(
+                        next_point,
+                        heuristic=max(
+                            2 - (next_distance_to_destination / total_distance), 0.01
+                        ),
+                    )
 
     return graph
 

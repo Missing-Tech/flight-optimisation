@@ -15,12 +15,13 @@ import functools
 import routing_graph as rg
 
 
-def run_ant(routing_graph, altitude_grid, contrail_grid, weather_data, ant_index):
+def run_ant(routing_graph, altitude_grid, contrail_grid, weather_data, _):
     solution = construct_solution(routing_graph)
 
     thrusts = np.arange(config.INITIAL_THRUST, config.MAX_THRUST, config.MAX_THRUST_VAR)
     best_flight_path = None
     best_objective = None
+    best_solution = None
     for thrust in thrusts:
         flight_path = util.convert_indices_to_points(
             solution, altitude_grid, thrust=thrust
@@ -28,10 +29,11 @@ def run_ant(routing_graph, altitude_grid, contrail_grid, weather_data, ant_index
         flight_path = fp.calculate_flight_characteristics(flight_path, weather_data)
         objective = objective_function(flight_path, contrail_grid)
         if best_flight_path is None or objective < best_objective:
+            best_solution = solution
             best_flight_path = flight_path
             best_objective = objective
 
-    return best_flight_path, best_objective
+    return best_flight_path, best_objective, best_solution
 
 
 def run_aco_colony(
@@ -49,9 +51,8 @@ def run_aco_colony(
 
     weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
     before2 = time.perf_counter()
-    with ProcessPoolExecutor(max_workers=3) as executor:
+    with ProcessPoolExecutor(max_workers=config.NO_OF_PROCESSES) as executor:
         for _ in range(iterations):
-            before = time.perf_counter()
             flight_paths = []
 
             run_ant_partial = functools.partial(
@@ -67,10 +68,10 @@ def run_aco_colony(
 
             # Get the results
             for ant in ants:
-                flight_path, objective = ant
+                flight_path, objective, solution = ant
                 flight_paths.append(flight_path)
                 if best_solution is None or objective < best_objective:
-                    best_solution = flight_path
+                    best_solution = solution
                     best_objective = objective
                     objectives.append(best_objective)
                     best_flight_path = flight_path
@@ -78,8 +79,6 @@ def run_aco_colony(
             routing_graph = pheromone_update(
                 best_solution, routing_graph, best_objective
             )
-            after = time.perf_counter()
-            print(f"iteration time: {after-before}")
     with open("data/objectives.csv", "w") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(objectives)
@@ -88,6 +87,24 @@ def run_aco_colony(
     print(f"total time: {after2-before2}")
 
     return flight_paths, best_flight_path
+
+
+def calculate_objective_dataframe(flight_path, contrail_grid):
+    df = {}
+    fuel_burned = config.STARTING_WEIGHT - flight_path[-1]["aircraft_mass"]
+    co2_per_kg = 4.70e9
+
+    contrail_ef = ct.interpolate_contrail_grid(contrail_grid, flight_path)
+    co2_ef = fuel_burned * co2_per_kg
+
+    flight_time_penalty = (
+        flight_path[-1]["time"] - flight_path[0]["time"]
+    ).seconds / 3600
+
+    df["contrail_ef"] = contrail_ef
+    df["co2_ef"] = co2_ef
+    df["time"] = flight_time_penalty
+    return df
 
 
 def objective_function(flight_path, contrail_grid):
@@ -128,6 +145,7 @@ def pheromone_update(solution, routing_graph, best_objective):
             delta = 1 / (1 + best_objective)
 
         new_pheromone = (1 - evaporation_rate) * (edge["pheromone"] + delta)
+
         routing_graph[u][v]["pheromone"] = max(tau_min, min(new_pheromone, tau_max))
     return routing_graph
 
