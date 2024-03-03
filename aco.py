@@ -13,6 +13,7 @@ from concurrent.futures import ProcessPoolExecutor
 import altitude_grid as ag
 import functools
 import routing_graph as rg
+import pandas as pd
 
 
 def run_ant(routing_graph, altitude_grid, contrail_grid, weather_data, _):
@@ -28,7 +29,7 @@ def run_ant(routing_graph, altitude_grid, contrail_grid, weather_data, _):
         )
         flight_path = fp.calculate_flight_characteristics(flight_path, weather_data)
         objective = objective_function(flight_path, contrail_grid)
-        if best_flight_path is None or objective < best_objective:
+        if best_flight_path is None or objective["total"] < best_objective["total"]:
             best_solution = solution
             best_flight_path = flight_path
             best_objective = objective
@@ -70,23 +71,24 @@ def run_aco_colony(
             for ant in ants:
                 flight_path, objective, solution = ant
                 flight_paths.append(flight_path)
-                if best_solution is None or objective < best_objective:
+                objectives.append(objective)
+                if (
+                    best_solution is None
+                    or objective["total"] < best_objective["total"]
+                ):
                     best_solution = solution
                     best_objective = objective
-                    objectives.append(best_objective)
                     best_flight_path = flight_path
-
-            routing_graph = pheromone_update(
-                best_solution, routing_graph, best_objective
-            )
-    with open("data/objectives.csv", "w") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(objectives)
+                    routing_graph = pheromone_update(
+                        best_solution, routing_graph, best_objective["total"]
+                    )
 
     after2 = time.perf_counter()
     print(f"total time: {after2-before2}")
 
-    return flight_paths, best_flight_path
+    objectives_df = pd.DataFrame(objectives)
+
+    return flight_paths, best_flight_path, objectives_df
 
 
 def calculate_objective_dataframe(flight_path, contrail_grid):
@@ -104,6 +106,8 @@ def calculate_objective_dataframe(flight_path, contrail_grid):
     df["contrail_ef"] = contrail_ef
     df["co2_ef"] = co2_ef
     df["time"] = flight_time_penalty
+
+    print(flight_path[-1]["time"])
     return df
 
 
@@ -122,13 +126,20 @@ def objective_function(flight_path, contrail_grid):
     ef_penalty = contrail_penalty + co2_penalty
 
     time_weight = config.TIME_WEIGHT
+
     flight_time_penalty = (
         time_weight * (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600
-    ) / 2
+    )
 
     total_penalty = ef_penalty + flight_time_penalty
 
-    return total_penalty
+    return {
+        "total": total_penalty,
+        "contrail_ef": contrail_ef,
+        "fuel_burned": fuel_burned,
+        "flight_duration": flight_time_penalty,
+        "arrival_time": flight_path[-1]["time"],
+    }
 
 
 def pheromone_update(solution, routing_graph, best_objective):
@@ -138,11 +149,13 @@ def pheromone_update(solution, routing_graph, best_objective):
 
     solution_edges = list(nx.utils.pairwise(solution))
 
+    print(best_objective)
+
     for u, v in routing_graph.edges():
         delta = 0
         edge = routing_graph[u][v]
         if (u, v) in solution_edges:
-            delta = 1 / (1 + best_objective)
+            delta = 1 / (1)
 
         new_pheromone = (1 - evaporation_rate) * (edge["pheromone"] + delta)
 
@@ -195,6 +208,11 @@ def calculate_probability_at_neighbour(
         total_neighbour_factor += math.pow(
             neighbours[n]["pheromone"], alpha
         ) * math.pow(routing_graph.nodes[n]["heuristic"], beta)
+
+    # print(math.pow(pheromone, alpha), math.pow(heuristic, beta), total_neighbour_factor)
+
+    pheromone = 1
+    heuristic = 1
 
     probability = (
         math.pow(pheromone, alpha) * math.pow(heuristic, beta) / total_neighbour_factor

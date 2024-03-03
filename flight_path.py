@@ -30,8 +30,6 @@ def calculate_flight_characteristics(
             time_elapsed = calculate_time_at_point(point, previous_point)
             point["time"] = previous_point["time"] + time_elapsed.round("s")
 
-            # performance_data = ct.get_performance_data_at_point(point)
-
             point["fuel_flow"] = config.NOMINAL_FUEL_FLOW
             point["engine_efficiency"] = config.NOMINAL_ENGINE_EFFICIENCY
             point["aircraft_mass"] = (

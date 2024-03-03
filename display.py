@@ -150,9 +150,6 @@ def create_3d_flight_animation(
     interval=200,
 ):
 
-    if ax is None:
-        fig, ax = create_3d_ax()
-
     flight_path_df = pd.DataFrame(
         flight_path, columns=["latitude", "longitude", "altitude_ft", "time"]
     )
@@ -224,10 +221,6 @@ def create_flight_animation(
     ax=None,
     interval=1000,
 ):
-
-    if ax is None:
-        fig, ax = create_map_ax()
-
     flight_path_df = pd.DataFrame(
         flight_path, columns=["latitude", "longitude", "time", "altitude_ft"]
     )
@@ -260,6 +253,25 @@ def create_flight_animation(
         blit=False,
     )
     return ani
+
+
+def display_wind_vectors(wind_data, ax=None):
+
+    wind_data = wind_data.isel(time=0, level=2)
+
+    u = wind_data["eastward_wind"]
+    v = wind_data["northward_wind"]
+
+    ax.streamplot(
+        u.longitude,
+        u.latitude,
+        u.values.T,
+        v.values.T,
+        linewidth=0.5,
+        density=1,
+        color="silver",
+        transform=ccrs.PlateCarree(),
+    )
 
 
 def display_contrail_grid(contrail_grid, ax=None):
@@ -321,8 +333,6 @@ def display_geodesic_path(points, ax=None):
 
 
 def display_routing_grid(grid, ax=None):
-    if ax is None:
-        _, ax = create_map_ax()
 
     grid = sum(grid, [])
 
@@ -333,6 +343,7 @@ def display_routing_grid(grid, ax=None):
         routing_grid_df["Latitude"],
         transform=ccrs.PlateCarree(),
         color="blue",
+        s=0.2,
     )
 
 
@@ -359,8 +370,6 @@ def extract_map_geometry():
 # Function to display altitude grid as 3D scatter plot
 # Method from https://stackoverflow.com/questions/23785408/3d-cartopy-similar-to-matplotlib-basemap
 def display_altitude_grid_3d(grid, ax=None):
-    if ax is None:
-        fig, ax = create_3d_ax()
 
     lc = extract_map_geometry()
     ax.add_collection3d(lc, zs=28_000, zdir="z")
@@ -406,8 +415,6 @@ def display_altitude_grid_3d(grid, ax=None):
 
 
 def display_flight_path_3d(flight_path, ax=None):
-    if ax is None:
-        fig, ax = create_3d_ax()
     flight_path_df = pd.DataFrame(
         flight_path, columns=["latitude", "longitude", "altitude_ft"]
     )

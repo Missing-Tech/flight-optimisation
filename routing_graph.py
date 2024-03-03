@@ -45,7 +45,7 @@ def calculate_routing_graph(altitude_grid, contrail_grid):
                     graph.add_node(
                         (xi, yi, altitude),
                         heuristic=max(
-                            2 - (distance_to_destination / total_distance), 0.01
+                            1 - (distance_to_destination / total_distance), 0.01
                         ),
                     )
                     next_lat, next_lon, _ = next_point
@@ -55,7 +55,7 @@ def calculate_routing_graph(altitude_grid, contrail_grid):
                     graph.add_node(
                         next_point,
                         heuristic=max(
-                            2 - (next_distance_to_destination / total_distance), 0.01
+                            1 - (next_distance_to_destination / total_distance), 0.01
                         ),
                     )
 
