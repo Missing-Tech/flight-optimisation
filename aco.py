@@ -49,12 +49,13 @@ def run_aco_colony(
     altitude_grid = ag.get_altitude_grid()
     routing_graph = rg.get_routing_graph()
     objectives = []
+    best_indexes = {}
 
     weather_data = ecmwf.MetAltitudeGrid(altitude_grid)
     before2 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=config.NO_OF_PROCESSES) as executor:
-        for _ in range(iterations):
-            flight_paths = []
+        flight_paths = []
+        for i in range(iterations):
 
             run_ant_partial = functools.partial(
                 run_ant,
@@ -78,6 +79,7 @@ def run_aco_colony(
                 ):
                     best_solution = solution
                     best_objective = objective
+                    best_indexes[i * ants.index(ant)] = best_flight_path
                     best_flight_path = flight_path
                     routing_graph = pheromone_update(
                         best_solution, routing_graph, best_objective["total"]
@@ -88,7 +90,7 @@ def run_aco_colony(
 
     objectives_df = pd.DataFrame(objectives)
 
-    return flight_paths, best_flight_path, objectives_df
+    return flight_paths, best_flight_path, objectives_df, best_indexes
 
 
 def calculate_objective_dataframe(flight_path, contrail_grid):
@@ -155,7 +157,7 @@ def pheromone_update(solution, routing_graph, best_objective):
         delta = 0
         edge = routing_graph[u][v]
         if (u, v) in solution_edges:
-            delta = 1 / (1)
+            delta = 1 / (1 + best_objective)
 
         new_pheromone = (1 - evaporation_rate) * (edge["pheromone"] + delta)
 
@@ -211,8 +213,8 @@ def calculate_probability_at_neighbour(
 
     # print(math.pow(pheromone, alpha), math.pow(heuristic, beta), total_neighbour_factor)
 
-    pheromone = 1
-    heuristic = 1
+    # pheromone = 1
+    # heuristic = 1
 
     probability = (
         math.pow(pheromone, alpha) * math.pow(heuristic, beta) / total_neighbour_factor

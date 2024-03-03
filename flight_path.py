@@ -86,7 +86,6 @@ def calculate_true_air_speed(mach, temperature):
 
 
 def calculate_crabbing_angle(point, u, v):
-
     numerator = (v * np.sin(point["course"])) - (u * np.cos(point["course"]))
     crabbing_angle = np.arcsin(numerator / point["true_airspeed"])
     return crabbing_angle

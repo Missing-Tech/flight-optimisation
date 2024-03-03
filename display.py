@@ -185,13 +185,13 @@ def create_flight_frame(hours, flight_path, contrail_grid, line, grid, title, ax
 
     flight_path_before_time = flight_path[flight_path["time"] <= time]
 
-    long = flight_path_before_time["longitude"]
+    lon = flight_path_before_time["longitude"]
     lat = flight_path_before_time["latitude"]
 
     ax.set_title(
         f"{title} at Timestep {time.strftime('%H:%M')}, Altitude: {flight_path_before_time['altitude_ft'].iloc[-1]} ft"
     )
-    line.set_xdata(long)
+    line.set_xdata(lon)
     line.set_ydata(lat)
     timestamps = contrail_grid["time"]
 
@@ -250,6 +250,71 @@ def create_flight_animation(
         frames=5,
         interval=interval,
         fargs=(flight_path_df, contrail_grid, line, grid, title, ax),
+        blit=False,
+    )
+    return ani
+
+
+def create_aco_frame(index, paths, line, ax, best_indexes, best_path):
+    flight_path = paths[index]
+    flight_path_df = pd.DataFrame(
+        flight_path, columns=["latitude", "longitude", "time", "altitude_ft"]
+    )
+    lon = flight_path_df["longitude"]
+    lat = flight_path_df["latitude"]
+    line.set_xdata(lon)
+    line.set_ydata(lat)
+
+    if index in best_indexes:
+        best_path_df = pd.DataFrame(
+            best_indexes[index],
+            columns=["latitude", "longitude", "time", "altitude_ft"],
+        )
+        best_path.set_xdata(best_path_df["longitude"])
+        best_path.set_ydata(best_path_df["latitude"])
+
+    ax.set_title(f"Path #{index}")
+
+    return line, best_path
+
+
+def create_aco_animation(
+    paths,
+    best_indexes,
+    fig=None,
+    ax=None,
+    interval=100,
+):
+    flight_path_df = pd.DataFrame(
+        paths[0], columns=["latitude", "longitude", "time", "altitude_ft"]
+    )
+    line = ax.plot(
+        flight_path_df["longitude"],
+        flight_path_df["latitude"],
+        transform=ccrs.PlateCarree(),
+        c="k",
+        alpha=0.5,
+        linewidth=0.5,
+    )[0]
+
+    best_path_df = pd.DataFrame(
+        best_indexes[0], columns=["latitude", "longitude", "time", "altitude_ft"]
+    )
+    best_path = ax.plot(
+        best_path_df["longitude"],
+        best_path_df["latitude"],
+        transform=ccrs.PlateCarree(),
+        c="r",
+    )[0]
+
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ani = FuncAnimation(
+        fig,
+        create_aco_frame,
+        frames=len(paths),
+        interval=interval,
+        fargs=(paths, line, ax, best_indexes, best_path),
         blit=False,
     )
     return ani
