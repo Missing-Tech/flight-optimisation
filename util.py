@@ -33,7 +33,7 @@ def get_nearest_value_from_list(value, list):
     return min(list, key=lambda x: abs(x - value))
 
 
-def convert_indices_to_points(index_path, altitude_grid, thrust=config.INITIAL_THRUST):
+def convert_indices_to_points(index_path, altitude_grid, thrust=config.NOMINAL_THRUST):
     path = []
     for point in index_path:
         altitude_point = altitude_grid[point[2]][point[0]][point[1]]
@@ -57,7 +57,7 @@ def convert_real_flight_path(df):
             "latitude": row["Latitude"],
             "longitude": row["Longitude"],
             "altitude_ft": row["AltMSL"],
-            "thrust": config.MAX_THRUST,
+            "thrust": config.NOMINAL_THRUST,
             "time": time,
         }
         path.append(path_point)
@@ -85,16 +85,11 @@ def get_consecutive_points(
     points = []
     current_altitude = min_alt
     while current_altitude <= max_alt and current_altitude >= min_alt:
-
         if xi + 1 == len(grid[current_altitude]):
             return None
-        current_layer_length = len(grid[current_altitude][xi]) - 1
         next_layer_length = len(grid[current_altitude][xi + 1]) - 1
         min_i = min(max(yi - max_lateral_var, 0), next_layer_length)
         max_i = min(yi + max_lateral_var, next_layer_length)
-        if next_layer_length > current_layer_length:
-            min_i = yi
-            max_i = yi + max_lateral_var * 2
         for i in range(min_i, max_i + 1):
             points.append((xi + 1, i, current_altitude))
         current_altitude += altitude_step

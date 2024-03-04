@@ -75,6 +75,9 @@ def create_3d_ax(fig=None):
 
 
 def display_flight_ef(flight_path_cocip, ax=None):
+    if flight_path_cocip.contrail is None:
+        return
+
     flight_path_cocip.contrail.plot.scatter(
         "longitude",
         "latitude",

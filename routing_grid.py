@@ -7,12 +7,13 @@ import numpy as np
 
 
 def get_routing_grid():
-    if os.path.exists("data/routing_grid.p"):
-        return pickle.load(open("data/routing_grid.p", "rb"))
-    else:
-        rg = calculate_routing_grid(gp.get_geodesic_path())
-        pickle.dump(rg, open("data/routing_grid.p", "wb"))
-        return rg
+    return calculate_routing_grid(gp.get_geodesic_path())
+    # if os.path.exists("data/routing_grid.p"):
+    #     return pickle.load(open("data/routing_grid.p", "rb"))
+    # else:
+    #     rg = calculate_routing_grid(gp.get_geodesic_path())
+    #     pickle.dump(rg, open("data/routing_grid.p", "wb"))
+    #     return rg
 
 
 def calculate_normal_bearing(bearing):
@@ -67,13 +68,16 @@ def calculate_routing_grid(
         for i in range(1, config.GRID_WIDTH + 1):
             index = path.index(point)
 
-            if index - i < 0:
+            # if index - (i / config.GRID_STEP) < 0:
+            #     continue
+            #
+            if index + (i / config.OFFSET_VAR) > len(path) - 1:
                 continue
 
-            if index + i > len(path) - 1:
+            if index + 1 > len(path) - 1:
                 continue
 
-            bearing = calculate_bearing(path[index], path[index + i])
+            bearing = calculate_bearing(path[index], path[index + 1])
             bearing = calculate_normal_bearing(bearing)
 
             new_point_positive = calculate_new_coordinates(

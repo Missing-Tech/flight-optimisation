@@ -19,7 +19,11 @@ import pandas as pd
 def run_ant(routing_graph, altitude_grid, contrail_grid, weather_data, _):
     solution = construct_solution(routing_graph)
 
-    thrusts = np.arange(config.INITIAL_THRUST, config.MAX_THRUST, config.MAX_THRUST_VAR)
+    thrusts = np.arange(
+        config.INITIAL_THRUST,
+        config.MAX_THRUST + config.MAX_THRUST_VAR,
+        config.MAX_THRUST_VAR,
+    )
     best_flight_path = None
     best_objective = None
     best_solution = None
@@ -130,7 +134,10 @@ def objective_function(flight_path, contrail_grid):
     time_weight = config.TIME_WEIGHT
 
     flight_time_penalty = (
-        time_weight * (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600
+        time_weight
+        * (flight_path[-1]["time"] - flight_path[0]["time"]).seconds
+        / 3600
+        / 10
     )
 
     total_penalty = ef_penalty + flight_time_penalty
@@ -151,8 +158,6 @@ def pheromone_update(solution, routing_graph, best_objective):
 
     solution_edges = list(nx.utils.pairwise(solution))
 
-    print(best_objective)
-
     for u, v in routing_graph.edges():
         delta = 0
         edge = routing_graph[u][v]
@@ -166,7 +171,7 @@ def pheromone_update(solution, routing_graph, best_objective):
 
 
 def construct_solution(routing_graph):
-    solution = [(0, 0, config.STARTING_ALTITUDE)]
+    solution = [(0, config.GRID_WIDTH, config.STARTING_ALTITUDE)]
 
     neighbours = routing_graph[solution[0]]
 
@@ -181,13 +186,14 @@ def construct_solution(routing_graph):
             )
             if probability == -1:
                 # reached the destination
-                choice = [n]
+                choice = n
                 break
             probabilities.append(probability)
         if not choice:
-            choice = random.choices(list(neighbours), weights=probabilities, k=1)
-        solution.append(choice[0])
-        neighbours = routing_graph[choice[0]]
+            choice = random.choices(list(neighbours), weights=probabilities, k=1)[0]
+
+        solution.append(choice)
+        neighbours = routing_graph[choice]
 
     return solution
 
@@ -210,11 +216,6 @@ def calculate_probability_at_neighbour(
         total_neighbour_factor += math.pow(
             neighbours[n]["pheromone"], alpha
         ) * math.pow(routing_graph.nodes[n]["heuristic"], beta)
-
-    # print(math.pow(pheromone, alpha), math.pow(heuristic, beta), total_neighbour_factor)
-
-    # pheromone = 1
-    # heuristic = 1
 
     probability = (
         math.pow(pheromone, alpha) * math.pow(heuristic, beta) / total_neighbour_factor
