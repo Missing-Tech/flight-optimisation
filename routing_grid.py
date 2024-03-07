@@ -1,19 +1,11 @@
 import util
 import config
-import os
-import pickle
 import geodesic_path as gp
 import numpy as np
 
 
 def get_routing_grid():
     return calculate_routing_grid(gp.get_geodesic_path())
-    # if os.path.exists("data/routing_grid.p"):
-    #     return pickle.load(open("data/routing_grid.p", "rb"))
-    # else:
-    #     rg = calculate_routing_grid(gp.get_geodesic_path())
-    #     pickle.dump(rg, open("data/routing_grid.p", "wb"))
-    #     return rg
 
 
 def calculate_normal_bearing(bearing):

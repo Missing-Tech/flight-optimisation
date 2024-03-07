@@ -33,15 +33,22 @@ def get_nearest_value_from_list(value, list):
     return min(list, key=lambda x: abs(x - value))
 
 
-def convert_indices_to_points(index_path, altitude_grid, thrust=config.NOMINAL_THRUST):
+def convert_indices_to_points(
+    index_path, altitude_grid, routing_graph, thrust=config.NOMINAL_THRUST
+):
     path = []
     for point in index_path:
         altitude_point = altitude_grid[point[2]][point[0]][point[1]]
+        routing_point = routing_graph.nodes[point]
         path_point = {
             "latitude": altitude_point[0],
             "longitude": altitude_point[1],
             "altitude_ft": point[2],
+            "temperature": routing_point["temperature"],
+            "u": routing_point["u"],
+            "v": routing_point["v"],
             "thrust": thrust,
+            "level": convert_altitude_to_pressure_bounded(point[2]),
         }
 
         path.append(path_point)
@@ -49,7 +56,7 @@ def convert_indices_to_points(index_path, altitude_grid, thrust=config.NOMINAL_T
     return path
 
 
-def convert_real_flight_path(df):
+def convert_real_flight_path(df, weather_grid):
     path = []
     for _, row in df.iterrows():
         time = datetime.strptime(row["DateTime"], "%Y-%m-%d %H:%M:%S")
@@ -59,10 +66,26 @@ def convert_real_flight_path(df):
             "altitude_ft": row["AltMSL"],
             "thrust": config.NOMINAL_THRUST,
             "time": time,
+            "level": convert_altitude_to_pressure_bounded(row["AltMSL"]),
         }
+        weather_at_point = weather_grid.get_weather_data_at_point(path_point)
+
+        temperature = weather_at_point["air_temperature"].values.item()
+        u = weather_at_point["eastward_wind"].values.item()
+        v = weather_at_point["northward_wind"].values.item()
+
+        path_point["temperature"] = temperature
+        path_point["u"] = u
+        path_point["v"] = v
+
         path.append(path_point)
 
     return path
+
+
+def convert_altitude_to_pressure_bounded(altitude):
+    pressure = calculate_pressure_from_altitude_ft(altitude)
+    return max(config.PRESSURE_LEVELS[-1], min(pressure, config.PRESSURE_LEVELS[0]))
 
 
 def get_consecutive_points(
@@ -74,7 +97,6 @@ def get_consecutive_points(
     max_altitude_var=config.MAX_ALTITUDE_VAR,
     altitude_step=config.ALTITUDE_STEP,
 ):
-
     max_alt = altitude + max_altitude_var
     min_alt = altitude
     max_alt = max(

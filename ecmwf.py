@@ -1,9 +1,7 @@
 import os
-import numpy as np
-import time
-from pandas._libs.tslibs import np_datetime
 from pycontrails.models.cocip import Cocip
 from pycontrails.datalib.ecmwf import ERA5
+from pycontrails.core.met import MetDataset
 import util
 import pandas as pd
 import xarray as xr
@@ -19,8 +17,24 @@ era5pl = ERA5(
     pressure_levels=pressure_levels,
 )
 era5sl = ERA5(time=time_bounds, variables=Cocip.rad_variables)
-met = era5pl.open_metdataset()
-rad = era5sl.open_metdataset()
+
+met = None
+rad = None
+
+if not os.path.exists("data/met.nc"):
+    met = era5pl.open_metdataset()
+
+    met.data.to_netcdf("data/met.nc")
+else:
+    met = xr.open_dataset("data/met.nc")
+    met = MetDataset(met)
+
+if not os.path.exists("data/rad.nc"):
+    rad = era5sl.open_metdataset()
+    rad.data.to_netcdf("data/rad.nc")
+else:
+    rad = xr.open_dataset("data/rad.nc")
+    rad = MetDataset(rad)
 
 
 class MetAltitudeGrid:
@@ -30,7 +44,6 @@ class MetAltitudeGrid:
 
     def init_weather_data_along_grid(self, altitude_grid):
         if not os.path.exists("data/weather_data.nc"):
-
             for alt in altitude_grid:
                 altitude_grid[alt] = [
                     x for x in sum(altitude_grid[alt], []) if x is not None

@@ -1,4 +1,6 @@
 import networkx as nx
+import pandas as pd
+import ecmwf
 import config
 import contrails as ct
 import util
@@ -7,10 +9,39 @@ import altitude_grid as ag
 import geodesic_path as gp
 
 
-def calculate_routing_graph(altitude_grid, contrail_grid):
+def calculate_point_values(point, weather_grid, altitude):
+    distance_from_departure = gp.calculate_distance_between_points(
+        (point[0], point[1]), config.DESTINATION_AIRPORT
+    )
+    speed = (
+        config.NOMINAL_THRUST * 343
+    )  # times by speed of sound for rough speed estimate
+    time_to_point = distance_from_departure * 1000 / speed
+    time_at_point = config.DEPARTURE_DATE + pd.Timedelta(time_to_point, "s")
+
+    point_values = {
+        "latitude": point[0],
+        "longitude": point[1],
+        "level": util.convert_altitude_to_pressure_bounded(altitude),
+        "time": time_at_point,
+    }
+
+    weather_at_point = weather_grid.get_weather_data_at_point(point_values)
+
+    temperature = weather_at_point["air_temperature"].values.item()
+    u = weather_at_point["eastward_wind"].values.item()
+    v = weather_at_point["northward_wind"].values.item()
+
+    point_values["temperature"] = temperature
+    point_values["u"] = u
+    point_values["v"] = v
+
+    return point_values
+
+
+def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
     graph = nx.DiGraph()
 
-    total_distance = gp.calculate_distance_between_airports()
     for altitude in altitude_grid:
         for step in altitude_grid[altitude]:
             for point in step:
@@ -34,9 +65,14 @@ def calculate_routing_graph(altitude_grid, contrail_grid):
                     xi, yi, altitude, altitude_grid
                 )
 
+                point_values = calculate_point_values(point, weather_grid, altitude)
+
                 if consecutive_points is None:
                     continue
                 for next_point in consecutive_points:
+                    next_point_values = calculate_point_values(
+                        next_point, weather_grid, next_point[2]
+                    )
                     graph.add_edge(
                         (xi, yi, altitude),
                         (next_point[0], next_point[1], next_point[2]),
@@ -44,9 +80,10 @@ def calculate_routing_graph(altitude_grid, contrail_grid):
                     )
                     graph.add_node(
                         (xi, yi, altitude),
-                        heuristic=max(
-                            1 - (distance_to_destination / total_distance), 0.01
-                        ),
+                        heuristic=1 / distance_to_destination,
+                        temperature=point_values["temperature"],
+                        u=point_values["u"],
+                        v=point_values["v"],
                     )
                     next_lat, next_lon, _ = next_point
                     next_distance_to_destination = gp.calculate_distance_between_points(
@@ -54,9 +91,10 @@ def calculate_routing_graph(altitude_grid, contrail_grid):
                     )
                     graph.add_node(
                         next_point,
-                        heuristic=max(
-                            1 - (next_distance_to_destination / total_distance), 0.01
-                        ),
+                        heuristic=1 / next_distance_to_destination,
+                        temperature=next_point_values["temperature"],
+                        u=next_point_values["u"],
+                        v=next_point_values["v"],
                     )
 
     return graph
@@ -69,12 +107,19 @@ def parse_node(s):
 
 
 def get_routing_graph():
+    # return calculate_routing_graph(
+    #     altitude_grid,
+    #     ct.get_contrail_grid(),
+    #     ecmwf.MetAltitudeGrid(altitude_grid),
+    # )
     if os.path.exists("data/routing_graph.gml"):
         return nx.read_gml("data/routing_graph.gml", destringizer=parse_node)
     else:
+        altitude_grid = ag.get_altitude_grid()
         rg = calculate_routing_graph(
-            ag.get_altitude_grid(),
+            altitude_grid,
             ct.get_contrail_grid(),
+            ecmwf.MetAltitudeGrid(altitude_grid),
         )
         nx.write_gml(rg, "data/routing_graph.gml")
         return rg

@@ -1,26 +1,15 @@
 import config
-import util
-import ecmwf
 from geopy import distance as gp
 import pandas as pd
 import routing_grid as rg
 import numpy as np
-import time
-
-
-def convert_altitude_to_pressure_bounded(altitude):
-    pressure = util.calculate_pressure_from_altitude_ft(altitude)
-    return max(config.PRESSURE_LEVELS[-1], min(pressure, config.PRESSURE_LEVELS[0]))
 
 
 def calculate_flight_characteristics(
     flight_path,
-    weather_data,
 ):
     for i in range(len(flight_path)):
         point = flight_path[i]
-
-        point["level"] = convert_altitude_to_pressure_bounded(point["altitude_ft"])
 
         if i == 0:
             point["aircraft_mass"] = config.STARTING_WEIGHT
@@ -36,10 +25,9 @@ def calculate_flight_characteristics(
                 previous_point["aircraft_mass"]
                 - point["fuel_flow"] * time_elapsed.total_seconds()
             )
-        weather_at_point = weather_data.get_weather_data_at_point(point)
-        temperature = weather_at_point["air_temperature"].values.item()
-        u = weather_at_point["eastward_wind"].values.item()
-        v = weather_at_point["northward_wind"].values.item()
+        temperature = point["temperature"]
+        u = point["u"]
+        v = point["v"]
 
         if i != len(flight_path) - 1:
             next_point = flight_path[i + 1]
