@@ -74,6 +74,27 @@ def create_3d_ax(fig=None):
     return fig, ax
 
 
+def display_objective_over_iterations(objectives, ax=None):
+    ax2 = ax.twinx()
+    ax3 = ax.twinx()
+    p1 = ax.plot(objectives["co2"], label="CO2", color="r")
+    p2 = ax2.plot(objectives["contrail"], label="Contrail", color="b")
+    p3 = ax3.plot(objectives["time"], label="Time", color="g")
+
+    ax.set_ylabel("CO2 EF")
+    ax2.set_ylabel("Contrail EF")
+    ax3.set_ylabel("Time (hours)")
+
+    ax.yaxis.label.set_color(p1[0].get_color())
+    ax2.yaxis.label.set_color(p2[0].get_color())
+    ax3.yaxis.label.set_color(p3[0].get_color())
+
+    ax.set_xlabel("Iteration")
+    ax.set_title("Objective over iterations")
+    ax.legend(handles=p1 + p2 + p3, loc="best")
+    ax3.spines["right"].set_position(("outward", 60))
+
+
 def display_flight_ef(flight_path_cocip, ax=None):
     if flight_path_cocip.contrail is None:
         return
@@ -93,7 +114,6 @@ def display_flight_ef(flight_path_cocip, ax=None):
 def create_3d_flight_frame(
     timestep, flight_path, contrail_grid, contrail_polys, line, ax=None
 ):
-
     long = flight_path["longitude"][:timestep]
     lat = flight_path["latitude"][:timestep]
     alt = flight_path["altitude_ft"][:timestep]
@@ -152,7 +172,6 @@ def create_3d_flight_animation(
     ax=None,
     interval=200,
 ):
-
     flight_path_df = pd.DataFrame(
         flight_path, columns=["latitude", "longitude", "altitude_ft", "time"]
     )
@@ -183,7 +202,6 @@ def create_3d_flight_animation(
 
 
 def create_flight_frame(hours, flight_path, contrail_grid, line, grid, title, ax=None):
-
     time = flight_path["time"].iloc[0] + pd.Timedelta(hours=hours * 2)
 
     flight_path_before_time = flight_path[flight_path["time"] <= time]
@@ -324,7 +342,6 @@ def create_aco_animation(
 
 
 def display_wind_vectors(wind_data, ax=None):
-
     wind_data = wind_data.isel(time=0, level=2)
 
     u = wind_data["eastward_wind"]
@@ -343,7 +360,6 @@ def display_wind_vectors(wind_data, ax=None):
 
 
 def display_contrail_grid(contrail_grid, ax=None):
-
     contrail_grid.isel(flight_level=4, time=0).plot(
         x="longitude",
         y="latitude",
@@ -401,7 +417,6 @@ def display_geodesic_path(points, ax=None):
 
 
 def display_routing_grid(grid, ax=None):
-
     grid = sum(grid, [])
 
     routing_grid_df = pd.DataFrame(grid, columns=["Latitude", "Longitude"])
@@ -438,7 +453,6 @@ def extract_map_geometry():
 # Function to display altitude grid as 3D scatter plot
 # Method from https://stackoverflow.com/questions/23785408/3d-cartopy-similar-to-matplotlib-basemap
 def display_altitude_grid_3d(grid, ax=None):
-
     lc = extract_map_geometry()
     ax.add_collection3d(lc, zs=28_000, zdir="z")
 

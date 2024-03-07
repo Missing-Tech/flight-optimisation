@@ -1,15 +1,18 @@
-import numpy as np
-import csv
-import config
-import time
-import contrails as ct
-import flight_path as fp
 import math
 import random
-import util
-import networkx as nx
+import time
 from concurrent.futures import ProcessPoolExecutor
+
+import networkx as nx
+import numpy as np
 import pandas as pd
+
+import config
+import contrails as ct
+import flight_path as fp
+import util
+
+objective_functions = ["contrail", "co2", "time"]
 
 
 class ACO:
@@ -18,154 +21,163 @@ class ACO:
         self.altitude_grid = altitude_grid
         self.contrail_grid = contrail_grid
 
+    def calculate_objective(self, objective):
+        if objective == "contrail":
+            return self.calculate_contrail_ef
+        elif objective == "co2":
+            return self.calculate_co2_ef
+        elif objective == "time":
+            return self.calculate_flight_duration
+
     def run_ant(self, id):
         solution = self.construct_solution()
 
-        thrusts = np.arange(
-            config.INITIAL_THRUST,
-            config.MAX_THRUST + config.MAX_THRUST_VAR,
-            config.MAX_THRUST_VAR,
+        flight_path = util.convert_indices_to_points(
+            solution, self.altitude_grid, self.routing_graph
         )
-        best_flight_path = None
-        best_objective = None
-        best_solution = None
-        for thrust in thrusts:
-            flight_path = util.convert_indices_to_points(
-                solution, self.altitude_grid, self.routing_graph, thrust=thrust
-            )
-            flight_path = fp.calculate_flight_characteristics(flight_path)
-            objective = self.objective_function(flight_path)
-            if best_flight_path is None or objective["total"] < best_objective["total"]:
-                best_solution = solution
-                best_flight_path = flight_path
-                best_objective = objective
+        flight_path = fp.calculate_flight_characteristics(flight_path)
 
-        return best_flight_path, best_objective, best_solution
+        objectives = {}
+        for objective in objective_functions:
+            objectives[objective] = self.calculate_objective(objective)(flight_path)
+
+        return solution, flight_path, objectives
 
     def run_aco_colony(self, iterations, no_of_ants):
-        best_solution = None
         best_flight_path = None
-        best_objective = None
+        best_overall = np.inf
         flight_paths = []
-        objectives = []
+        objectives_list = []
+        best_objective = dict.fromkeys(objective_functions, np.inf)
         best_indexes = {}
 
         before2 = time.perf_counter()
-        flight_paths = []
         with ProcessPoolExecutor(max_workers=config.NO_OF_PROCESSES) as executor:
             for i in range(iterations):
                 iteration_best_solution = None
-                iteration_best_objective = None
+                iteration_best_objective = dict.fromkeys(objective_functions, np.inf)
 
                 # Run the ants
-                before = time.perf_counter()
                 ants = list(
                     executor.map(
                         self.run_ant,
                         range(no_of_ants),
                     )
                 )
-                after = time.perf_counter()
-                print(f"iteration time: {after-before}")
 
                 # Get the results
                 for ant in ants:
-                    flight_path, objective, solution = ant
+                    solution, flight_path, objectives = ant
+
                     flight_paths.append(flight_path)
-                    objectives.append(objective)
-                    if (
-                        iteration_best_solution is None
-                        or objective["total"] < iteration_best_objective["total"]
-                    ):
-                        iteration_best_solution = solution
-                        iteration_best_objective = objective
-                    if (
-                        best_solution is None
-                        or objective["total"] < best_objective["total"]
-                    ):
-                        best_solution = solution
-                        best_objective = objective
+                    for objective in objective_functions:
+                        if objectives[objective] < iteration_best_objective[objective]:
+                            iteration_best_solution = solution
+                            iteration_best_objective[objective] = objectives[objective]
+
+                        if objectives[objective] < best_objective[objective]:
+                            best_objective[objective] = objectives[objective]
+
+                    sum_of_best = sum(objectives.values())
+                    if sum_of_best < best_overall:
                         best_indexes[i * ants.index(ant)] = best_flight_path
+                        best_overall = sum_of_best
                         best_flight_path = flight_path
 
+                objectives_list.append(iteration_best_objective)
                 self.routing_graph = self.pheromone_update(
-                    iteration_best_solution, best_objective["total"]
+                    iteration_best_solution, iteration_best_objective, best_objective
                 )
 
         after2 = time.perf_counter()
         print(f"total time: {after2-before2}")
 
-        objectives_df = pd.DataFrame(objectives)
+        objectives_df = pd.DataFrame.from_dict(objectives_list)
 
         return flight_paths, best_flight_path, objectives_df, best_indexes
 
     def calculate_objective_dataframe(self, flight_path):
-        df = {}
-        fuel_burned = config.STARTING_WEIGHT - flight_path[-1]["aircraft_mass"]
-        co2_per_kg = 4.70e9
+        objectives_dict = {}
 
-        contrail_ef = ct.interpolate_contrail_grid(self.contrail_grid, flight_path)
-        co2_ef = fuel_burned * co2_per_kg
+        for objective in objective_functions:
+            objectives_dict[objective] = [
+                self.calculate_objective(objective)(flight_path)
+            ]
 
-        flight_time_penalty = (
-            flight_path[-1]["time"] - flight_path[0]["time"]
-        ).seconds / 3600
+        df = pd.DataFrame.from_dict(objectives_dict)
 
-        df["contrail_ef"] = contrail_ef
-        df["co2_ef"] = co2_ef
-        df["time"] = flight_time_penalty
-
-        print(flight_path[-1]["time"])
         return df
 
-    def objective_function(self, flight_path):
-        co2_weight = config.CO2_WEIGHT
-        contrail_weight = config.CONTRAIL_WEIGHT
-        time_weight = config.TIME_WEIGHT
+    def calculate_contrail_ef(self, flight_path):
+        contrail_ef = ct.interpolate_contrail_grid(self.contrail_grid, flight_path)
+        return math.pow(contrail_ef, config.CONTRAIL_WEIGHT)
+
+    def calculate_co2_ef(self, flight_path):
         fuel_burned = config.STARTING_WEIGHT - flight_path[-1]["aircraft_mass"]
         co2_per_kg = 4.70e9
+        co2_penalty = fuel_burned * co2_per_kg
+        return math.pow(co2_penalty, config.CO2_WEIGHT)
 
-        contrail_ef = ct.interpolate_contrail_grid(self.contrail_grid, flight_path)
-        contrail_penalty = contrail_ef / 1e16
-        co2_penalty = (fuel_burned * co2_per_kg) / (
-            config.STARTING_WEIGHT * co2_per_kg / 10
+    def calculate_flight_duration(self, flight_path):
+        return math.pow(
+            (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600,
+            config.TIME_WEIGHT,
         )
 
-        ef_penalty = math.pow(contrail_penalty, -contrail_weight) + math.pow(
-            co2_penalty, -co2_weight
-        )
+    # def objective_function(self, flight_path):
+    #     co2_weight = config.CO2_WEIGHT
+    #     contrail_weight = config.CONTRAIL_WEIGHT
+    #     time_weight = config.TIME_WEIGHT
+    #     fuel_burned = config.STARTING_WEIGHT - flight_path[-1]["aircraft_mass"]
+    #     co2_per_kg = 4.70e9
+    #     co2_penalty = (fuel_burned * co2_per_kg) / (
+    #         config.STARTING_WEIGHT * co2_per_kg / 10
+    #     )
+    #
+    #     contrail_ef = ct.interpolate_contrail_grid(self.contrail_grid, flight_path)
+    #     contrail_penalty = contrail_ef / 1e16
+    #     ef_penalty = math.pow(contrail_penalty, contrail_weight) + math.pow(
+    #         co2_penalty, co2_weight
+    #     )
+    #
+    #     flight_duration = (
+    #         flight_path[-1]["time"] - flight_path[0]["time"]
+    #     ).seconds / 3600
+    #
+    #     total_penalty = ef_penalty + math.pow(flight_duration / 10, time_weight)
+    #
+    #     return {
+    #         "total": total_penalty,
+    #         "contrail_ef": contrail_ef,
+    #         "fuel_burned": fuel_burned,
+    #         "contrail_penalty": contrail_penalty,
+    #         "co2_penalty": co2_penalty,
+    #         "flight_duration": flight_duration,
+    #         "arrival_time": flight_path[-1]["time"],
+    #     }
 
-        flight_time_penalty = (
-            (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600 / 10
-        )
-
-        total_penalty = ef_penalty + math.pow(flight_time_penalty, -time_weight)
-
-        return {
-            "total": total_penalty,
-            "contrail_ef": contrail_ef,
-            "fuel_burned": fuel_burned,
-            "flight_duration": flight_time_penalty,
-            "arrival_time": flight_path[-1]["time"],
-        }
-
-    def pheromone_update(self, solution, best_objective):
+    def pheromone_update(self, solution, iteration_best_objective, best_objective):
         evaporation_rate = config.EVAPORATION_RATE
         tau_min = config.TAU_MIN
         tau_max = config.TAU_MAX
 
         solution_edges = list(nx.utils.pairwise(solution))
 
-        for u, v in solution_edges:
-            delta = 0
-            edge = self.routing_graph[u][v]
-            delta = 1 / (1 + best_objective)
+        for objective in objective_functions:
+            for u, v in solution_edges:
+                delta = 0
+                edge = self.routing_graph[u][v]
+                delta = 1 / (
+                    1 + iteration_best_objective[objective] - best_objective[objective]
+                )
 
-            new_pheromone = (1 - evaporation_rate) * (edge["pheromone"] + delta)
+                new_pheromone = (1 - evaporation_rate) * (
+                    edge[f"{objective}_pheromone"] + delta
+                )
 
-            self.routing_graph[u][v]["pheromone"] = max(
-                tau_min, min(new_pheromone, tau_max)
-            )
+                self.routing_graph[u][v][f"{objective}_pheromone"] = max(
+                    tau_min, min(new_pheromone, tau_max)
+                )
         return self.routing_graph
 
     def construct_solution(self):
@@ -176,10 +188,12 @@ class ACO:
         while neighbours:
             probabilities = []
             choice = None
+            random_objective = random.choice(objective_functions)
             for n in neighbours:
                 probability = self.calculate_probability_at_neighbour(
                     n,
-                    neighbours[n]["pheromone"],
+                    neighbours[n][f"{random_objective}_pheromone"],
+                    random_objective,
                 )
                 if probability == -1:
                     # reached the destination
@@ -198,6 +212,7 @@ class ACO:
         self,
         node,
         pheromone,
+        objective,
     ):
         heuristic = self.routing_graph.nodes[node]["heuristic"]
         total_neighbour_factor = 0
@@ -210,7 +225,7 @@ class ACO:
             return -1
         for n in neighbours:
             total_neighbour_factor += math.pow(
-                neighbours[n]["pheromone"], alpha
+                neighbours[n][f"{objective}_pheromone"], alpha
             ) * math.pow(self.routing_graph.nodes[n]["heuristic"], beta)
 
         probability = (
@@ -218,4 +233,4 @@ class ACO:
             * math.pow(heuristic, beta)
             / total_neighbour_factor
         )
-        return probability
+        return max(probability, 0)

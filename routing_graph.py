@@ -11,7 +11,8 @@ import geodesic_path as gp
 
 def calculate_point_values(point, weather_grid, altitude):
     distance_from_departure = gp.calculate_distance_between_points(
-        (point[0], point[1]), config.DESTINATION_AIRPORT
+        config.DEPARTURE_AIRPORT,
+        (point[0], point[1]),
     )
     speed = (
         config.NOMINAL_THRUST * 343
@@ -24,6 +25,9 @@ def calculate_point_values(point, weather_grid, altitude):
         "longitude": point[1],
         "level": util.convert_altitude_to_pressure_bounded(altitude),
         "time": time_at_point,
+        "delta_time": time_to_point,
+        "fuel_burned": pd.Timedelta(time_to_point, "s").seconds
+        * config.NOMINAL_FUEL_FLOW,
     }
 
     weather_at_point = weather_grid.get_weather_data_at_point(point_values)
@@ -48,16 +52,6 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                 if point is None:
                     continue
 
-                # contrails = (
-                #     ct.interpolate_contrail_point(contrail_grid, (*point, altitude))
-                #     / 1e15
-                # ) - 0.01
-                #
-
-                distance_to_destination = gp.calculate_distance_between_points(
-                    point, config.DESTINATION_AIRPORT
-                )
-
                 xi = altitude_grid[altitude].index(step)
                 yi = step.index(point)
 
@@ -66,6 +60,14 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                 )
 
                 point_values = calculate_point_values(point, weather_grid, altitude)
+                contrails_at_point = ct.interpolate_contrail_point(
+                    contrail_grid, (*point, altitude)
+                )
+                heuristic = (
+                    contrails_at_point
+                    + point_values["delta_time"]
+                    + point_values["fuel_burned"]
+                )
 
                 if consecutive_points is None:
                     continue
@@ -73,25 +75,32 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                     next_point_values = calculate_point_values(
                         next_point, weather_grid, next_point[2]
                     )
+                    next_contrails_at_point = ct.interpolate_contrail_point(
+                        contrail_grid, (*next_point, next_point[2])
+                    )
+                    next_heuristic = (
+                        next_contrails_at_point
+                        + next_point_values["time"].second
+                        + next_point_values["fuel_burned"]
+                    )
                     graph.add_edge(
                         (xi, yi, altitude),
                         (next_point[0], next_point[1], next_point[2]),
-                        pheromone=config.TAU_MAX,
+                        contrail_pheromone=config.TAU_MAX,
+                        co2_pheromone=config.TAU_MAX,
+                        time_pheromone=config.TAU_MAX,
                     )
                     graph.add_node(
                         (xi, yi, altitude),
-                        heuristic=1 / distance_to_destination,
+                        heuristic=heuristic,
                         temperature=point_values["temperature"],
                         u=point_values["u"],
                         v=point_values["v"],
                     )
                     next_lat, next_lon, _ = next_point
-                    next_distance_to_destination = gp.calculate_distance_between_points(
-                        (next_lat, next_lon), config.DESTINATION_AIRPORT
-                    )
                     graph.add_node(
                         next_point,
-                        heuristic=1 / next_distance_to_destination,
+                        heuristic=next_heuristic,
                         temperature=next_point_values["temperature"],
                         u=next_point_values["u"],
                         v=next_point_values["v"],
