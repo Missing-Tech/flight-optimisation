@@ -201,5 +201,3 @@ pyvenv.cfg
 pip-selfcheck.json
 
 
-data/
-data/**
