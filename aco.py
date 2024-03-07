@@ -82,12 +82,16 @@ class ACO:
                                 f"{objective}_penalty"
                             ]
 
-                    objectives_list.append(objectives)
+                    if objectives["total"] < iteration_best_objective["total"]:
+                        iteration_best_objective["total"] = objectives["total"]
+                        iteration_best_solution["total"] = solution
 
                     if objectives["total"] < best_objective["total"]:
                         best_objective["total"] = objectives["total"]
                         best_flight_path = flight_path
                         best_indexes[i * ants.index(ant)] = flight_path
+
+                objectives_list.append(iteration_best_objective)
 
                 self.routing_graph = self.pheromone_update(
                     iteration_best_solution, iteration_best_objective, best_objective
@@ -100,11 +104,11 @@ class ACO:
         return flight_paths, best_flight_path, objectives_df, best_indexes
 
     def calculate_objective_dataframe(self, flight_path):
-        objectives = self.objective_function(flight_path)
+        objectives = [self.objective_function(flight_path)]
 
         df = pd.DataFrame.from_dict(objectives)
 
-        print(df["arrival_time"])
+        print(df)
 
         return df
 
@@ -208,7 +212,7 @@ class ACO:
         pheromone,
         objective,
     ):
-        heuristic = self.routing_graph.nodes[node]["heuristic"]
+        heuristic = self.routing_graph.nodes[node][f"{objective}_heuristic"]
         total_neighbour_factor = 0
         neighbours = self.routing_graph[node]
 
@@ -220,7 +224,7 @@ class ACO:
         for n in neighbours:
             total_neighbour_factor += math.pow(
                 neighbours[n][f"{objective}_pheromone"], alpha
-            ) * math.pow(self.routing_graph.nodes[n]["heuristic"], beta)
+            ) * math.pow(self.routing_graph.nodes[n][f"{objective}_heuristic"], beta)
 
         probability = (
             math.pow(pheromone, alpha)

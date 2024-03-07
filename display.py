@@ -78,9 +78,9 @@ def display_objective_over_iterations(objectives, ax=None):
     ax2 = ax.twinx()
     ax3 = ax.twinx()
     ax4 = ax.twinx()
-    p1 = ax.plot(objectives["co2_penalty"], label="CO2", color="r")
-    p2 = ax2.plot(objectives["contrail_penalty"], label="Contrail", color="b")
-    p3 = ax3.plot(objectives["time_penalty"], label="Time", color="g")
+    p1 = ax.plot(objectives["co2"], label="CO2", color="r")
+    p2 = ax2.plot(objectives["contrail"], label="Contrail", color="b")
+    p3 = ax3.plot(objectives["time"], label="Time", color="g")
     p4 = ax4.plot(objectives["total"], label="Total", color="k")
 
     ax.set_ylabel("CO2 EF")

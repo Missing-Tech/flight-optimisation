@@ -49,10 +49,10 @@ if __name__ == "__main__":
     fp_ef, fp_df, fp_cocip = ct.calculate_ef_from_flight_path(real_flight_path)
     aco_ef, aco_df, aco_cocip = ct.calculate_ef_from_flight_path(aco_path)
 
-    # aco_objective = ant_colony.calculate_objective_dataframe(aco_path)
-    # fp_objective = ant_colony.calculate_objective_dataframe(real_flight_path)
-    # print(f"ACO Objective: {aco_objective.to_dict()}")
-    # print(f"FP Objective: {fp_objective.to_dict()}")
+    aco_objective = ant_colony.calculate_objective_dataframe(aco_path)
+    fp_objective = ant_colony.calculate_objective_dataframe(real_flight_path)
+    print(f"ACO Objective: {aco_objective.to_dict()}")
+    print(f"FP Objective: {fp_objective.to_dict()}")
 
     display.display_objective_over_iterations(objectives_dataframe, ax_blank)
 

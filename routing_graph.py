@@ -63,11 +63,6 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                 contrails_at_point = ct.interpolate_contrail_point(
                     contrail_grid, (*point, altitude)
                 )
-                heuristic = (
-                    contrails_at_point
-                    * point_values["delta_time"]
-                    * point_values["fuel_burned"]
-                )
 
                 if consecutive_points is None:
                     continue
@@ -78,11 +73,7 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                     next_contrails_at_point = ct.interpolate_contrail_point(
                         contrail_grid, (*next_point, next_point[2])
                     )
-                    next_heuristic = (
-                        next_contrails_at_point
-                        * next_point_values["time"].second
-                        * next_point_values["fuel_burned"]
-                    )
+
                     graph.add_edge(
                         (xi, yi, altitude),
                         (next_point[0], next_point[1], next_point[2]),
@@ -92,7 +83,9 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                     )
                     graph.add_node(
                         (xi, yi, altitude),
-                        heuristic=heuristic,
+                        contrail_heuristic=contrails_at_point,
+                        co2_heuristic=point_values["fuel_burned"],
+                        time_heuristic=point_values["delta_time"],
                         temperature=point_values["temperature"],
                         u=point_values["u"],
                         v=point_values["v"],
@@ -100,7 +93,9 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                     next_lat, next_lon, _ = next_point
                     graph.add_node(
                         next_point,
-                        heuristic=next_heuristic,
+                        contrail_heuristic=next_contrails_at_point,
+                        co2_heuristic=next_point_values["fuel_burned"],
+                        time_heuristic=next_point_values["delta_time"],
                         temperature=next_point_values["temperature"],
                         u=next_point_values["u"],
                         v=next_point_values["v"],
