@@ -65,8 +65,8 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                 )
                 heuristic = (
                     contrails_at_point
-                    + point_values["delta_time"]
-                    + point_values["fuel_burned"]
+                    * point_values["delta_time"]
+                    * point_values["fuel_burned"]
                 )
 
                 if consecutive_points is None:
@@ -80,8 +80,8 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                     )
                     next_heuristic = (
                         next_contrails_at_point
-                        + next_point_values["time"].second
-                        + next_point_values["fuel_burned"]
+                        * next_point_values["time"].second
+                        * next_point_values["fuel_burned"]
                     )
                     graph.add_edge(
                         (xi, yi, altitude),
