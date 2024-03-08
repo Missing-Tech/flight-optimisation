@@ -12,6 +12,7 @@ import contrails as ct
 import flight_path as fp
 import util
 
+objectives = ["contrail", "co2", "time", "total"]
 objective_functions = ["contrail", "co2", "time"]
 
 
@@ -37,18 +38,15 @@ class ACO:
         best_flight_path = None
         flight_paths = []
         objectives_list = []
-        best_objective = dict.fromkeys([*objective_functions, "total"], np.inf)
+        best_objective = dict.fromkeys(objectives, np.inf)
         best_indexes = {}
+        pareto_set = []
 
         before2 = time.perf_counter()
         with ProcessPoolExecutor(max_workers=config.NO_OF_PROCESSES) as executor:
             for i in range(iterations):
-                iteration_best_solution = dict.fromkeys(
-                    [*objective_functions, "total"], None
-                )
-                iteration_best_objective = dict.fromkeys(
-                    [*objective_functions, "total"], np.inf
-                )
+                iteration_best_solution = dict.fromkeys(objectives, None)
+                iteration_best_objective = dict.fromkeys(objectives, np.inf)
 
                 # Run the ants
                 ants = list(
@@ -63,33 +61,32 @@ class ACO:
                     solution, flight_path, objectives = ant
 
                     flight_paths.append(flight_path)
-
-                    for objective in objective_functions:
-                        if (
-                            objectives[f"{objective}_penalty"]
-                            < iteration_best_objective[objective]
+                    is_dominated = False
+                    for existing_solution in pareto_set:
+                        if all(
+                            objectives[objective] >= existing_solution[0][objective]
+                            for objective in objective_functions
                         ):
+                            is_dominated = True
+                            break
+                        elif all(
+                            objectives[objective] <= existing_solution[0][objective]
+                            for objective in objective_functions
+                        ):
+                            pareto_set.remove(existing_solution)
+                    if not is_dominated:
+                        pareto_set.append((objectives, flight_path))
+
+                    for objective in objectives:
+                        if objectives[objective] < iteration_best_objective[objective]:
                             iteration_best_solution[objective] = solution
-                            iteration_best_objective[objective] = objectives[
-                                f"{objective}_penalty"
-                            ]
+                            iteration_best_objective[objective] = objectives[objective]
 
-                        if (
-                            objectives[f"{objective}_penalty"]
-                            < best_objective[objective]
-                        ):
-                            best_objective[objective] = objectives[
-                                f"{objective}_penalty"
-                            ]
-
-                    if objectives["total"] < iteration_best_objective["total"]:
-                        iteration_best_objective["total"] = objectives["total"]
-                        iteration_best_solution["total"] = solution
-
-                    if objectives["total"] < best_objective["total"]:
-                        best_objective["total"] = objectives["total"]
-                        best_flight_path = flight_path
-                        best_indexes[i * ants.index(ant)] = flight_path
+                        if objectives[objective] < best_objective[objective]:
+                            best_objective[objective] = objectives[objective]
+                            if objective == "total":
+                                best_flight_path = flight_path
+                                best_indexes[i * ants.index(ant)] = flight_path
 
                 objectives_list.append(iteration_best_objective)
 
@@ -100,8 +97,20 @@ class ACO:
         after2 = time.perf_counter()
         print(f"total time: {after2-before2}")
 
+        # get only the flight paths from the pareto set
+        pareto_paths = [x[1] for x in pareto_set]
+        pareto_df = [x[0] for x in pareto_set]
+
         objectives_df = pd.DataFrame.from_dict(objectives_list)
-        return flight_paths, best_flight_path, objectives_df, best_indexes
+        pareto_df = pd.DataFrame.from_dict(pareto_df)
+        return (
+            flight_paths,
+            best_flight_path,
+            objectives_df,
+            best_indexes,
+            pareto_paths,
+            pareto_df,
+        )
 
     def calculate_objective_dataframe(self, flight_path):
         objectives = [self.objective_function(flight_path)]
@@ -147,11 +156,11 @@ class ACO:
         return {
             "total": total_penalty,
             "contrail_ef": contrail_ef,
-            "contrail_penalty": contrail_penalty,
+            "contrail": contrail_penalty,
             "co2_ef": co2_ef,
-            "co2_penalty": co2_penalty,
+            "co2": co2_penalty,
             "flight_duration": flight_duration,
-            "time_penalty": weighted_flight_duration,
+            "time": weighted_flight_duration,
             "arrival_time": flight_path[-1]["time"],
         }
 
@@ -182,7 +191,6 @@ class ACO:
         solution = [(0, config.GRID_WIDTH, config.STARTING_ALTITUDE)]
 
         neighbours = self.routing_graph[solution[0]]
-
         while neighbours:
             probabilities = []
             choice = None
@@ -213,7 +221,7 @@ class ACO:
         objective,
     ):
         heuristic = self.routing_graph.nodes[node][f"{objective}_heuristic"]
-        total_neighbour_factor = 0
+        total_neighbour_factor = 0.01
         neighbours = self.routing_graph[node]
 
         alpha = config.PHEROMONE_WEIGHT
@@ -227,8 +235,6 @@ class ACO:
             ) * math.pow(self.routing_graph.nodes[n][f"{objective}_heuristic"], beta)
 
         probability = (
-            math.pow(pheromone, alpha)
-            * math.pow(heuristic, beta)
-            / total_neighbour_factor
-        )
-        return max(probability, 0)
+            math.pow(pheromone, alpha) * math.pow(heuristic, beta)
+        ) / total_neighbour_factor
+        return probability

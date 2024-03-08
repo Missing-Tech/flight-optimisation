@@ -60,8 +60,9 @@ def calculate_routing_graph(altitude_grid, contrail_grid, weather_grid):
                 )
 
                 point_values = calculate_point_values(point, weather_grid, altitude)
-                contrails_at_point = ct.interpolate_contrail_point(
-                    contrail_grid, (*point, altitude)
+                contrails_at_point = max(
+                    ct.interpolate_contrail_point(contrail_grid, (*point, altitude)),
+                    0.01,
                 )
 
                 if consecutive_points is None:

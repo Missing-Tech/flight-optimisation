@@ -36,12 +36,16 @@ if __name__ == "__main__":
     # fig_3d, ax_3d = display.create_3d_ax()
     #
 
-    ant_paths, aco_path, objectives_dataframe, best_indexes = ant_colony.run_aco_colony(
-        config.NO_OF_ITERATIONS,
-        config.NO_OF_ANTS,
+    ant_paths, aco_path, objectives_dataframe, best_indexes, pareto_set, pareto_df = (
+        ant_colony.run_aco_colony(
+            config.NO_OF_ITERATIONS,
+            config.NO_OF_ANTS,
+        )
     )
 
     objectives_dataframe.to_csv("data/objectives.csv")
+
+    pareto_df.to_csv("data/pareto_set.csv")
 
     real_flight_path = util.convert_real_flight_path(flight_path_df, metGrid)
     real_flight_path = fp.calculate_flight_characteristics(real_flight_path)
@@ -54,22 +58,24 @@ if __name__ == "__main__":
     print(f"ACO Objective: {aco_objective.to_dict()}")
     print(f"FP Objective: {fp_objective.to_dict()}")
 
+    fp_objective.to_csv("data/fp_objective.csv")
+
     display.display_objective_over_iterations(objectives_dataframe, ax_blank)
 
     aco_ani = display.create_aco_animation(
         ant_paths, best_indexes, ax=ax_map, fig=fig_map
     )
 
-    # for ant_path in ant_paths:
-    #     display.display_flight_path(ant_path, ax_side_1)
-    #
+    for ant_path in pareto_set:
+        display.display_flight_path(ant_path, ax_side_1)
+
     # display.display_flight_altitude(best_path, ax_blank)
     # display.display_flight_altitude(real_flight_path, ax_blank, "r")
 
-    display.display_routing_grid(rg.get_routing_grid(), ax=ax_side_1)
     # display.display_flight_path(real_flight_path, ax_map)
-    display.display_geodesic_path(gp.get_geodesic_path(), ax=ax_side_2)
-    display.display_geodesic_path(gp.get_geodesic_path(), ax=ax_side_1)
+    geodesic_path = gp.get_geodesic_path()
+    display.display_geodesic_path(geodesic_path, ax=ax_side_2)
+    display.display_geodesic_path(geodesic_path, ax=ax_side_1)
     # display.display_flight_path_3d(real_flight_path, ax=ax_3d)
     # ani_3d = display.create_3d_flight_animation(
     #     aco_path, contrail_grid, contrail_polys, fig=fig_3d, ax=ax_3d
@@ -89,7 +95,7 @@ if __name__ == "__main__":
     #     ax=ax_side_4,
     #     title="BA177 Flight Path",
     # )
-    display.display_flight_path(aco_path, ax_side_1)
+    display.display_flight_path(aco_path, ax_side_1, linewidth=1, color="r")
     display.display_flight_path(real_flight_path, ax_side_2)
     display.display_flight_ef(aco_cocip, ax_side_1)
     display.display_flight_ef(fp_cocip, ax_side_2)

@@ -391,7 +391,7 @@ def display_flight_altitude(flight_path, ax=None, color="k"):
     ax.set_title("Flight Altitude")
 
 
-def display_flight_path(flight_path, ax=None, linewidth=0.5):
+def display_flight_path(flight_path, ax=None, linewidth=0.5, color="k"):
     if ax is None:
         _, ax = create_map_ax()
     flight_path_df = pd.DataFrame(flight_path, columns=["latitude", "longitude"])
@@ -399,7 +399,7 @@ def display_flight_path(flight_path, ax=None, linewidth=0.5):
     ax.plot(
         flight_path_df["longitude"],
         flight_path_df["latitude"],
-        color="k",
+        color=color,
         linewidth=linewidth,
         transform=ccrs.PlateCarree(),
     )
