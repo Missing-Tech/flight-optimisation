@@ -9,6 +9,37 @@ class AircraftPerformanceModel:
     def __init__(self):
         pass
 
+    def calculate_flight_characteristics_for_next_point(self, flight_path, next_point):
+        previous_point = flight_path[-1]
+        previous_point["course"] = self.calculate_course_at_point(
+            previous_point, next_point
+        )
+        previous_point["climb_angle"] = self.calculate_climb_angle(
+            previous_point, next_point
+        )
+        previous_point["true_airspeed"] = self.calculate_true_air_speed(
+            previous_point["thrust"], previous_point["temperature"]
+        )
+        u = previous_point["u"]
+        v = previous_point["v"]
+        crabbing_angle = self.calculate_crabbing_angle(previous_point, u, v)
+        previous_point["heading"] = previous_point["course"] - crabbing_angle
+        previous_point["ground_speed"] = self.calculate_ground_speed(
+            previous_point, u, v
+        )
+
+        time_elapsed = self.calculate_time_at_point(next_point, previous_point)
+        next_point["time"] = previous_point["time"] + time_elapsed.round("s")
+        next_point["fuel_flow"] = config.NOMINAL_FUEL_FLOW
+        next_point["engine_efficiency"] = config.NOMINAL_ENGINE_EFFICIENCY
+        next_point["aircraft_mass"] = previous_point["aircraft_mass"] = (
+            previous_point["aircraft_mass"]
+            - next_point["fuel_flow"] * time_elapsed.total_seconds()
+        )
+
+        flight_path.append(next_point)
+        return flight_path
+
     def calculate_flight_characteristics(self, flight_path):
         for i in range(len(flight_path)):
             point = flight_path[i]

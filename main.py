@@ -3,6 +3,8 @@ import geodesic_path as gp
 import config
 import warnings
 import ecmwf
+from dotenv import load_dotenv
+
 from altitude_grid import AltitudeGrid
 from routing_grid import RoutingGrid
 from routing_graph import RoutingGraph
@@ -10,7 +12,6 @@ from aco import ACO
 from flight_path import AircraftPerformanceModel
 from contrails import CocipManager, ContrailGridManager
 from real_flight import RealFlight
-from dotenv import load_dotenv
 
 if __name__ == "__main__":
     load_dotenv()
@@ -52,14 +53,9 @@ if __name__ == "__main__":
     fp_ef, fp_df, fp_cocip = cocip_manager.calculate_ef_from_flight_path(
         real_flight.flight_path
     )
-    aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(aco_path)
-
-    aco_objective = ant_colony.calculate_objective_dataframe(aco_path)
-    fp_objective = ant_colony.calculate_objective_dataframe(real_flight.flight_path)
-    print(f"ACO Objective: {aco_objective.to_dict()}")
-    print(f"FP Objective: {fp_objective.to_dict()}")
-
-    fp_objective.to_csv("data/fp_objective.csv")
+    aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(
+        aco_path.flight_path
+    )
 
     display.display_objective_over_iterations(objectives_dataframe, ax_blank)
 
@@ -99,7 +95,7 @@ if __name__ == "__main__":
     #     ax=ax_side_4,
     #     title="BA177 Flight Path",
     # )
-    display.display_flight_path(aco_path, ax_side_1, linewidth=1, color="r")
+    display.display_flight_path(aco_path.flight_path, ax_side_1, linewidth=1, color="r")
     display.display_flight_path(real_flight.flight_path, ax_side_2)
     display.display_flight_ef(aco_cocip, ax_side_1)
     display.display_flight_ef(fp_cocip, ax_side_2)

@@ -1,127 +1,37 @@
 import math
+import multiprocessing
 import random
 import time
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 
 import config
-import util
 
+from flight import Flight
 
 objective_list = ["contrail", "co2", "time", "total"]
 objective_functions = ["contrail", "co2", "time"]
 
 
-class ACO:
+class Ant:
     def __init__(self, rg, ag, cg, pm):
-        self.routing_graph = rg.get_routing_graph()
-        self.altitude_grid = ag.get_altitude_grid()
+        self.routing_graph = rg
+        self.altitude_grid = ag
         self.contrail_grid = cg
         self.performance_model = pm
 
     def run_ant(self, id):
+        print(f"ant {id}", flush=True)
         solution = self.construct_solution()
+        print(f"Process {id} starts calculating", flush=True)
+        objectives = self.objective_function(solution.flight_path)
+        solution.set_objective_value(objectives)
 
-        flight_path = util.convert_indices_to_points(
-            solution, self.altitude_grid, self.routing_graph
-        )
-        flight_path = self.performance_model.calculate_flight_characteristics(
-            flight_path
-        )
-
-        objectives = self.objective_function(flight_path)
-
-        return solution, flight_path, objectives
-
-    def run_aco_colony(self, iterations, no_of_ants):
-        best_flight_path = None
-        flight_paths = []
-        objectives_list = []
-        best_objective = dict.fromkeys(objective_list, np.inf)
-        best_indexes = {}
-        pareto_set = []
-
-        before2 = time.perf_counter()
-        with ProcessPoolExecutor(max_workers=config.NO_OF_PROCESSES) as executor:
-            for i in range(iterations):
-                iteration_best_solution = dict.fromkeys(objective_list, None)
-                iteration_best_objective = dict.fromkeys(objective_list, np.inf)
-
-                # Run the ants
-                ants = list(
-                    executor.map(
-                        self.run_ant,
-                        range(no_of_ants),
-                    )
-                )
-
-                # Get the results
-                for ant in ants:
-                    solution, flight_path, objectives = ant
-
-                    flight_paths.append(flight_path)
-                    is_dominated = False
-                    for existing_solution in pareto_set:
-                        if all(
-                            objectives[objective] >= existing_solution[0][objective]
-                            for objective in objective_functions
-                        ):
-                            is_dominated = True
-                            break
-                        elif all(
-                            objectives[objective] <= existing_solution[0][objective]
-                            for objective in objective_functions
-                        ):
-                            pareto_set.remove(existing_solution)
-                    if not is_dominated:
-                        pareto_set.append((objectives, flight_path))
-
-                    for objective in objective_list:
-                        if objectives[objective] < iteration_best_objective[objective]:
-                            iteration_best_solution[objective] = solution
-                            iteration_best_objective[objective] = objectives[objective]
-
-                        if objectives[objective] < best_objective[objective]:
-                            best_objective[objective] = objectives[objective]
-                            if objective == "total":
-                                best_flight_path = flight_path
-                                best_indexes[i * ants.index(ant)] = flight_path
-
-                objectives_list.append(iteration_best_objective)
-
-                self.routing_graph = self.pheromone_update(
-                    iteration_best_solution, iteration_best_objective, best_objective
-                )
-
-        after2 = time.perf_counter()
-        print(f"total time: {after2-before2}")
-
-        # get only the flight paths from the pareto set
-        pareto_paths = [x[1] for x in pareto_set]
-        pareto_df = [x[0] for x in pareto_set]
-
-        objectives_df = pd.DataFrame.from_dict(objectives_list)
-        pareto_df = pd.DataFrame.from_dict(pareto_df)
-        return (
-            flight_paths,
-            best_flight_path,
-            objectives_df,
-            best_indexes,
-            pareto_paths,
-            pareto_df,
-        )
-
-    def calculate_objective_dataframe(self, flight_path):
-        objectives = [self.objective_function(flight_path)]
-
-        df = pd.DataFrame.from_dict(objectives)
-
-        print(df)
-
-        return df
+        print(f"Process {id} finishes", flush=True)
+        return solution
 
     def calculate_contrail_ef(self, flight_path):
         contrail_ef = self.contrail_grid.interpolate_contrail_grid(flight_path)
@@ -166,33 +76,13 @@ class ACO:
             "arrival_time": flight_path[-1]["time"],
         }
 
-    def pheromone_update(self, solution, iteration_best_objective, best_objective):
-        evaporation_rate = config.EVAPORATION_RATE
-        tau_min = config.TAU_MIN
-        tau_max = config.TAU_MAX
-
-        for objective in objective_functions:
-            solution_edges = list(nx.utils.pairwise(solution[objective]))
-            for u, v in solution_edges:
-                delta = 0
-                edge = self.routing_graph[u][v]
-                delta = 1 / (
-                    1 + iteration_best_objective[objective] - best_objective[objective]
-                )
-
-                new_pheromone = (1 - evaporation_rate) * (
-                    edge[f"{objective}_pheromone"] + delta
-                )
-
-                self.routing_graph[u][v][f"{objective}_pheromone"] = max(
-                    tau_min, min(new_pheromone, tau_max)
-                )
-        return self.routing_graph
-
     def construct_solution(self):
-        solution = [(0, config.GRID_WIDTH, config.STARTING_ALTITUDE)]
+        solution = Flight(
+            self.altitude_grid, self.routing_graph, self.performance_model
+        )
+        solution.set_departure(((0, config.GRID_WIDTH, config.STARTING_ALTITUDE)))
 
-        neighbours = self.routing_graph[solution[0]]
+        neighbours = self.routing_graph[solution.indices[0]]
         while neighbours:
             probabilities = []
             choice = None
@@ -211,7 +101,7 @@ class ACO:
             if not choice:
                 choice = random.choices(list(neighbours), weights=probabilities, k=1)[0]
 
-            solution.append(choice)
+            solution.add_point_from_index(choice)
             neighbours = self.routing_graph[choice]
 
         return solution
@@ -240,3 +130,136 @@ class ACO:
             math.pow(pheromone, alpha) * math.pow(heuristic, beta)
         ) / total_neighbour_factor
         return probability
+
+
+class ACO:
+    def __init__(self, rg, ag, cg, pm):
+        self.routing_graph = rg.get_routing_graph()
+        self.altitude_grid = ag.get_altitude_grid()
+        self.contrail_grid = cg
+        self.performance_model = pm
+
+    def run_aco_colony(self, iterations, no_of_ants):
+        best_solution = None
+        solutions = []
+        objectives_list = []
+        best_objective = dict.fromkeys(objective_list, np.inf)
+        best_indexes = {}
+        pareto_set = []
+        ants = [
+            Ant(
+                self.routing_graph,
+                self.altitude_grid,
+                self.contrail_grid,
+                self.performance_model,
+            )
+            for _ in range(config.NO_OF_ANTS)
+        ]
+
+        before2 = time.perf_counter()
+        executor = ProcessPoolExecutor(max_workers=multiprocessing.cpu_count())
+        for i in range(iterations):
+            before = time.perf_counter()
+
+            iteration_best_solution = dict.fromkeys(objective_list, None)
+            iteration_best_objective = dict.fromkeys(objective_list, np.inf)
+
+            # Run the ants
+            futures = [executor.submit(ant.run_ant, i) for i, ant in enumerate(ants)]
+            # ants = list(
+            #     executor.map(
+            #         self.run_ant,
+            #         range(no_of_ants),
+            #     )
+            # )
+
+            # Get the results
+            for future in as_completed(futures):
+                print("future completed")
+                solution = future.result()
+
+                solutions.append(solution)
+                is_dominated = False
+                for existing_solution in pareto_set:
+                    if all(
+                        solution.objectives[objective]
+                        >= existing_solution[0][objective]
+                        for objective in objective_functions
+                    ):
+                        is_dominated = True
+                        break
+                    elif all(
+                        solution.objectives[objective]
+                        <= existing_solution[0][objective]
+                        for objective in objective_functions
+                    ):
+                        pareto_set.remove(existing_solution)
+                if not is_dominated:
+                    pareto_set.append((solution.objectives, solution.flight_path))
+
+                for objective in objective_list:
+                    if (
+                        solution.objectives[objective]
+                        < iteration_best_objective[objective]
+                    ):
+                        iteration_best_solution[objective] = solution
+                        iteration_best_objective[objective] = solution.objectives[
+                            objective
+                        ]
+
+                    if solution.objectives[objective] < best_objective[objective]:
+                        best_objective[objective] = solution.objectives[objective]
+                        if objective == "total":
+                            best_solution = solution
+                            # best_indexes[i * ants.index(ant)] = solution.flight_path
+
+            objectives_list.append(iteration_best_objective)
+
+            self.routing_graph = self.pheromone_update(
+                iteration_best_solution, iteration_best_objective, best_objective
+            )
+            after = time.perf_counter()
+            print(f"iteration time: {after-before}")
+
+        executor.shutdown()
+
+        after2 = time.perf_counter()
+        print(f"total time: {after2-before2}")
+
+        # get only the flight paths from the pareto set
+        pareto_paths = [x[1] for x in pareto_set]
+        pareto_df = [x[0] for x in pareto_set]
+
+        objectives_df = pd.DataFrame.from_dict([x.objectives for x in solutions])
+        pareto_df = pd.DataFrame.from_dict(pareto_df)
+        return (
+            solutions,
+            best_solution,
+            objectives_df,
+            best_indexes,
+            pareto_paths,
+            pareto_df,
+        )
+
+    def pheromone_update(self, solution, iteration_best_objective, best_objective):
+        evaporation_rate = config.EVAPORATION_RATE
+        tau_min = config.TAU_MIN
+        tau_max = config.TAU_MAX
+
+        for objective in objective_functions:
+            solution_edges = list(nx.utils.pairwise(solution[objective].indices))
+            for u, v in solution_edges:
+                delta = 0
+                edge = self.routing_graph[u][v]
+                delta = 1 / (
+                    1 + iteration_best_objective[objective] - best_objective[objective]
+                )
+
+                new_pheromone = (1 - evaporation_rate) * (
+                    edge[f"{objective}_pheromone"] + delta
+                )
+
+                self.routing_graph[u][v][f"{objective}_pheromone"] = max(
+                    tau_min, min(new_pheromone, tau_max)
+                )
+        return self.routing_graph
