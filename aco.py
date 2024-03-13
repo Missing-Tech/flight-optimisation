@@ -24,13 +24,10 @@ class Ant:
         self.performance_model = pm
 
     def run_ant(self, id):
-        print(f"ant {id}", flush=True)
         solution = self.construct_solution()
-        print(f"Process {id} starts calculating", flush=True)
         objectives = self.objective_function(solution.flight_path)
         solution.set_objective_value(objectives)
 
-        print(f"Process {id} finishes", flush=True)
         return solution
 
     def calculate_contrail_ef(self, flight_path):
@@ -157,71 +154,64 @@ class ACO:
         ]
 
         before2 = time.perf_counter()
-        executor = ProcessPoolExecutor(max_workers=multiprocessing.cpu_count())
-        for i in range(iterations):
-            before = time.perf_counter()
+        with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+            for i in range(iterations):
+                before = time.perf_counter()
 
-            iteration_best_solution = dict.fromkeys(objective_list, None)
-            iteration_best_objective = dict.fromkeys(objective_list, np.inf)
+                # Run the ants
+                futures = [
+                    executor.submit(ant.run_ant, i) for i, ant in enumerate(ants)
+                ]
 
-            # Run the ants
-            futures = [executor.submit(ant.run_ant, i) for i, ant in enumerate(ants)]
-            # ants = list(
-            #     executor.map(
-            #         self.run_ant,
-            #         range(no_of_ants),
-            #     )
-            # )
+                iteration_best_solution = dict.fromkeys(objective_list, None)
+                iteration_best_objective = dict.fromkeys(objective_list, np.inf)
 
-            # Get the results
-            for future in as_completed(futures):
-                print("future completed")
-                solution = future.result()
+                # Get the results
+                for future in as_completed(futures):
+                    solution = future.result()
 
-                solutions.append(solution)
-                is_dominated = False
-                for existing_solution in pareto_set:
-                    if all(
-                        solution.objectives[objective]
-                        >= existing_solution[0][objective]
-                        for objective in objective_functions
-                    ):
-                        is_dominated = True
-                        break
-                    elif all(
-                        solution.objectives[objective]
-                        <= existing_solution[0][objective]
-                        for objective in objective_functions
-                    ):
-                        pareto_set.remove(existing_solution)
-                if not is_dominated:
-                    pareto_set.append((solution.objectives, solution.flight_path))
+                    solutions.append(solution)
+                    is_dominated = False
+                    for existing_solution in pareto_set:
+                        if all(
+                            solution.objectives[objective]
+                            >= existing_solution[0][objective]
+                            for objective in objective_functions
+                        ):
+                            is_dominated = True
+                            break
+                        elif all(
+                            solution.objectives[objective]
+                            <= existing_solution[0][objective]
+                            for objective in objective_functions
+                        ):
+                            pareto_set.remove(existing_solution)
+                    if not is_dominated:
+                        pareto_set.append((solution.objectives, solution.flight_path))
 
-                for objective in objective_list:
-                    if (
-                        solution.objectives[objective]
-                        < iteration_best_objective[objective]
-                    ):
-                        iteration_best_solution[objective] = solution
-                        iteration_best_objective[objective] = solution.objectives[
-                            objective
-                        ]
+                    for objective in objective_list:
+                        if (
+                            solution.objectives[objective]
+                            < iteration_best_objective[objective]
+                        ):
+                            iteration_best_solution[objective] = solution
+                            iteration_best_objective[objective] = solution.objectives[
+                                objective
+                            ]
 
-                    if solution.objectives[objective] < best_objective[objective]:
-                        best_objective[objective] = solution.objectives[objective]
-                        if objective == "total":
-                            best_solution = solution
-                            # best_indexes[i * ants.index(ant)] = solution.flight_path
+                        if solution.objectives[objective] < best_objective[objective]:
+                            best_objective[objective] = solution.objectives[objective]
+                            if objective == "total":
+                                best_solution = solution
+                                # best_indexes[i * ants.index(ant)] = solution.flight_path
 
-            objectives_list.append(iteration_best_objective)
+                objectives_list.append(iteration_best_objective)
 
-            self.routing_graph = self.pheromone_update(
-                iteration_best_solution, iteration_best_objective, best_objective
-            )
-            after = time.perf_counter()
-            print(f"iteration time: {after-before}")
-
-        executor.shutdown()
+                self.routing_graph = self.pheromone_update(
+                    iteration_best_solution, iteration_best_objective, best_objective
+                )
+                after = time.perf_counter()
+                print(f"iteration time: {after-before}")
 
         after2 = time.perf_counter()
         print(f"total time: {after2-before2}")
