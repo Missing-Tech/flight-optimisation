@@ -8,19 +8,19 @@ import numpy as np
 import pandas as pd
 
 import config
-import contrails as ct
-import flight_path as fp
 import util
 
-objectives = ["contrail", "co2", "time", "total"]
+
+objective_list = ["contrail", "co2", "time", "total"]
 objective_functions = ["contrail", "co2", "time"]
 
 
 class ACO:
-    def __init__(self, routing_graph, altitude_grid, contrail_grid):
-        self.routing_graph = routing_graph
-        self.altitude_grid = altitude_grid
-        self.contrail_grid = contrail_grid
+    def __init__(self, rg, ag, cg, pm):
+        self.routing_graph = rg.get_routing_graph()
+        self.altitude_grid = ag.get_altitude_grid()
+        self.contrail_grid = cg
+        self.performance_model = pm
 
     def run_ant(self, id):
         solution = self.construct_solution()
@@ -28,7 +28,9 @@ class ACO:
         flight_path = util.convert_indices_to_points(
             solution, self.altitude_grid, self.routing_graph
         )
-        flight_path = fp.calculate_flight_characteristics(flight_path)
+        flight_path = self.performance_model.calculate_flight_characteristics(
+            flight_path
+        )
 
         objectives = self.objective_function(flight_path)
 
@@ -38,15 +40,15 @@ class ACO:
         best_flight_path = None
         flight_paths = []
         objectives_list = []
-        best_objective = dict.fromkeys(objectives, np.inf)
+        best_objective = dict.fromkeys(objective_list, np.inf)
         best_indexes = {}
         pareto_set = []
 
         before2 = time.perf_counter()
         with ProcessPoolExecutor(max_workers=config.NO_OF_PROCESSES) as executor:
             for i in range(iterations):
-                iteration_best_solution = dict.fromkeys(objectives, None)
-                iteration_best_objective = dict.fromkeys(objectives, np.inf)
+                iteration_best_solution = dict.fromkeys(objective_list, None)
+                iteration_best_objective = dict.fromkeys(objective_list, np.inf)
 
                 # Run the ants
                 ants = list(
@@ -77,7 +79,7 @@ class ACO:
                     if not is_dominated:
                         pareto_set.append((objectives, flight_path))
 
-                    for objective in objectives:
+                    for objective in objective_list:
                         if objectives[objective] < iteration_best_objective[objective]:
                             iteration_best_solution[objective] = solution
                             iteration_best_objective[objective] = objectives[objective]
@@ -122,7 +124,7 @@ class ACO:
         return df
 
     def calculate_contrail_ef(self, flight_path):
-        contrail_ef = ct.interpolate_contrail_grid(self.contrail_grid, flight_path)
+        contrail_ef = self.contrail_grid.interpolate_contrail_grid(flight_path)
         return contrail_ef
 
     def calculate_co2_ef(self, flight_path):

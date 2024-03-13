@@ -1,8 +1,6 @@
 import util
 import config
 import numpy as np
-import os
-import csv
 
 # Equations from Wikipedia https://en.wikipedia.org/wiki/Great-circle_navigation
 
@@ -81,39 +79,6 @@ def __find_point_distance_along_great_circle(distance, azimuth, equator_longitud
     local_azimuth = np.arctan2(azimuth_numerator, azimuth_denominator)
 
     return (util.reduce_angle(phi), util.reduce_angle(lambda1), local_azimuth)
-
-
-def calculate_distance_between_points(p1, p2):
-    lat0, lon0 = p1
-    lat1, lon1 = p2
-
-    phi1 = np.radians(lat0)
-    lambda1 = np.radians(lon0)
-    phi2 = np.radians(lat1)
-    lambda2 = np.radians(lon1)
-
-    delta = lambda2 - lambda1
-    delta = util.reduce_angle(delta)
-
-    central_angle = __calculate_central_angle(phi1, phi2, delta)
-
-    total_distance = util.R * central_angle
-    return total_distance
-
-
-def calculate_distance_between_airports():
-
-    total_distance = calculate_distance_between_points(
-        config.DEPARTURE_AIRPORT, config.DESTINATION_AIRPORT
-    )
-
-    return total_distance
-
-
-def calculate_step_between_airports():
-    total_distance = calculate_distance_between_airports()
-    step = total_distance / config.NO_OF_POINTS
-    return step
 
 
 def calculate_path(no_of_points, p1, p2):

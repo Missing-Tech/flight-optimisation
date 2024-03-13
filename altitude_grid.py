@@ -1,43 +1,43 @@
 import config
 
-import routing_grid as rg
 
+class AltitudeGrid:
+    def __init__(self, routing_grid):
+        self.base_altitude = config.STARTING_ALTITUDE
+        self.altitude_step = config.ALTITUDE_STEP
+        self.max_altitude = config.MAX_ALTITUDE
+        self.routing_grid = routing_grid
 
-def get_altitude_grid():
-    return calculate_altitude_grid(rg.get_routing_grid())
+    def calculate_altitude_grid(self, grid):
+        def calculate_altitudes():
+            altitudes = []
+            current_altitude = self.base_altitude
+            while current_altitude <= self.max_altitude:
+                altitudes.append(current_altitude)
+                current_altitude += self.altitude_step
+            return altitudes
 
+        altitudes = calculate_altitudes()
+        altitude_grid = {}
 
-def calculate_altitude_grid(
-    grid,
-    base_altitude=config.STARTING_ALTITUDE,
-    altitude_step=config.ALTITUDE_STEP,
-    max_altitude=config.MAX_ALTITUDE,
-):
-    def calculate_altitudes():
-        altitudes = []
-        current_altitude = base_altitude
-        while current_altitude <= max_altitude:
-            altitudes.append(current_altitude)
-            current_altitude += altitude_step
-        return altitudes
+        for altitude in altitudes:
+            altitude_grid[altitude] = []
+            for step in grid:
+                step_points = []
+                for point in step:
+                    index = grid.index(step)
+                    max_altitude_at_step = min(
+                        self.base_altitude + (index * self.altitude_step),
+                        self.max_altitude,
+                    )
+                    if altitude > max_altitude_at_step:
+                        step_points.append(None)
+                        continue
+                    step_points.append(point)
+                if len(step_points) > 0:
+                    altitude_grid[altitude].append(step_points)
 
-    altitudes = calculate_altitudes()
-    altitude_grid = {}
+        return altitude_grid
 
-    for altitude in altitudes:
-        altitude_grid[altitude] = []
-        for step in grid:
-            step_points = []
-            for point in step:
-                index = grid.index(step)
-                max_altitude_at_step = min(
-                    base_altitude + (index * altitude_step), max_altitude
-                )
-                if altitude > max_altitude_at_step:
-                    step_points.append(None)
-                    continue
-                step_points.append(point)
-            if len(step_points) > 0:
-                altitude_grid[altitude].append(step_points)
-
-    return altitude_grid
+    def get_altitude_grid(self):
+        return self.calculate_altitude_grid(self.routing_grid.get_routing_grid())

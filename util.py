@@ -1,5 +1,7 @@
 from datetime import datetime
+import numpy as np
 import config
+from geopy import distance as gp
 
 R = 6371  # Earth radius in km
 
@@ -27,6 +29,47 @@ def calculate_pressure_from_altitude_ft(altitude_ft):
     pressure = ((44331.514 - altitude_m) / 11880.516) ** (1 / 0.1902632)
 
     return pressure
+
+
+def calculate_normal_bearing(bearing):
+    return (bearing + np.pi / 2) % (2 * np.pi)
+
+
+def calculate_bearing(p1, p2):
+    lat1, lon1, _ = p1
+    lat2, lon2, _ = p2
+    delta_lon = lon2 - lon1
+
+    lat1 = np.radians(lat1)
+    lat2 = np.radians(lat2)
+    delta_lon = np.radians(delta_lon)
+
+    x = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(delta_lon)
+    y = np.sin(delta_lon) * np.cos(lat1)
+    z = np.arctan2(y, x) % (2 * np.pi)  # Convert to range [0, 2pi]
+
+    return z
+
+
+def calculate_distance_between_points(p1, p2):
+    lat0, lon0 = p1
+    lat1, lon1 = p2
+
+    return gp.distance((lat0, lon0), (lat1, lon1)).m
+
+
+def calculate_distance_between_airports():
+    total_distance = calculate_distance_between_points(
+        config.DEPARTURE_AIRPORT, config.DESTINATION_AIRPORT
+    )
+
+    return total_distance
+
+
+def calculate_step_between_airports():
+    total_distance = calculate_distance_between_airports()
+    step = total_distance / config.NO_OF_POINTS
+    return step
 
 
 def get_nearest_value_from_list(value, list):
@@ -98,15 +141,13 @@ def get_consecutive_points(
     altitude_step=config.ALTITUDE_STEP,
 ):
     max_alt = altitude + max_altitude_var
-    min_alt = altitude
     max_alt = max(
         config.STARTING_ALTITUDE, min(max_alt, config.MAX_ALTITUDE)
     )  # Cap between 30000 and 40000
-    min_alt = max(config.STARTING_ALTITUDE, min_alt)  # Cap between 30000 and 40000
 
     points = []
-    current_altitude = min_alt
-    while current_altitude <= max_alt and current_altitude >= min_alt:
+    current_altitude = altitude
+    while current_altitude <= max_alt:
         if xi + 1 == len(grid[current_altitude]):
             return None
         next_layer_length = len(grid[current_altitude][xi + 1]) - 1
