@@ -35,15 +35,14 @@ class Ant:
         contrail_ef = self.contrail_grid.interpolate_contrail_grid(flight_path)
         return contrail_ef
 
-    def calculate_co2_ef(self, flight_path, flight_duration):
-        co2_ef_per_kg = 4.70e9
+    def calculate_co2_kg(self, flight_path, flight_duration):
         co2_kg = (
             sum(point["CO2"] for point in flight_path)
             * flight_duration
             * 3600
             / 1000  # convert g/s to kg
         )
-        return co2_kg * co2_ef_per_kg  # convert to ef
+        return co2_kg  # convert to ef
 
     def calculate_flight_duration(self, flight_path):
         return (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600
@@ -59,8 +58,8 @@ class Ant:
         flight_duration = self.calculate_flight_duration(flight_path)
         weighted_flight_duration = math.pow(flight_duration / 10, time_weight)
 
-        co2_ef = self.calculate_co2_ef(flight_path, flight_duration)
-        co2_penalty = math.pow(co2_ef / 1e16, co2_weight)
+        co2_kg = self.calculate_co2_kg(flight_path, flight_duration)
+        co2_penalty = math.pow(co2_kg / 1000000, co2_weight)
 
         total_penalty = co2_penalty + contrail_penalty + weighted_flight_duration
 
@@ -68,7 +67,7 @@ class Ant:
             "total": total_penalty,
             "contrail_ef": contrail_ef,
             "contrail": contrail_penalty,
-            "co2_ef": co2_ef,
+            "co2_ef": co2_kg,
             "co2": co2_penalty,
             "flight_duration": flight_duration,
             "time": weighted_flight_duration,
