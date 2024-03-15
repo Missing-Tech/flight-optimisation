@@ -25,6 +25,7 @@ class Ant:
 
     def run_ant(self, id):
         solution = self.construct_solution()
+        solution.run_performance_model()
         objectives = self.objective_function(solution.flight_path)
         solution.set_objective_value(objectives)
 
@@ -34,11 +35,15 @@ class Ant:
         contrail_ef = self.contrail_grid.interpolate_contrail_grid(flight_path)
         return contrail_ef
 
-    def calculate_co2_ef(self, flight_path):
-        fuel_burned = config.STARTING_WEIGHT - flight_path[-1]["aircraft_mass"]
-        co2_per_kg = 4.70e9
-        co2_penalty = fuel_burned * co2_per_kg
-        return co2_penalty
+    def calculate_co2_ef(self, flight_path, flight_duration):
+        co2_ef_per_kg = 4.70e9
+        co2_ef = (
+            sum(point["CO2"] for point in flight_path)
+            * flight_duration
+            * 3600
+            / 1000  # convert g/s to kg
+        )
+        return co2_ef * co2_ef_per_kg
 
     def calculate_flight_duration(self, flight_path):
         return (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600
@@ -48,17 +53,14 @@ class Ant:
         contrail_weight = config.CONTRAIL_WEIGHT
         time_weight = config.TIME_WEIGHT
 
-        co2_per_kg = 4.70e9
-        co2_ef = self.calculate_co2_ef(flight_path)
-        co2_penalty = math.pow(
-            co2_ef / (config.STARTING_WEIGHT * co2_per_kg / 10), co2_weight
-        )
-
         contrail_ef = self.calculate_contrail_ef(flight_path)
         contrail_penalty = math.pow(contrail_ef / 1e17, contrail_weight)
 
         flight_duration = self.calculate_flight_duration(flight_path)
         weighted_flight_duration = math.pow(flight_duration / 10, time_weight)
+
+        co2_ef = self.calculate_co2_ef(flight_path, flight_duration)
+        co2_penalty = math.pow(co2_ef / 1e16, co2_weight)
 
         total_penalty = co2_penalty + contrail_penalty + weighted_flight_duration
 

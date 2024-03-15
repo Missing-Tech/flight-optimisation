@@ -3,64 +3,16 @@ from geopy import distance as gp
 import pandas as pd
 import numpy as np
 import util
+from openap import FuelFlow, Emission
 
 
 class AircraftPerformanceModel:
     def __init__(self):
         pass
 
-    def calculate_flight_characteristics_for_next_point(self, flight_path, next_point):
-        previous_point = flight_path[-1]
-        previous_point["course"] = self.calculate_course_at_point(
-            previous_point, next_point
-        )
-        previous_point["climb_angle"] = self.calculate_climb_angle(
-            previous_point, next_point
-        )
-        previous_point["true_airspeed"] = self.calculate_true_air_speed(
-            previous_point["thrust"], previous_point["temperature"]
-        )
-        u = previous_point["u"]
-        v = previous_point["v"]
-        crabbing_angle = self.calculate_crabbing_angle(previous_point, u, v)
-        previous_point["heading"] = previous_point["course"] - crabbing_angle
-        previous_point["ground_speed"] = self.calculate_ground_speed(
-            previous_point, u, v
-        )
-
-        time_elapsed = self.calculate_time_at_point(next_point, previous_point)
-        next_point["time"] = previous_point["time"] + time_elapsed.round("s")
-        next_point["fuel_flow"] = config.NOMINAL_FUEL_FLOW
-        next_point["engine_efficiency"] = config.NOMINAL_ENGINE_EFFICIENCY
-        next_point["aircraft_mass"] = previous_point["aircraft_mass"] = (
-            previous_point["aircraft_mass"]
-            - next_point["fuel_flow"] * time_elapsed.total_seconds()
-        )
-
-        flight_path.append(next_point)
-        return flight_path
-
     def calculate_flight_characteristics(self, flight_path):
         for i in range(len(flight_path)):
             point = flight_path[i]
-
-            if i == 0:
-                point["aircraft_mass"] = config.STARTING_WEIGHT
-                point["time"] = config.DEPARTURE_DATE
-            else:
-                previous_point = flight_path[i - 1]
-                time_elapsed = self.calculate_time_at_point(point, previous_point)
-                point["time"] = previous_point["time"] + time_elapsed.round("s")
-
-                point["fuel_flow"] = config.NOMINAL_FUEL_FLOW
-                point["engine_efficiency"] = config.NOMINAL_ENGINE_EFFICIENCY
-                point["aircraft_mass"] = (
-                    previous_point["aircraft_mass"]
-                    - point["fuel_flow"] * time_elapsed.total_seconds()
-                )
-            temperature = point["temperature"]
-            u = point["u"]
-            v = point["v"]
 
             if i != len(flight_path) - 1:
                 next_point = flight_path[i + 1]
@@ -68,8 +20,12 @@ class AircraftPerformanceModel:
                 point["climb_angle"] = self.calculate_climb_angle(point, next_point)
             else:
                 previous_point = flight_path[i - 1]
-                point["course"] = previous_point["course"]
+                point["course"] = 0
                 point["climb_angle"] = 0
+
+            temperature = point["temperature"]
+            u = point["u"]
+            v = point["v"]
 
             point["true_airspeed"] = self.calculate_true_air_speed(
                 point["thrust"], temperature
@@ -77,6 +33,29 @@ class AircraftPerformanceModel:
             crabbing_angle = self.calculate_crabbing_angle(point, u, v)
             point["heading"] = point["course"] - crabbing_angle
             point["ground_speed"] = self.calculate_ground_speed(point, u, v)
+
+            if i == 0:
+                point["aircraft_mass"] = config.STARTING_WEIGHT
+                fuel_flow = self.calculate_fuel_flow(point, point["aircraft_mass"])
+                point["fuel_flow"] = fuel_flow
+                point["CO2"] = self.calculate_emissions(fuel_flow)
+                point["time"] = config.DEPARTURE_DATE
+            else:
+                previous_point = flight_path[i - 1]
+                time_elapsed = self.calculate_time_at_point(point, previous_point)
+                point["time"] = previous_point["time"] + time_elapsed.round("s")
+
+                fuel_flow = self.calculate_fuel_flow(
+                    point, previous_point["aircraft_mass"]
+                )
+                point["fuel_flow"] = fuel_flow
+                point["CO2"] = self.calculate_emissions(fuel_flow)
+                point["engine_efficiency"] = config.NOMINAL_ENGINE_EFFICIENCY
+                point["aircraft_mass"] = (
+                    previous_point["aircraft_mass"]
+                    - point["fuel_flow"] * time_elapsed.total_seconds()
+                )
+
         return flight_path
 
     def calculate_time_at_point(self, point, previous_point):
@@ -130,3 +109,18 @@ class AircraftPerformanceModel:
         )
         ground_speed = first_component + second_component
         return ground_speed
+
+    def calculate_emissions(self, FF):
+        emission = Emission(ac="B77W", eng="GE90-115B")
+        return emission.co2(FF)
+
+    def calculate_fuel_flow(self, point, mass):
+        fuelflow = FuelFlow(ac="B77W", eng="GE90-115B")
+
+        FF = fuelflow.enroute(
+            mass=mass,
+            tas=point["true_airspeed"],
+            alt=point["altitude_ft"],
+            path_angle=point["heading"],
+        )
+        return FF
