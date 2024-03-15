@@ -37,13 +37,13 @@ class Ant:
 
     def calculate_co2_ef(self, flight_path, flight_duration):
         co2_ef_per_kg = 4.70e9
-        co2_ef = (
+        co2_kg = (
             sum(point["CO2"] for point in flight_path)
             * flight_duration
             * 3600
             / 1000  # convert g/s to kg
         )
-        return co2_ef * co2_ef_per_kg
+        return co2_kg * co2_ef_per_kg  # convert to ef
 
     def calculate_flight_duration(self, flight_path):
         return (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600
