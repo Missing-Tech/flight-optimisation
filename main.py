@@ -31,6 +31,7 @@ if __name__ == "__main__":
     ant_colony = ACO(routing_graph, altitude_grid, contrail_grid, performance_model)
 
     real_flight = RealFlight("jan-31.csv", weather_grid, performance_model)
+    real_flight.run_performance_model()
 
     _, ax_blank = display.create_blank_ax()
     fig_map, ax_map = display.create_map_ax()

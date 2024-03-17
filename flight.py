@@ -1,5 +1,6 @@
 import util
 import config
+import pandas as pd
 
 
 class Flight:
@@ -34,3 +35,10 @@ class Flight:
 
     def set_objective_value(self, objective_values):
         self.objectives = objective_values
+
+
+class RealFlight(Flight):
+    def __init__(self, flight_name, weather_grid, performance_model):
+        flight_path = pd.read_csv(f"data/{flight_name}")
+        flight_path = flight_path[flight_path["AltMSL"] > 30000]
+        flight_path = util.convert_real_flight_path(flight_path, weather_grid)
