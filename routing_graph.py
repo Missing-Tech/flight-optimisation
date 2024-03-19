@@ -37,17 +37,19 @@ class RoutingGraph:
     def calculate_routing_graph(self):
         graph = nx.DiGraph()
 
-        for altitude in self.altitude_grid:
-            for step in self.altitude_grid[altitude]:
+        altitude_grid = self.altitude_grid.get_altitude_grid()
+
+        for altitude in altitude_grid:
+            for step in altitude_grid[altitude]:
                 for point in step:
                     if point is None:
                         continue
 
-                    xi = self.altitude_grid[altitude].index(step)
+                    xi = altitude_grid[altitude].index(step)
                     yi = step.index(point)
 
                     consecutive_points = util.get_consecutive_points(
-                        xi, yi, altitude, self.altitude_grid
+                        xi, yi, altitude, altitude_grid
                     )
 
                     point_values = self.calculate_point_values(point, altitude)
@@ -66,7 +68,7 @@ class RoutingGraph:
                         )
                         next_contrails_at_point = (
                             self.contrail_grid.interpolate_contrail_point(
-                                self.contrail_grid, (*next_point, next_point[2])
+                                (*next_point, next_point[2])
                             )
                         )
 

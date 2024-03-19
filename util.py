@@ -76,29 +76,21 @@ def get_nearest_value_from_list(value, list):
     return min(list, key=lambda x: abs(x - value))
 
 
-def convert_indices_to_points(
-    index_path, altitude_grid, routing_graph, thrust=config.NOMINAL_THRUST
-):
+def convert_indices_to_points(index_path, altitude_grid, thrust=config.NOMINAL_THRUST):
     path = []
     for point in index_path:
-        path_point = convert_index_to_point(point, altitude_grid, routing_graph, thrust)
+        path_point = convert_index_to_point(point, altitude_grid, thrust)
         path.append(path_point)
 
     return path
 
 
-def convert_index_to_point(
-    index, altitude_grid, routing_graph, thrust=config.NOMINAL_THRUST
-):
+def convert_index_to_point(index, altitude_grid, thrust=config.NOMINAL_THRUST):
     altitude_point = altitude_grid[index[2]][index[0]][index[1]]
-    routing_point = routing_graph.nodes[index]
     path_point = {
         "latitude": altitude_point[0],
         "longitude": altitude_point[1],
         "altitude_ft": index[2],
-        "temperature": routing_point["temperature"],
-        "u": routing_point["u"],
-        "v": routing_point["v"],
         "thrust": thrust,
         "level": convert_altitude_to_pressure_bounded(index[2]),
     }

@@ -215,6 +215,7 @@ class ACO:
         objectives_df = pd.DataFrame.from_dict([x for x in objectives_list])
         pareto_df = pd.DataFrame.from_dict(pareto_df)
         best_solution = random.choice(pareto_set)
+        print(best_solution.objectives)
         return (
             solutions,
             best_solution,

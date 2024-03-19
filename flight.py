@@ -15,7 +15,8 @@ class Flight:
     def set_departure(self, departure):
         self.indices.append(departure)
         point = util.convert_index_to_point(
-            departure, self.altitude_grid, self.routing_graph
+            departure,
+            self.altitude_grid,
         )
         point["time"] = config.DEPARTURE_DATE
         point["aircraft_mass"] = config.STARTING_WEIGHT
@@ -29,7 +30,8 @@ class Flight:
     def add_point_from_index(self, index):
         self.indices.append(index)
         point = util.convert_index_to_point(
-            index, self.altitude_grid, self.routing_graph
+            index,
+            self.altitude_grid,
         )
         self.flight_path.append(point)
 
