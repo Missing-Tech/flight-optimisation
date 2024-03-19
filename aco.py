@@ -12,7 +12,6 @@ import config
 
 from flight import Flight
 
-objective_list = ["contrail", "co2", "time", "total"]
 objective_functions = ["contrail", "co2", "time"]
 
 
@@ -53,30 +52,26 @@ class Ant:
         time_weight = config.TIME_WEIGHT
 
         contrail_ef = self.calculate_contrail_ef(flight_path)
-        contrail_penalty = math.pow(contrail_ef / 1e17, contrail_weight)
+        contrail_penalty = contrail_ef * contrail_weight
 
         flight_duration = self.calculate_flight_duration(flight_path)
-        weighted_flight_duration = math.pow(flight_duration / 10, time_weight)
+        weighted_flight_duration = flight_duration * time_weight
 
         co2_kg = self.calculate_co2_kg(flight_path, flight_duration)
-        co2_penalty = math.pow(co2_kg / 1000000, co2_weight)
-
-        total_penalty = co2_penalty + contrail_penalty + weighted_flight_duration
+        co2_penalty = co2_kg * co2_weight
 
         return {
-            "total": total_penalty,
-            "contrail_ef": contrail_ef,
             "contrail": contrail_penalty,
-            "co2_ef": co2_kg,
             "co2": co2_penalty,
-            "flight_duration": flight_duration,
             "time": weighted_flight_duration,
-            "arrival_time": flight_path[-1]["time"],
         }
 
     def construct_solution(self):
         solution = Flight(
-            self.altitude_grid, self.routing_graph, self.performance_model
+            self.altitude_grid,
+            self.routing_graph,
+            self.performance_model,
+            flight_path=[],
         )
         solution.set_departure(((0, config.GRID_WIDTH, config.STARTING_ALTITUDE)))
 
@@ -138,12 +133,12 @@ class ACO:
         self.performance_model = pm
 
     def run_aco_colony(self, iterations, no_of_ants):
-        best_solution = None
         solutions = []
         objectives_list = []
-        best_objective = dict.fromkeys(objective_list, np.inf)
+        best_objective = dict.fromkeys(objective_functions, np.inf)
         best_indexes = {}
         pareto_set = []
+
         ants = [
             Ant(
                 self.routing_graph,
@@ -153,7 +148,6 @@ class ACO:
             )
             for _ in range(config.NO_OF_ANTS)
         ]
-
         before2 = time.perf_counter()
         with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
             for i in range(iterations):
@@ -164,8 +158,8 @@ class ACO:
                     executor.submit(ant.run_ant, i) for i, ant in enumerate(ants)
                 ]
 
-                iteration_best_solution = dict.fromkeys(objective_list, None)
-                iteration_best_objective = dict.fromkeys(objective_list, np.inf)
+                iteration_best_solution = dict.fromkeys(objective_functions, None)
+                iteration_best_objective = dict.fromkeys(objective_functions, np.inf)
 
                 # Get the results
                 for future in as_completed(futures):
@@ -176,21 +170,21 @@ class ACO:
                     for existing_solution in pareto_set:
                         if all(
                             solution.objectives[objective]
-                            >= existing_solution[0][objective]
+                            >= existing_solution.objectives[objective]
                             for objective in objective_functions
                         ):
                             is_dominated = True
                             break
                         elif all(
                             solution.objectives[objective]
-                            <= existing_solution[0][objective]
+                            <= existing_solution.objectives[objective]
                             for objective in objective_functions
                         ):
                             pareto_set.remove(existing_solution)
                     if not is_dominated:
-                        pareto_set.append((solution.objectives, solution.flight_path))
+                        pareto_set.append(solution)
 
-                    for objective in objective_list:
+                    for objective in objective_functions:
                         if (
                             solution.objectives[objective]
                             < iteration_best_objective[objective]
@@ -202,9 +196,6 @@ class ACO:
 
                         if solution.objectives[objective] < best_objective[objective]:
                             best_objective[objective] = solution.objectives[objective]
-                            if objective == "total":
-                                best_solution = solution
-                                # best_indexes[i * ants.index(ant)] = solution.flight_path
 
                 objectives_list.append(iteration_best_objective)
 
@@ -218,11 +209,12 @@ class ACO:
         print(f"total time: {after2-before2}")
 
         # get only the flight paths from the pareto set
-        pareto_paths = [x[1] for x in pareto_set]
-        pareto_df = [x[0] for x in pareto_set]
+        pareto_paths = [x.flight_path for x in pareto_set]
+        pareto_df = [x.objectives for x in pareto_set]
 
-        objectives_df = pd.DataFrame.from_dict([x.objectives for x in solutions])
+        objectives_df = pd.DataFrame.from_dict([x for x in objectives_list])
         pareto_df = pd.DataFrame.from_dict(pareto_df)
+        best_solution = random.choice(pareto_set)
         return (
             solutions,
             best_solution,
@@ -242,8 +234,8 @@ class ACO:
             for u, v in solution_edges:
                 delta = 0
                 edge = self.routing_graph[u][v]
-                delta = 1 / (
-                    1 + iteration_best_objective[objective] - best_objective[objective]
+                delta = 1 / max(
+                    1, iteration_best_objective[objective] - best_objective[objective]
                 )
 
                 new_pheromone = (1 - evaporation_rate) * (

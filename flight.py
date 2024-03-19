@@ -4,11 +4,11 @@ import pandas as pd
 
 
 class Flight:
-    def __init__(self, altitude_grid, routing_graph, performance_model):
+    def __init__(self, altitude_grid, routing_graph, performance_model, flight_path=[]):
         self.altitude_grid = altitude_grid
         self.routing_graph = routing_graph
         self.performance_model = performance_model
-        self.flight_path = []
+        self.flight_path = flight_path
         self.indices = []
         self.objectives = None
 
@@ -38,7 +38,12 @@ class Flight:
 
 
 class RealFlight(Flight):
-    def __init__(self, flight_name, weather_grid, performance_model):
+    def __init__(
+        self, flight_name, altitude_grid, routing_graph, weather_grid, performance_model
+    ):
         flight_path = pd.read_csv(f"data/{flight_name}")
         flight_path = flight_path[flight_path["AltMSL"] > 30000]
         flight_path = util.convert_real_flight_path(flight_path, weather_grid)
+        super().__init__(
+            altitude_grid, routing_graph, performance_model, flight_path=flight_path
+        )

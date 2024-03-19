@@ -77,27 +77,22 @@ def create_3d_ax(fig=None):
 def display_objective_over_iterations(objectives, ax=None):
     ax2 = ax.twinx()
     ax3 = ax.twinx()
-    ax4 = ax.twinx()
     p1 = ax.plot(objectives["co2"], label="CO2", color="r")
     p2 = ax2.plot(objectives["contrail"], label="Contrail", color="b")
     p3 = ax3.plot(objectives["time"], label="Time", color="g")
-    p4 = ax4.plot(objectives["total"], label="Total", color="k")
 
     ax.set_ylabel("CO2 EF")
     ax2.set_ylabel("Contrail EF")
     ax3.set_ylabel("Time (hours)")
-    ax4.set_ylabel("Total Objective")
 
     ax.yaxis.label.set_color(p1[0].get_color())
     ax2.yaxis.label.set_color(p2[0].get_color())
     ax3.yaxis.label.set_color(p3[0].get_color())
-    ax4.yaxis.label.set_color(p4[0].get_color())
 
     ax.set_xlabel("Iteration")
     ax.set_title("Objective over iterations")
-    ax.legend(handles=p1 + p2 + p3 + p4, loc="best")
+    ax.legend(handles=p1 + p2 + p3, loc="best")
     ax3.spines["right"].set_position(("outward", 60))
-    ax4.spines["left"].set_position(("axes", 60))
 
 
 def display_flight_ef(flight_path_cocip, ax=None):

@@ -7,8 +7,8 @@ from openap import FuelFlow, Emission
 
 
 class AircraftPerformanceModel:
-    def __init__(self):
-        pass
+    def __init__(self, weather_grid):
+        self.weather_grid = weather_grid
 
     def calculate_flight_characteristics(self, flight_path):
         for i in range(len(flight_path)):
@@ -26,6 +26,7 @@ class AircraftPerformanceModel:
             temperature = point["temperature"]
             u = point["u"]
             v = point["v"]
+            # weather_at_point = self.weather_grid.get_weather_data_at_point(point)
 
             point["true_airspeed"] = self.calculate_true_air_speed(
                 point["thrust"], temperature
