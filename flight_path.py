@@ -23,10 +23,16 @@ class AircraftPerformanceModel:
                 point["course"] = 0
                 point["climb_angle"] = 0
 
-            temperature = point["temperature"]
-            u = point["u"]
-            v = point["v"]
-            # weather_at_point = self.weather_grid.get_weather_data_at_point(point)
+            if i == 0:
+                point["time"] = config.DEPARTURE_DATE
+            else:
+                previous_point = flight_path[i - 1]
+                time_elapsed = self.calculate_time_at_point(point, previous_point)
+                point["time"] = previous_point["time"] + time_elapsed.round("s")
+
+            weather_at_point = self.weather_grid.get_weather_data_at_point(point)
+            temperature = self.weather_grid.get_temperature_at_point(weather_at_point)
+            u, v = self.weather_grid.get_wind_vector_at_point(weather_at_point)
 
             point["true_airspeed"] = self.calculate_true_air_speed(
                 point["thrust"], temperature
@@ -40,11 +46,8 @@ class AircraftPerformanceModel:
                 fuel_flow = self.calculate_fuel_flow(point, point["aircraft_mass"])
                 point["fuel_flow"] = fuel_flow
                 point["CO2"] = self.calculate_emissions(fuel_flow)
-                point["time"] = config.DEPARTURE_DATE
             else:
                 previous_point = flight_path[i - 1]
-                time_elapsed = self.calculate_time_at_point(point, previous_point)
-                point["time"] = previous_point["time"] + time_elapsed.round("s")
 
                 fuel_flow = self.calculate_fuel_flow(
                     point, previous_point["aircraft_mass"]

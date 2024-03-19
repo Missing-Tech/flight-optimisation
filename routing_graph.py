@@ -32,16 +32,6 @@ class RoutingGraph:
             * config.NOMINAL_FUEL_FLOW,
         }
 
-        weather_at_point = self.weather_grid.get_weather_data_at_point(point_values)
-
-        temperature = weather_at_point["air_temperature"].values.item()
-        u = weather_at_point["eastward_wind"].values.item()
-        v = weather_at_point["northward_wind"].values.item()
-
-        point_values["temperature"] = temperature
-        point_values["u"] = u
-        point_values["v"] = v
-
         return point_values
 
     def calculate_routing_graph(self):
@@ -92,9 +82,6 @@ class RoutingGraph:
                             contrail_heuristic=contrails_at_point,
                             co2_heuristic=point_values["fuel_burned"],
                             time_heuristic=point_values["delta_time"],
-                            temperature=point_values["temperature"],
-                            u=point_values["u"],
-                            v=point_values["v"],
                         )
                         next_lat, next_lon, _ = next_point
                         graph.add_node(
@@ -102,9 +89,6 @@ class RoutingGraph:
                             contrail_heuristic=next_contrails_at_point,
                             co2_heuristic=next_point_values["fuel_burned"],
                             time_heuristic=next_point_values["delta_time"],
-                            temperature=next_point_values["temperature"],
-                            u=next_point_values["u"],
-                            v=next_point_values["v"],
                         )
 
         return graph
