@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # )
 
     for ant_path in pareto_set:
-        display.display_flight_path(ant_path, ax_side_1)
+        display.display_flight_path(ant_path.flight_path, ax_side_1)
 
     # display.display_flight_altitude(best_path, ax_blank)
     # display.display_flight_altitude(real_flight_path, ax_blank, "r")

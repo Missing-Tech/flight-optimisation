@@ -12,6 +12,7 @@ class WeatherGrid:
         self.flight_path = altitude_grid
         self.met = self._get_met()
         self.rad = self._get_rad()
+        self.altitude_grid = altitude_grid
         time_bounds = (
             self.config.DEPARTURE_DATE,
             self.config.DEPARTURE_DATE + self.config.WEATHER_BOUND,
@@ -25,8 +26,8 @@ class WeatherGrid:
         )
         self.era5sl = ERA5(time=time_bounds, variables=Cocip.rad_variables)
 
-    def get_weather_grid(self, grid):
-        self.weather_grid = self._init_weather_data_along_grid(grid)
+    def get_weather_grid(self):
+        self.weather_grid = self._init_weather_data_along_grid(self.altitude_grid)
         return self.weather_grid
 
     def _get_met(self):
@@ -38,6 +39,8 @@ class WeatherGrid:
             met = xr.open_dataset("data/met.nc")
             met = MetDataset(met)
 
+        return met
+
     def _get_rad(self):
         if not os.path.exists("data/rad.nc"):
             rad = self.era5sl.open_metdataset()
@@ -45,6 +48,8 @@ class WeatherGrid:
         else:
             rad = xr.open_dataset("data/rad.nc")
             rad = MetDataset(rad)
+
+        return rad
 
     def _init_weather_data_along_grid(self, grid):
         if not os.path.exists("data/weather_data.nc"):

@@ -1,5 +1,6 @@
 import random
 import math
+from .flight import Flight
 
 
 class Ant:
@@ -22,20 +23,17 @@ class Ant:
     def objective_function(self, flight_path):
         objectives = {}
         for objective in self.objectives:
-            objective = objective(self.config, self.contrail_grid)
             # Get the string representation of the class name
             objective_name = str(objective)
 
             # Call the 'calculate_objectives' method of the object
-            objective_value = objective.calculate_objectives()
+            objective_value = objective.calculate_objective(flight_path)
 
             # Store the results in the dictionary
             objectives[objective_name] = objective_value
         return objectives
 
     def construct_solution(self):
-        from .aco import Flight
-
         solution = Flight(
             self.altitude_grid,
             self.routing_graph,
@@ -51,7 +49,7 @@ class Ant:
         while neighbours:
             probabilities = []
             choice = None
-            random_objective = str(random.choice(self.objectives))
+            random_objective = random.choice(self.objectives)
             for n in neighbours:
                 probability = self.calculate_probability_at_neighbour(
                     n,

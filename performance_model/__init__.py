@@ -17,6 +17,7 @@ class PerformanceModel:
     def get_weather_grid(self):
         if hasattr(self, "weather_grid") is False:
             self.weather_grid = WeatherGrid(self.altitude_grid, self.config)
+            self.weather_grid.get_weather_grid()
         return self.weather_grid
 
     def get_cocip_manager(self):

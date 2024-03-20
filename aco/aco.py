@@ -5,6 +5,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import networkx as nx
 import numpy as np
 
+from .ant import Ant
+
 
 class ACO:
     def __init__(self, rg, ag, cg, pm, config):
@@ -13,31 +15,33 @@ class ACO:
         self.contrail_grid = cg
         self.performance_model = pm
         self.config = config
-        self.objective_functions = config.OBJECTIVES
+        self.objective_functions = [
+            objective(self.config, self.contrail_grid)
+            for objective in config.OBJECTIVES
+        ]
+        self.objectives = [str(objective) for objective in self.objective_functions]
         self.objectives_over_time = []
         self.solutions = []
         self.pareto_set = []
 
-    def check_pareto_dominance(self, solution, pareto_set):
-        for existing_solution in pareto_set:
+    def check_pareto_dominance(self, solution):
+        for existing_solution in self.pareto_set:
             if all(
                 solution.objectives[objective]
                 >= existing_solution.objectives[objective]
-                for objective in self.objective_functions
+                for objective in self.objectives
             ):
-                return False
+                return True
             elif all(
                 solution.objectives[objective]
                 <= existing_solution.objectives[objective]
-                for objective in self.objective_functions
+                for objective in self.objectives
             ):
                 self.pareto_set.remove(existing_solution)
-        return True
+        return False
 
     def run_aco_colony(self):
-        best_objectives = dict.fromkeys(self.objective_functions, np.inf)
-
-        from .aco import Ant
+        best_objectives = dict.fromkeys(self.objectives, np.inf)
 
         ants = [
             Ant(
@@ -60,23 +64,20 @@ class ACO:
                     executor.submit(ant.run_ant, i) for i, ant in enumerate(ants)
                 ]
 
-                iteration_best_solution = dict.fromkeys(self.objective_functions, None)
-                iteration_best_objectives = dict.fromkeys(
-                    self.objective_functions, np.inf
-                )
+                iteration_best_solution = dict.fromkeys(self.objectives, None)
+                iteration_best_objectives = dict.fromkeys(self.objectives, np.inf)
 
                 # Get the results
                 for future in as_completed(futures):
                     solution = future.result()
 
                     self.solutions.append(solution)
-                    is_dominated = self.check_pareto_dominance(
-                        solution, self.pareto_set
-                    )
+                    is_dominated = self.check_pareto_dominance(solution)
                     if not is_dominated:
                         self.pareto_set.append(solution)
 
                     for objective in self.objective_functions:
+                        objective = str(objective)
                         if (
                             solution.objectives[objective]
                             < iteration_best_objectives[objective]
@@ -107,6 +108,7 @@ class ACO:
         tau_max = self.config.TAU_MAX
 
         for objective in self.objective_functions:
+            objective = str(objective)
             solution_edges = list(nx.utils.pairwise(solution[objective].indices))
             for u, v in solution_edges:
                 delta = 0
