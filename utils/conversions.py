@@ -21,4 +21,4 @@ class Conversions:
         self, altitude, max_pressure, min_pressure
     ):
         pressure = self.calculate_pressure_from_altitude_ft(altitude)
-        return max(min_pressure, min(pressure, max_pressure))
+        return max(max_pressure, min(pressure, min_pressure))
