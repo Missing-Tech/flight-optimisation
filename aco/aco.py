@@ -197,8 +197,7 @@ class ACO:
                         if solution.objectives[objective] < best_objective[objective]:
                             best_objective[objective] = solution.objectives[objective]
 
-                objectives_list.append(iteration_best_objective)
-
+                objectives_list.append(best_objective.copy())
                 self.routing_graph = self.pheromone_update(
                     iteration_best_solution, iteration_best_objective, best_objective
                 )
@@ -215,7 +214,6 @@ class ACO:
         objectives_df = pd.DataFrame.from_dict([x for x in objectives_list])
         pareto_df = pd.DataFrame.from_dict(pareto_df)
         best_solution = random.choice(pareto_set)
-        print(best_solution.objectives)
         return (
             solutions,
             best_solution,

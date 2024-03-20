@@ -1,37 +1,36 @@
 import display
-import geodesic_path as gp
 import config
 import warnings
-import ecmwf
+from performance_model import PerformanceModel
 from dotenv import load_dotenv
 
-from altitude_grid import AltitudeGrid
-from routing_grid import RoutingGrid
-from routing_graph import RoutingGraph
-from aco import ACO
-from flight import RealFlight
-from flight_path import AircraftPerformanceModel
-from contrails import CocipManager, ContrailGridManager
+from routing_graph import RoutingGraphManager
+from aco import ACO, RealFlight
 
 if __name__ == "__main__":
     load_dotenv()
     warnings.filterwarnings("ignore")
 
-    routing_grid = RoutingGrid()
-    altitude_grid = AltitudeGrid(routing_grid)
-    contrail_manager = ContrailGridManager(altitude_grid)
-    contrail_grid = contrail_manager.contrail_grid
-    cocip_manager = CocipManager()
-    weather_grid = ecmwf.WeatherGrid(altitude_grid)
-    performance_model = AircraftPerformanceModel(weather_grid)
-    routing_graph = RoutingGraph(
-        altitude_grid, contrail_manager.contrail_grid, weather_grid
+    routing_graph_manager = RoutingGraphManager(
+        config.DESTINATION_AIRPORT,
+        config.DEPARTURE_AIRPORT,
     )
+    geodesic_path = routing_graph_manager.get_geodesic_path()
+    routing_grid = routing_graph_manager.get_routing_grid()
+    altitude_grid = routing_graph_manager.get_altitude_grid()
 
-    ant_colony = ACO(routing_graph, altitude_grid, contrail_grid, performance_model)
+    performance_model = PerformanceModel()
+    contrail_grid = performance_model.get_contrail_grid(altitude_grid)
+    cocip_manager = performance_model.get_cocip_manager()
+    weather_grid = performance_model.get_weather_grid(altitude_grid)
+    apm = performance_model.get_apm()
+
+    routing_graph = routing_graph_manager.get_routing_graph(contrail_grid)
+
+    ant_colony = ACO(routing_graph, altitude_grid, contrail_grid, apm)
 
     real_flight = RealFlight(
-        "jan-31.csv", altitude_grid, routing_graph, weather_grid, performance_model
+        "jan-31.csv", altitude_grid, routing_graph, weather_grid, apm
     )
     real_flight.run_performance_model()
 
@@ -75,10 +74,9 @@ if __name__ == "__main__":
     # display.display_flight_altitude(real_flight_path, ax_blank, "r")
 
     # display.display_flight_path(real_flight_path, ax_map)
-    geodesic_path = gp.get_geodesic_path()
     # display.display_geodesic_path(geodesic_path, ax=ax_map)
-    display.display_geodesic_path(geodesic_path, ax=ax_side_2)
     display.display_geodesic_path(geodesic_path, ax=ax_side_1)
+    display.display_geodesic_path(geodesic_path, ax=ax_side_2)
     # display.display_flight_path_3d(real_flight_path, ax=ax_3d)
     # ani_3d = display.create_3d_flight_animation(
     #     aco_path, contrail_grid, contrail_polys, fig=fig_3d, ax=ax_3d

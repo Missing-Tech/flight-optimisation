@@ -8,15 +8,15 @@ from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 import os
 import tempfile
 import json
-import config
 from pycontrails.models.ps_model import PSGrid
+import config
 import util
 
 
 class CocipManager:
-    def __init__(self):
-        self.met = ecmwf.met
-        self.rad = ecmwf.rad
+    def __init__(self, weather_grid):
+        self.met = weather_grid.met
+        self.rad = weather_grid.rad
 
     def calculate_ef_from_flight_path(self, flight_path):
         flight_path_df = pd.DataFrame(flight_path)
@@ -66,8 +66,8 @@ class PSGridManager:
 
 
 class ContrailGrid:
-    def __init__(self, contrail_grid):
-        self.contrail_grid = contrail_grid
+    def __init__(self, grid_manager):
+        self.contrail_grid = grid_manager.contrail_grid
 
     def interpolate_contrail_point(
         self,

@@ -1,4 +1,3 @@
-import config
 from geopy import distance as gp
 import pandas as pd
 import numpy as np
@@ -7,8 +6,9 @@ from openap import FuelFlow, Emission
 
 
 class AircraftPerformanceModel:
-    def __init__(self, weather_grid):
+    def __init__(self, weather_grid, config):
         self.weather_grid = weather_grid
+        self.config = config
 
     def calculate_flight_characteristics(self, flight_path):
         for i in range(len(flight_path)):
@@ -24,7 +24,7 @@ class AircraftPerformanceModel:
                 point["climb_angle"] = 0
 
             if i == 0:
-                point["time"] = config.DEPARTURE_DATE
+                point["time"] = self.config.DEPARTURE_DATE
             else:
                 previous_point = flight_path[i - 1]
                 time_elapsed = self.calculate_time_at_point(point, previous_point)
@@ -42,7 +42,7 @@ class AircraftPerformanceModel:
             point["ground_speed"] = self.calculate_ground_speed(point, u, v)
 
             if i == 0:
-                point["aircraft_mass"] = config.STARTING_WEIGHT
+                point["aircraft_mass"] = self.config.STARTING_WEIGHT
                 fuel_flow = self.calculate_fuel_flow(point, point["aircraft_mass"])
                 point["fuel_flow"] = fuel_flow
                 point["CO2"] = self.calculate_emissions(fuel_flow)
@@ -54,7 +54,7 @@ class AircraftPerformanceModel:
                 )
                 point["fuel_flow"] = fuel_flow
                 point["CO2"] = self.calculate_emissions(fuel_flow)
-                point["engine_efficiency"] = config.NOMINAL_ENGINE_EFFICIENCY
+                point["engine_efficiency"] = self.config.NOMINAL_ENGINE_EFFICIENCY
                 point["aircraft_mass"] = (
                     previous_point["aircraft_mass"]
                     - point["fuel_flow"] * time_elapsed.total_seconds()

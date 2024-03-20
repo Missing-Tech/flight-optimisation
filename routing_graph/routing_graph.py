@@ -6,10 +6,9 @@ import os
 
 
 class RoutingGraph:
-    def __init__(self, altitude_grid, contrail_grid, weather_grid):
+    def __init__(self, altitude_grid, contrail_grid):
         self.altitude_grid = altitude_grid
         self.contrail_grid = contrail_grid
-        self.weather_grid = weather_grid
 
     def calculate_point_values(self, point, altitude):
         distance_from_departure = util.calculate_distance_between_points(
