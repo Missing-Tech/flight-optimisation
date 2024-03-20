@@ -22,7 +22,7 @@ if __name__ == "__main__":
     contrail_manager = ContrailGridManager(altitude_grid)
     contrail_grid = contrail_manager.contrail_grid
     cocip_manager = CocipManager()
-    weather_grid = ecmwf.MetAltitudeGrid(altitude_grid)
+    weather_grid = ecmwf.WeatherGrid(altitude_grid)
     performance_model = AircraftPerformanceModel(weather_grid)
     routing_graph = RoutingGraph(
         altitude_grid, contrail_manager.contrail_grid, weather_grid

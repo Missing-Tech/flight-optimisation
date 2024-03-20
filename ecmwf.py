@@ -37,7 +37,7 @@ else:
     rad = MetDataset(rad)
 
 
-class MetAltitudeGrid:
+class WeatherGrid:
     def __init__(self, altitude_grid):
         self.flight_path = altitude_grid
         self.weather_data = self.init_weather_data_along_grid(altitude_grid)
