@@ -8,8 +8,8 @@ import numpy as np
 
 class ACO:
     def __init__(self, rg, ag, cg, pm, config):
-        self.routing_graph = rg.get_routing_graph()
-        self.altitude_grid = ag.get_altitude_grid()
+        self.routing_graph = rg
+        self.altitude_grid = ag
         self.contrail_grid = cg
         self.performance_model = pm
         self.config = config
@@ -34,7 +34,7 @@ class ACO:
                 self.pareto_set.remove(existing_solution)
         return True
 
-    def run_aco_colony(self, iterations, no_of_ants):
+    def run_aco_colony(self):
         best_objectives = dict.fromkeys(self.objective_functions, np.inf)
 
         from .aco import Ant
@@ -52,7 +52,7 @@ class ACO:
         ]
         before2 = time.perf_counter()
         with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
-            for i in range(iterations):
+            for i in range(self.config.NO_OF_ITERATIONS):
                 before = time.perf_counter()
 
                 # Run the ants

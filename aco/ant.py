@@ -21,12 +21,13 @@ class Ant:
 
     def objective_function(self, flight_path):
         objectives = {}
-        for obj in self.objectives:
+        for objective in self.objectives:
+            objective = objective(self.config, self.contrail_grid)
             # Get the string representation of the class name
-            objective_name = str(obj)
+            objective_name = str(objective)
 
             # Call the 'calculate_objectives' method of the object
-            objective_value = obj.calculate_objectives()
+            objective_value = objective.calculate_objectives()
 
             # Store the results in the dictionary
             objectives[objective_name] = objective_value
@@ -39,7 +40,8 @@ class Ant:
             self.altitude_grid,
             self.routing_graph,
             self.performance_model,
-            flight_path=[],
+            self.config,
+            [],
         )
         solution.set_departure(
             ((0, self.config.GRID_WIDTH, self.config.STARTING_ALTITUDE))

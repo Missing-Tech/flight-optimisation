@@ -1,7 +1,8 @@
 class Objective:
-    def __init__(self, weight):
-        self.weight = weight
+    def __init__(self, config, contrail_grid):
+        self.weight = 1
         self.name = NotImplemented
+        self.contrail_grid = contrail_grid
 
     def _run_objective_function(self, flight_path):
         return NotImplemented
@@ -14,10 +15,10 @@ class Objective:
 
 
 class ContrailObjective(Objective):
-    def __init__(self, contrail_grid, weight):
-        super().__init__(weight)
-        self.contrail_grid = contrail_grid
+    def __init__(self, config, contrail_grid):
+        super().__init__(config, contrail_grid)
         self.name = "contrail"
+        self.weight = config.CONTRAIL_WEIGHT
 
     def _run_objective_function(self, flight_path):
         contrail_ef = self.contrail_grid.interpolate_contrail_grid(flight_path)
@@ -25,9 +26,10 @@ class ContrailObjective(Objective):
 
 
 class CO2Objective(Objective):
-    def __init__(self, weight):
-        super().__init__(weight)
+    def __init__(self, config, contrail_grid):
+        super().__init__(config, contrail_grid)
         self.name = "co2"
+        self.weight = config.CO2_WEIGHT
 
     def _calculate_flight_duration(self, flight_path):
         return (flight_path[-1]["time"] - flight_path[0]["time"]).seconds / 3600
@@ -43,9 +45,10 @@ class CO2Objective(Objective):
 
 
 class TimeObjective(Objective):
-    def __init__(self, weight):
-        super().__init__(weight)
+    def __init__(self, config, contrail_grid):
+        super().__init__(config, contrail_grid)
         self.name = "time"
+        self.weight = config.TIME_WEIGHT
 
     def _run_objective_function(self, flight_path):
         flight_duration = (

@@ -1,7 +1,6 @@
 from geopy import distance as gp
 import pandas as pd
 import numpy as np
-import util
 from openap import FuelFlow, Emission
 
 
@@ -72,8 +71,25 @@ class AircraftPerformanceModel:
         )
         return time_from_previous_point
 
+    def calculate_bearing(self, p1, p2):
+        lat1, lon1, _ = p1
+        lat2, lon2, _ = p2
+        delta_lon = lon2 - lon1
+
+        lat1 = np.radians(lat1)
+        lat2 = np.radians(lat2)
+        delta_lon = np.radians(delta_lon)
+
+        x = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(
+            delta_lon
+        )
+        y = np.sin(delta_lon) * np.cos(lat1)
+        z = np.arctan2(y, x) % (2 * np.pi)  # Convert to range [0, 2pi]
+
+        return z
+
     def calculate_course_at_point(self, point, next_point):
-        bearing = util.calculate_bearing(
+        bearing = self.calculate_bearing(
             (point["longitude"], point["latitude"], 0),
             (next_point["longitude"], next_point["latitude"], 0),
         )

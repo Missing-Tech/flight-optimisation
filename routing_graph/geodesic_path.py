@@ -1,4 +1,3 @@
-import util
 import numpy as np
 
 # Equations from Wikipedia https://en.wikipedia.org/wiki/Great-circle_navigation
@@ -9,6 +8,14 @@ class GeodesicPath:
         self.departure_airport = config.DEPARTURE_AIRPORT
         self.destination_airport = config.DESTINATION_AIRPORT
         self.no_of_points = config.NO_OF_POINTS
+        self.config = config
+
+    def reduce_angle(self, angle):
+        while angle < -180:
+            angle += 360
+        while angle > 180:
+            angle -= 360
+        return angle
 
     def calculate_alpha1(self, phi1, phi2, delta):
         numerator = np.cos(phi2) * np.sin(delta)
@@ -80,7 +87,7 @@ class GeodesicPath:
         azimuth_denominator = np.cos(distance)
         local_azimuth = np.arctan2(azimuth_numerator, azimuth_denominator)
 
-        return (util.reduce_angle(phi), util.reduce_angle(lambda1), local_azimuth)
+        return (self.reduce_angle(phi), self.reduce_angle(lambda1), local_azimuth)
 
     def calculate_path(self, no_of_points, p1, p2):
         lat0, lon0 = p1
@@ -92,7 +99,7 @@ class GeodesicPath:
         lambda2 = np.radians(lon1)
 
         delta = lambda2 - lambda1
-        delta = util.reduce_angle(delta)
+        delta = self.reduce_angle(delta)
 
         alpha1 = self.calculate_alpha1(phi1, phi2, delta)
 
@@ -105,10 +112,10 @@ class GeodesicPath:
 
         points = [(lat0, lon0, 0)]
 
-        total_distance = util.R * central_angle
+        total_distance = self.config.R * central_angle
         step = total_distance / no_of_points
         for i in range(1, no_of_points):
-            distance = angle1 + ((i * step) / util.R)
+            distance = angle1 + ((i * step) / self.config.R)
             points.append(
                 self.find_point_distance_along_great_circle(
                     distance, azimuth, equator_longitude

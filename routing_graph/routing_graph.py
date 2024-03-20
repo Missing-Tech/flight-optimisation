@@ -1,7 +1,7 @@
 import networkx as nx
 import pandas as pd
-import util
 import os
+from utils import Conversions
 
 
 class RoutingGraph:
@@ -11,7 +11,7 @@ class RoutingGraph:
         self.contrail_grid = contrail_grid
 
     def calculate_point_values(self, point, altitude):
-        distance_from_departure = util.calculate_distance_between_points(
+        distance_from_departure = Conversions().calculate_distance_between_points(
             self.config.DEPARTURE_AIRPORT,
             (point[0], point[1]),
         )
@@ -24,7 +24,7 @@ class RoutingGraph:
         point_values = {
             "latitude": point[0],
             "longitude": point[1],
-            "level": util.convert_altitude_to_pressure_bounded(altitude),
+            "level": Conversions().convert_altitude_to_pressure_bounded(altitude),
             "time": time_at_point,
             "delta_time": time_to_point,
             "fuel_burned": pd.Timedelta(time_to_point, "s").seconds
@@ -32,6 +32,35 @@ class RoutingGraph:
         }
 
         return point_values
+
+    def get_consecutive_points(
+        self,
+        xi,
+        yi,
+        altitude,
+        grid,
+    ):
+        max_lateral_var = self.config.OFFSET_VAR
+        max_altitude_var = self.config.MAX_ALTITUDE_VAR
+        altitude_step = self.config.ALTITUDE_STEP
+        max_alt = altitude + max_altitude_var
+        max_alt = max(
+            self.config.STARTING_ALTITUDE, min(max_alt, self.config.MAX_ALTITUDE)
+        )
+
+        points = []
+        current_altitude = altitude
+        while current_altitude <= max_alt:
+            if xi + 1 == len(grid[current_altitude]):
+                return None
+            next_layer_length = len(grid[current_altitude][xi + 1]) - 1
+            min_i = min(max(yi - max_lateral_var, 0), next_layer_length)
+            max_i = min(yi + max_lateral_var, next_layer_length)
+            for i in range(min_i, max_i + 1):
+                points.append((xi + 1, i, current_altitude))
+            current_altitude += altitude_step
+
+        return points
 
     def calculate_routing_graph(self):
         graph = nx.DiGraph()
@@ -47,7 +76,7 @@ class RoutingGraph:
                     xi = altitude_grid[altitude].index(step)
                     yi = step.index(point)
 
-                    consecutive_points = util.get_consecutive_points(
+                    consecutive_points = self.get_consecutive_points(
                         xi, yi, altitude, altitude_grid
                     )
 

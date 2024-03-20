@@ -1,37 +1,35 @@
 import display
-import config
+from config import Config
+import random
 import warnings
-from performance_model import PerformanceModel
 from dotenv import load_dotenv
 
 from routing_graph import RoutingGraphManager
+from performance_model import PerformanceModel
 from aco import ACO, RealFlight
 
 if __name__ == "__main__":
     load_dotenv()
     warnings.filterwarnings("ignore")
 
-    routing_graph_manager = RoutingGraphManager(
-        config.DESTINATION_AIRPORT,
-        config.DEPARTURE_AIRPORT,
-    )
+    config = Config()
+
+    routing_graph_manager = RoutingGraphManager(config)
     geodesic_path = routing_graph_manager.get_geodesic_path()
     routing_grid = routing_graph_manager.get_routing_grid()
     altitude_grid = routing_graph_manager.get_altitude_grid()
 
-    performance_model = PerformanceModel()
-    contrail_grid = performance_model.get_contrail_grid(altitude_grid)
+    performance_model = PerformanceModel(altitude_grid, config)
+    contrail_grid = performance_model.get_contrail_grid()
     cocip_manager = performance_model.get_cocip_manager()
-    weather_grid = performance_model.get_weather_grid(altitude_grid)
+    weather_grid = performance_model.get_weather_grid()
     apm = performance_model.get_apm()
 
     routing_graph = routing_graph_manager.get_routing_graph(contrail_grid)
 
-    ant_colony = ACO(routing_graph, altitude_grid, contrail_grid, apm)
+    ant_colony = ACO(routing_graph, altitude_grid, contrail_grid, apm, config)
 
-    real_flight = RealFlight(
-        "jan-31.csv", altitude_grid, routing_graph, weather_grid, apm
-    )
+    real_flight = RealFlight("jan-31.csv", altitude_grid, routing_graph, apm, config)
     real_flight.run_performance_model()
 
     _, ax_blank = display.create_blank_ax()
@@ -41,25 +39,17 @@ if __name__ == "__main__":
     # fig_3d, ax_3d = display.create_3d_ax()
     #
 
-    ant_paths, aco_path, objectives_dataframe, best_indexes, pareto_set, pareto_df = (
-        ant_colony.run_aco_colony(
-            config.NO_OF_ITERATIONS,
-            config.NO_OF_ANTS,
-        )
-    )
-
-    objectives_dataframe.to_csv("data/objectives.csv")
-
-    pareto_df.to_csv("data/pareto_set.csv")
+    pareto_set = ant_colony.run_aco_colony()
+    random_pareto_path = random.choice(pareto_set)
 
     fp_ef, fp_df, fp_cocip = cocip_manager.calculate_ef_from_flight_path(
         real_flight.flight_path
     )
     aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(
-        aco_path.flight_path
+        random_pareto_path.flight_path
     )
 
-    display.display_objective_over_iterations(objectives_dataframe, ax_blank)
+    display.display_objective_over_iterations(ant_colony.objectives_over_time, ax_blank)
 
     # display.display_routing_grid(routing_grid.get_routing_grid(), ax_map)
 
@@ -96,7 +86,9 @@ if __name__ == "__main__":
     #     ax=ax_side_4,
     #     title="BA177 Flight Path",
     # )
-    display.display_flight_path(aco_path.flight_path, ax_side_1, linewidth=1, color="r")
+    display.display_flight_path(
+        random_pareto_path.flight_path, ax_side_1, linewidth=1, color="r"
+    )
     display.display_flight_path(real_flight.flight_path, ax_side_2)
     display.display_flight_ef(aco_cocip, ax_side_1)
     display.display_flight_ef(fp_cocip, ax_side_2)

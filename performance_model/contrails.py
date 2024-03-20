@@ -7,7 +7,6 @@ from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 import os
 import tempfile
 import json
-import util
 
 
 class CocipManager:
@@ -46,8 +45,8 @@ class CocipManager:
 
 
 class ContrailGrid:
-    def __init__(self, grid_manager):
-        self.contrail_grid = grid_manager.contrail_grid
+    def __init__(self, contrail_grid):
+        self.contrail_grid = contrail_grid
 
     def interpolate_contrail_point(
         self,
@@ -57,17 +56,16 @@ class ContrailGrid:
         ef_per_m = da.interp(
             latitude=point[0], longitude=point[1], flight_level=point[2] / 100
         )
-        distance = util.calculate_step_between_airports()
-        return ef_per_m.sum().item() * distance * 1000
+        return ef_per_m.sum().item()
 
     def interpolate_contrail_grid(
         self,
-        flight_path,
+        grid,
     ):
         da = self.contrail_grid["ef_per_m"]
 
         flight_path = pd.DataFrame(
-            flight_path, columns=["latitude", "longitude", "altitude_ft"]
+            grid, columns=["latitude", "longitude", "altitude_ft"]
         )
 
         fl_ds = flight_path.copy()
@@ -76,16 +74,15 @@ class ContrailGrid:
 
         ef_per_m = da.interp(**fl_ds.data_vars)
 
-        distance = util.calculate_step_between_airports()
-        return ef_per_m.sum().item() * distance * 1000
+        return ef_per_m.sum().item()
 
 
 class ContrailGridManager:
     def __init__(self, altitude_grid, config):
         self.config = config
-        self.contrail_grid = ContrailGrid(self._get_contrail_grid())
         self.contrail_polys = self._get_contrail_polys()
         self.altitude_grid = altitude_grid
+        self.contrail_grid = ContrailGrid(self._get_contrail_grid())
 
     def _get_contrail_grid(self):
         if os.path.exists("data/contrail_grid.nc"):

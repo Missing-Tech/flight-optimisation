@@ -1,11 +1,10 @@
-import util
 import numpy as np
 
 
 class RoutingGrid:
     def __init__(self, geodesic_path, config):
         self.config = config
-        self.geodesic_path = geodesic_path
+        self.path = geodesic_path.get_geodesic_path()
 
     def calculate_new_coordinates(self, p1, distance, bearing):
         lat1, lon1, _ = p1
@@ -14,15 +13,35 @@ class RoutingGrid:
         lon1 = np.radians(lon1)
 
         lat2 = np.arcsin(
-            np.sin(lat1) * np.cos(distance / util.R)
-            + np.cos(lat1) * np.sin(distance / util.R) * np.cos(bearing)
+            np.sin(lat1) * np.cos(distance / self.config.R)
+            + np.cos(lat1) * np.sin(distance / self.config.R) * np.cos(bearing)
         )
         lon2 = lon1 + np.arctan2(
-            np.sin(bearing) * np.sin(distance / util.R) * np.cos(lat1),
-            np.cos(distance / util.R) - np.sin(lat1) * np.sin(lat2),
+            np.sin(bearing) * np.sin(distance / self.config.R) * np.cos(lat1),
+            np.cos(distance / self.config.R) - np.sin(lat1) * np.sin(lat2),
         )
 
         return np.degrees(lat2), np.degrees(lon2), bearing
+
+    def calculate_normal_bearing(self, bearing):
+        return (bearing + np.pi / 2) % (2 * np.pi)
+
+    def calculate_bearing(self, p1, p2):
+        lat1, lon1, _ = p1
+        lat2, lon2, _ = p2
+        delta_lon = lon2 - lon1
+
+        lat1 = np.radians(lat1)
+        lat2 = np.radians(lat2)
+        delta_lon = np.radians(delta_lon)
+
+        x = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(
+            delta_lon
+        )
+        y = np.sin(delta_lon) * np.cos(lat1)
+        z = np.arctan2(y, x) % (2 * np.pi)  # Convert to range [0, 2pi]
+
+        return z
 
     def calculate_routing_grid(self):
         grid = []
@@ -40,8 +59,8 @@ class RoutingGrid:
                 if index + 1 > len(self.path) - 1:
                     continue
 
-                bearing = util.calculate_bearing(self.path[index], self.path[index + 1])
-                bearing = util.calculate_normal_bearing(bearing)
+                bearing = self.calculate_bearing(self.path[index], self.path[index + 1])
+                bearing = self.calculate_normal_bearing(bearing)
 
                 new_point_positive = self.calculate_new_coordinates(
                     point, self.config.GRID_SPACING * i, bearing

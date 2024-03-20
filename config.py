@@ -1,4 +1,5 @@
 import pandas as pd
+from objectives import ContrailObjective, CO2Objective, TimeObjective
 
 
 class Config:
@@ -23,7 +24,7 @@ class Config:
     TAU_MIN = 0.1
     TAU_MAX = 1
     NO_OF_ANTS = 8
-    NO_OF_ITERATIONS = 100
+    NO_OF_ITERATIONS = 1
 
     # Aircraft
     AIRCRAFT_TYPE = "B772"
@@ -45,6 +46,12 @@ class Config:
     MAX_ALTITUDE_VAR = 2000
     ALTITUDE_STEP = 2000
     OFFSET_VAR = 16
+
+    # Objective Functions
+    OBJECTIVES = [ContrailObjective, CO2Objective, TimeObjective]
+
+    # Earth radius in km
+    R = 6371
 
 
 class ContrailMaxConfig(Config):
