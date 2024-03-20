@@ -1,4 +1,4 @@
-import util
+import utils
 import config
 import pandas as pd
 
@@ -14,7 +14,7 @@ class Flight:
 
     def set_departure(self, departure):
         self.indices.append(departure)
-        point = util.convert_index_to_point(
+        point = utils.convert_index_to_point(
             departure,
             self.altitude_grid,
         )
@@ -29,7 +29,7 @@ class Flight:
 
     def add_point_from_index(self, index):
         self.indices.append(index)
-        point = util.convert_index_to_point(
+        point = utils.convert_index_to_point(
             index,
             self.altitude_grid,
         )
@@ -45,7 +45,7 @@ class RealFlight(Flight):
     ):
         flight_path = pd.read_csv(f"data/{flight_name}")
         flight_path = flight_path[flight_path["AltMSL"] > 30000]
-        flight_path = util.convert_real_flight_path(flight_path, weather_grid)
+        flight_path = utils.convert_real_flight_path(flight_path, weather_grid)
         super().__init__(
             altitude_grid, routing_graph, performance_model, flight_path=flight_path
         )
