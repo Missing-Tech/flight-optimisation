@@ -1,10 +1,10 @@
 import util
-import config
 import numpy as np
 
 
 class RoutingGrid:
-    def __init__(self, geodesic_path):
+    def __init__(self, geodesic_path, config):
+        self.config = config
         self.geodesic_path = geodesic_path
 
     def calculate_new_coordinates(self, p1, distance, bearing):
@@ -31,10 +31,10 @@ class RoutingGrid:
             positive_waypoints = []
             negative_waypoints = []
             potential_waypoints = []
-            for i in range(1, config.GRID_WIDTH + 1):
+            for i in range(1, self.config.GRID_WIDTH + 1):
                 index = self.path.index(point)
 
-                if index + (i / config.OFFSET_VAR) > len(self.path) - 1:
+                if index + (i / self.config.OFFSET_VAR) > len(self.path) - 1:
                     continue
 
                 if index + 1 > len(self.path) - 1:
@@ -44,10 +44,10 @@ class RoutingGrid:
                 bearing = util.calculate_normal_bearing(bearing)
 
                 new_point_positive = self.calculate_new_coordinates(
-                    point, config.GRID_SPACING * i, bearing
+                    point, self.config.GRID_SPACING * i, bearing
                 )
                 new_point_negative = self.calculate_new_coordinates(
-                    point, config.GRID_SPACING * i * -1, bearing
+                    point, self.config.GRID_SPACING * i * -1, bearing
                 )
                 plat, plon, _ = new_point_positive
                 nlat, nlon, _ = new_point_negative

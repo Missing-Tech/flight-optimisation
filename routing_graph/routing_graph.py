@@ -1,25 +1,25 @@
 import networkx as nx
 import pandas as pd
-import config
 import util
 import os
 
 
 class RoutingGraph:
-    def __init__(self, altitude_grid, contrail_grid):
+    def __init__(self, altitude_grid, contrail_grid, config):
+        self.config = config
         self.altitude_grid = altitude_grid
         self.contrail_grid = contrail_grid
 
     def calculate_point_values(self, point, altitude):
         distance_from_departure = util.calculate_distance_between_points(
-            config.DEPARTURE_AIRPORT,
+            self.config.DEPARTURE_AIRPORT,
             (point[0], point[1]),
         )
         speed = (
-            config.NOMINAL_THRUST * 343
+            self.config.NOMINAL_THRUST * 343
         )  # times by speed of sound for rough speed estimate
         time_to_point = distance_from_departure * 1000 / speed
-        time_at_point = config.DEPARTURE_DATE + pd.Timedelta(time_to_point, "s")
+        time_at_point = self.config.DEPARTURE_DATE + pd.Timedelta(time_to_point, "s")
 
         point_values = {
             "latitude": point[0],
@@ -28,7 +28,7 @@ class RoutingGraph:
             "time": time_at_point,
             "delta_time": time_to_point,
             "fuel_burned": pd.Timedelta(time_to_point, "s").seconds
-            * config.NOMINAL_FUEL_FLOW,
+            * self.config.NOMINAL_FUEL_FLOW,
         }
 
         return point_values
@@ -74,9 +74,9 @@ class RoutingGraph:
                         graph.add_edge(
                             (xi, yi, altitude),
                             (next_point[0], next_point[1], next_point[2]),
-                            contrail_pheromone=config.TAU_MAX,
-                            co2_pheromone=config.TAU_MAX,
-                            time_pheromone=config.TAU_MAX,
+                            contrail_pheromone=self.config.TAU_MAX,
+                            co2_pheromone=self.config.TAU_MAX,
+                            time_pheromone=self.config.TAU_MAX,
                         )
                         graph.add_node(
                             (xi, yi, altitude),

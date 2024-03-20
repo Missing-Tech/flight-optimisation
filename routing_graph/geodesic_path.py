@@ -5,10 +5,10 @@ import numpy as np
 
 
 class GeodesicPath:
-    def __init__(self, departure_airport, destination_airport, no_of_points=15):
-        self.departure_airport = departure_airport
-        self.destination_airport = destination_airport
-        self.no_of_points = no_of_points
+    def __init__(self, config):
+        self.departure_airport = config.DEPARTURE_AIRPORT
+        self.destination_airport = config.DESTINATION_AIRPORT
+        self.no_of_points = config.NO_OF_POINTS
 
     def calculate_alpha1(self, phi1, phi2, delta):
         numerator = np.cos(phi2) * np.sin(delta)

@@ -3,18 +3,16 @@ import requests
 import xarray as xr
 import pycontrails as pc
 from pycontrails.models.cocip import Cocip
-import ecmwf
 from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 import os
 import tempfile
 import json
-from pycontrails.models.ps_model import PSGrid
-import config
 import util
 
 
 class CocipManager:
-    def __init__(self, weather_grid):
+    def __init__(self, weather_grid, config):
+        self.config = config
         self.met = weather_grid.met
         self.rad = weather_grid.rad
 
@@ -23,10 +21,10 @@ class CocipManager:
 
         attrs = {
             "flight_id": 123,
-            "aircraft_type": config.AIRCRAFT_TYPE,
-            "wingspan": config.WINGSPAN,
+            "aircraft_type": self.config.AIRCRAFT_TYPE,
+            "wingspan": self.config.WINGSPAN,
             "nvpm_ei_n": 1.897264e15,
-            "n_engine": config.N_ENGINES,
+            "n_engine": self.config.N_ENGINES,
         }
 
         flight = pc.Flight(data=flight_path_df, flight_id=123, attrs=attrs)
@@ -45,24 +43,6 @@ class CocipManager:
             ef = 0
 
         return ef, df, cocip
-
-
-class PSGridManager:
-    def __init__(self):
-        self.ps_grid = ContrailGridManager().ps_grid
-
-    def get_performance_data_at_point(self, point):
-        level = util.calculate_pressure_from_altitude_ft(point["altitude_ft"])
-        level = max(min(level, config.PRESSURE_LEVELS[0]), config.PRESSURE_LEVELS[-1])
-
-        performance_data = self.ps_grid.interp(
-            latitude=point["latitude"],
-            longitude=point["longitude"],
-            level=level,
-            time=point["time"],
-        )
-
-        return performance_data
 
 
 class ContrailGrid:
@@ -101,19 +81,11 @@ class ContrailGrid:
 
 
 class ContrailGridManager:
-    def __init__(self, altitude_grid):
-        self.ps_grid = self._get_ps_grid()
+    def __init__(self, altitude_grid, config):
+        self.config = config
         self.contrail_grid = ContrailGrid(self._get_contrail_grid())
         self.contrail_polys = self._get_contrail_polys()
         self.altitude_grid = altitude_grid
-
-    def _get_ps_grid(self):
-        if os.path.exists("data/ps_grid.nc"):
-            return xr.open_dataset("data/ps_grid.nc")
-        else:
-            ps_grid = PSGrid(ecmwf.met, aircraft_type=config.AIRCRAFT_TYPE).eval()
-            ps_grid.data.to_netcdf("data/ps_grid.nc")
-            return xr.open_dataset("data/ps_grid.nc")
 
     def _get_contrail_grid(self):
         if os.path.exists("data/contrail_grid.nc"):
@@ -155,15 +127,15 @@ class ContrailGridManager:
                 grid_df["longitude"].max() + 1,
                 grid_df["latitude"].max() + 1,
             ],
-            "flight_level": config.FLIGHT_LEVELS,
+            "flight_level": self.config.FLIGHT_LEVELS,
             "aircraft_type": "B737",
             "format": format,
         }
 
         ds_list = []
         timerange = [
-            config.DEPARTURE_DATE,
-            config.DEPARTURE_DATE + config.WEATHER_BOUND,
+            self.config.DEPARTURE_DATE,
+            self.config.DEPARTURE_DATE + self.config.WEATHER_BOUND,
         ]
         times = pd.date_range(timerange[0], timerange[1], freq="1h")
         for t in times:

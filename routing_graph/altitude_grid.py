@@ -1,11 +1,9 @@
-import config
-
-
 class AltitudeGrid:
-    def __init__(self, routing_grid):
-        self.base_altitude = config.STARTING_ALTITUDE
-        self.altitude_step = config.ALTITUDE_STEP
-        self.max_altitude = config.MAX_ALTITUDE
+    def __init__(self, routing_grid, config):
+        self.config = config
+        self.base_altitude = self.config.STARTING_ALTITUDE
+        self.altitude_step = self.config.ALTITUDE_STEP
+        self.max_altitude = self.config.MAX_ALTITUDE
         self.routing_grid = routing_grid
 
     def calculate_altitude_grid(self, grid):

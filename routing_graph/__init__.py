@@ -1,17 +1,19 @@
-from routing_graph import RoutingGraph, RoutingGrid, AltitudeGrid, GeodesicPath
-
-
 class RoutingGraphManager:
-    def __init__(self, destination, departure):
-        self.destination = destination
-        self.departure = departure
+    def __init__(self, config):
+        from routing_graph import RoutingGrid, AltitudeGrid, GeodesicPath
 
-        self.geodesic_path = GeodesicPath(departure, destination)
-        self.routing_grid = RoutingGrid(self.geodesic_path)
-        self.altitude_grid = AltitudeGrid(self.routing_grid)
+        self.config = config
+
+        self.geodesic_path = GeodesicPath(self.config)
+        self.routing_grid = RoutingGrid(self.geodesic_path, self.config)
+        self.altitude_grid = AltitudeGrid(self.routing_grid, self.config)
 
     def get_routing_graph(self, contrail_grid):
-        self.routing_graph = RoutingGraph(self.altitude_grid, contrail_grid)
+        from routing_graph import RoutingGraph
+
+        self.routing_graph = RoutingGraph(
+            self.altitude_grid, contrail_grid, self.config
+        )
         return self.routing_graph.get_routing_graph()
 
     def get_routing_grid(self):

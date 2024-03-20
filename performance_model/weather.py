@@ -4,19 +4,19 @@ from pycontrails.datalib.ecmwf import ERA5
 from pycontrails.core.met import MetDataset
 import pandas as pd
 import xarray as xr
-import config
 
 
 class WeatherGrid:
-    def __init__(self, altitude_grid):
+    def __init__(self, altitude_grid, config):
+        self.config = config
         self.flight_path = altitude_grid
         self.met = self._get_met()
         self.rad = self._get_rad()
         time_bounds = (
-            config.DEPARTURE_DATE,
-            config.DEPARTURE_DATE + config.WEATHER_BOUND,
+            self.config.DEPARTURE_DATE,
+            self.config.DEPARTURE_DATE + self.config.WEATHER_BOUND,
         )
-        pressure_levels = config.PRESSURE_LEVELS
+        pressure_levels = self.config.PRESSURE_LEVELS
         self.era5pl = ERA5(
             time=time_bounds,
             timestep_freq="1h",
