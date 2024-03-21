@@ -80,4 +80,6 @@ class RoutingGrid:
         return grid
 
     def get_routing_grid(self):
-        return self.calculate_routing_grid()
+        if not hasattr(self, "routing_grid"):
+            self.routing_grid = self.calculate_routing_grid()
+        return self.routing_grid

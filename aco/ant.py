@@ -80,7 +80,7 @@ class Ant:
         alpha = self.config.PHEROMONE_WEIGHT
         beta = self.config.HEURISTIC_WEIGHT
 
-        if not neighbours:
+        if len(neighbours) <= 1:
             return -1
         for n in neighbours:
             total_neighbour_factor += math.pow(

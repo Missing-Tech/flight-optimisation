@@ -58,7 +58,7 @@ class RoutingGraph:
                     )
 
                     heuristic_data = {
-                        f"{objective}_heuristic": objective(
+                        f"{objective(self.performance_model,self.config)}_heuristic": objective(
                             self.performance_model, self.config
                         ).calculate_heuristic((*point, altitude))
                         for objective in self.config.OBJECTIVES
@@ -72,7 +72,7 @@ class RoutingGraph:
                             for objective in self.config.OBJECTIVES
                         }
                         next_heuristic_data = {
-                            f"{objective}_heuristic": objective(
+                            f"{objective(self.performance_model,self.config)}_heuristic": objective(
                                 self.performance_model, self.config
                             ).calculate_heuristic(next_point)
                             for objective in self.config.OBJECTIVES

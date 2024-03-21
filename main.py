@@ -44,7 +44,7 @@ if __name__ == "__main__":
     )
 
     # Create required dataframes
-    grid = sum(routing_grid, [])
+    grid = sum(routing_grid.get_routing_grid(), [])
     routing_grid_df = pd.DataFrame(grid, columns=["latitude", "longitude"])
 
     alt_grid_df = altitude_grid.copy()
