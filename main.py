@@ -1,12 +1,13 @@
-import display
 from config import Config, ContrailMaxConfig
 import random
 import warnings
 from dotenv import load_dotenv
+import pandas as pd
 
 from routing_graph import RoutingGraphManager
 from performance_model import PerformanceModel, RealFlight
 from aco import ACO
+from display import Display
 
 if __name__ == "__main__":
     load_dotenv()
@@ -14,6 +15,7 @@ if __name__ == "__main__":
 
     config = Config()
 
+    # Construct all required grids + models
     routing_graph_manager = RoutingGraphManager(config)
     geodesic_path = routing_graph_manager.get_geodesic_path()
     routing_grid = routing_graph_manager.get_routing_grid()
@@ -24,21 +26,16 @@ if __name__ == "__main__":
 
     routing_graph_manager.set_performance_model(performance_model)
 
+    # Run ACO
     ant_colony = ACO(routing_graph_manager, config)
-
-    real_flight = RealFlight("jan-31.csv", routing_graph_manager, config)
-    real_flight.run_performance_model()
-
-    _, ax_blank = display.create_blank_ax()
-    # fig_map, ax_map = display.create_map_ax()
-    fig_side, ax_side_1, ax_side_2 = display.create_side_by_side_ax()
-    # fig_side, ax_side_3, ax_side_4 = display.create_side_by_side_ax()
-    # fig_3d, ax_3d = display.create_3d_ax()
-    #
-
     pareto_set = ant_colony.run_aco_colony()
     random_pareto_path = random.choice(pareto_set)
 
+    # Run performance model on a real flight
+    real_flight = RealFlight("jan-31.csv", routing_graph_manager, config)
+    real_flight.run_performance_model()
+
+    # Calculate CoCiP for both paths
     fp_ef, fp_df, fp_cocip = cocip_manager.calculate_ef_from_flight_path(
         real_flight.flight_path
     )
@@ -46,50 +43,51 @@ if __name__ == "__main__":
         random_pareto_path.flight_path
     )
 
-    display.display_objective_over_iterations(ant_colony.objectives_over_time, ax_blank)
+    # Create required dataframes
+    grid = sum(routing_grid, [])
+    routing_grid_df = pd.DataFrame(grid, columns=["latitude", "longitude"])
 
-    # display.display_routing_grid(routing_grid.get_routing_grid(), ax_map)
+    alt_grid_df = altitude_grid.copy()
 
-    # aco_ani = display.create_aco_animation(
-    #     ant_paths, best_indexes, ax=ax_map, fig=fig_map
-    # )
+    for alt in alt_grid_df:
+        alt_grid_df[alt] = [x for x in sum(alt_grid_df[alt], []) if x is not None]
+
+    alt_grid_df = pd.DataFrame(
+        [
+            (alt, *coords)
+            for alt, coords_list in alt_grid_df.items()
+            for coords in coords_list
+        ],
+        columns=["altitude", "longitude", "latitude"],
+    )
+
+    # Display results
+    display = Display()
+    blank = display.blank
+    maps = display.maps
+    _, objective_axs = blank.create_fig(3, 1)
+    objectives = {
+        key: [d[key] for d in ant_colony.objectives_over_time]
+        for key in ant_colony.objectives_over_time[0]
+    }
+    for i, objective in enumerate(objectives):
+        display.blank.show_plot(objective, objective_axs[i])
+
+    _, map_axs = maps.create_fig(2, 1)
+    maps.show_path(geodesic_path, map_axs[0])
+    maps.show_path(real_flight.flight_path, map_axs[0])
+    maps.set_title(map_axs[0], "BA177 Flight Path - Jan 31 2024")
+
+    maps.show_path(geodesic_path, map_axs[1])
+    maps.show_path(random_pareto_path.flight_path, map_axs[1])
+    maps.set_title(map_axs[1], "ACO Flight Path")
 
     for ant_path in pareto_set:
-        display.display_flight_path(ant_path.flight_path, ax_side_1)
+        display.display_flight_path(ant_path.flight_path, map_axs[1])
 
-    # display.display_flight_altitude(best_path, ax_blank)
-    # display.display_flight_altitude(real_flight_path, ax_blank, "r")
+    maps.show_grid(routing_grid_df, map_axs[0])
 
-    # display.display_flight_path(real_flight_path, ax_map)
-    # display.display_geodesic_path(geodesic_path, ax=ax_map)
-    display.display_geodesic_path(geodesic_path, ax=ax_side_1)
-    display.display_geodesic_path(geodesic_path, ax=ax_side_2)
-    # display.display_flight_path_3d(real_flight_path, ax=ax_3d)
-    # ani_3d = display.create_3d_flight_animation(
-    #     aco_path, contrail_grid, contrail_polys, fig=fig_3d, ax=ax_3d
-    # )
-    #
-
-    # display.display_wind_vectors(metGrid.weather_data, ax=ax_side_1)
-    # display.display_wind_vectors(metGrid.weather_data, ax=ax_side_2)
-
-    # ani = display.create_flight_animation(
-    #     aco_path, contrail_grid, fig=fig_side, ax=ax_side_3, title="ACO Flight Path"
-    # )
-    # ani2 = display.create_flight_animation(
-    #     real_flight_path,
-    #     contrail_grid,
-    #     fig=fig_side,
-    #     ax=ax_side_4,
-    #     title="BA177 Flight Path",
-    # )
-    display.display_flight_path(
-        random_pareto_path.flight_path, ax_side_1, linewidth=1, color="r"
-    )
-    display.display_flight_path(real_flight.flight_path, ax_side_2)
-    display.display_flight_ef(aco_cocip, ax_side_1)
-    display.display_flight_ef(fp_cocip, ax_side_2)
-    ax_side_1.set_title("ACO Flight Path")
-    ax_side_2.set_title("BA177 Flight Path")
+    maps.show_contrails(fp_cocip, map_axs[0])
+    maps.show_contrails(aco_cocip, map_axs[1])
 
     display.show()
