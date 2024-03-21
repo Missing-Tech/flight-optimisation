@@ -14,7 +14,7 @@ class Blank:
         return fig, axs
 
     def _create_plot(self, fig, grid_pos):
-        ax = fig.add_subplot(grid_pos)
+        ax = fig.add_subplot(int(grid_pos))
         return ax
 
     def show_plot(

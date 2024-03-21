@@ -9,7 +9,8 @@ import numpy as np
 
 class Map:
     def __init__(self, crs=None):
-        self.crs = ccrs.NearsidePerspective(central_latitude=51, central_longitude=-35)
+        # self.crs = ccrs.NearsidePerspective(central_latitude=51, central_longitude=-35)
+        self.crs = ccrs.PlateCarree()
 
     def create_fig(self, grid_width, grid_height):
         fig = plt.figure()
@@ -20,7 +21,7 @@ class Map:
         return fig, axs
 
     def _create_map(self, fig, grid_pos):
-        ax = fig.add_subplot(grid_pos, projection=self.crs)
+        ax = fig.add_subplot(int(grid_pos), projection=self.crs)
         ax.set_extent([10, -90, 25, 60])
         ax.add_feature(BORDERS, lw=0.5, color="gray")
         ax.gridlines(draw_labels=True, color="gray", alpha=0.5, ls="--")

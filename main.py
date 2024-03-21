@@ -47,18 +47,28 @@ if __name__ == "__main__":
     grid = sum(routing_grid.get_routing_grid(), [])
     routing_grid_df = pd.DataFrame(grid, columns=["latitude", "longitude"])
 
-    alt_grid_df = altitude_grid.copy()
+    # alt_grid_df = altitude_grid
+    #
+    # for alt in alt_grid_df:
+    #     alt_grid_df[alt] = [x for x in sum(alt_grid_df[alt], []) if x is not None]
+    #
+    # alt_grid_df = pd.DataFrame(
+    #     [
+    #         (alt, *coords)
+    #         for alt, coords_list in alt_grid_df.items()
+    #         for coords in coords_list
+    #     ],
+    #     columns=["altitude", "longitude", "latitude"],
+    # )
 
-    for alt in alt_grid_df:
-        alt_grid_df[alt] = [x for x in sum(alt_grid_df[alt], []) if x is not None]
-
-    alt_grid_df = pd.DataFrame(
-        [
-            (alt, *coords)
-            for alt, coords_list in alt_grid_df.items()
-            for coords in coords_list
-        ],
-        columns=["altitude", "longitude", "latitude"],
+    geodesic_path = pd.DataFrame(
+        geodesic_path, columns=["latitude", "longitude", "azimuth"]
+    )
+    real_flight_df = pd.DataFrame(
+        real_flight.flight_path, columns=["latitude", "longitude"]
+    )
+    random_pareto_path_df = pd.DataFrame(
+        random_pareto_path.flight_path, columns=["latitude", "longitude"]
     )
 
     # Display results
@@ -74,18 +84,19 @@ if __name__ == "__main__":
         display.blank.show_plot(objective, objective_axs[i])
 
     _, map_axs = maps.create_fig(2, 1)
-    maps.show_path(geodesic_path, map_axs[0])
-    maps.show_path(real_flight.flight_path, map_axs[0])
+    maps.show_path(geodesic_path, map_axs[0], linestyle="--")
+    maps.show_path(real_flight_df, map_axs[0], color="red", linewidth=1)
     maps.set_title(map_axs[0], "BA177 Flight Path - Jan 31 2024")
 
-    maps.show_path(geodesic_path, map_axs[1])
-    maps.show_path(random_pareto_path.flight_path, map_axs[1])
+    maps.show_path(geodesic_path, map_axs[1], linestyle="--")
+    maps.show_path(random_pareto_path_df, map_axs[1], color="red", linewidth=1)
     maps.set_title(map_axs[1], "ACO Flight Path")
 
     for ant_path in pareto_set:
-        display.display_flight_path(ant_path.flight_path, map_axs[1])
+        path_df = pd.DataFrame(ant_path.flight_path, columns=["latitude", "longitude"])
+        maps.show_path(path_df, map_axs[1], color="gray", linewidth=0.5)
 
-    maps.show_grid(routing_grid_df, map_axs[0])
+    maps.show_grid(routing_grid_df, map_axs[1])
 
     maps.show_contrails(fp_cocip, map_axs[0])
     maps.show_contrails(aco_cocip, map_axs[1])
