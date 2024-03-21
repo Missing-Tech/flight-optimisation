@@ -55,6 +55,5 @@ class Config:
 
 
 class ContrailMaxConfig(Config):
-    CONTRAIL_WEIGHT = -1
-    CO2_WEIGHT = 0
-    TIME_WEIGHT = 0
+    OBJECTIVES = [ContrailObjective]
+    CONTRAIL_WEIGHT = -10
