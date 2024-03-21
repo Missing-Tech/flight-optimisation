@@ -25,7 +25,9 @@ class Ant:
             objective_name = str(objective)
 
             # Call the 'calculate_objectives' method of the object
-            objective_value = objective.calculate_objective(flight_path)
+            objective_value = objective.calculate_objective(
+                flight_path,
+            )
 
             # Store the results in the dictionary
             objectives[objective_name] = objective_value

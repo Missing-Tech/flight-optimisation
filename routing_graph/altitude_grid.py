@@ -57,6 +57,9 @@ class AltitudeGrid:
         }
         return path_point
 
+    def __iter__(self):
+        return iter(self.altitude_grid)
+
     def __getitem__(self, key):
         return self.altitude_grid[key]
 

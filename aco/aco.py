@@ -15,7 +15,7 @@ class ACO:
         self.config = config
 
         self.objective_functions = [
-            objective(self.routing_graph, self.config)
+            objective(self.routing_graph_manager.performance_model, self.config)
             for objective in config.OBJECTIVES
         ]
         self.objectives = [str(objective) for objective in self.objective_functions]

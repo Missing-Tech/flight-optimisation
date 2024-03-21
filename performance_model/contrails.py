@@ -7,6 +7,8 @@ from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 import os
 import tempfile
 import json
+from utils import Conversions
+from pycontrails.models.ps_model import PSGrid
 
 
 class CocipManager:
@@ -42,6 +44,38 @@ class CocipManager:
             ef = 0
 
         return ef, df, cocip
+
+
+class PSGridManager:
+    def __init__(self, weather_grid, config):
+        self.ps_grid = self._get_ps_grid(weather_grid)
+        self.config = config
+
+    def _get_ps_grid(self, weather_grid):
+        if os.path.exists("data/ps_grid.nc"):
+            return xr.open_dataset("data/ps_grid.nc")
+        else:
+            ps_grid = PSGrid(
+                weather_grid.met, aircraft_type=self.config.AIRCRAFT_TYPE
+            ).eval()
+            ps_grid.data.to_netcdf("data/ps_grid.nc")
+            return xr.open_dataset("data/ps_grid.nc")
+
+    def get_performance_data_at_point(self, point):
+        level = Conversions().convert_altitude_to_pressure_bounded(
+            point["altitude_ft"],
+            self.config.PRESSURE_LEVELS[-1],
+            self.config.PRESSURE_LEVELS[0],
+        )
+
+        performance_data = self.ps_grid.interp(
+            latitude=point["latitude"],
+            longitude=point["longitude"],
+            level=level,
+            time=point["time"],
+        )
+
+        return performance_data
 
 
 class ContrailGrid:

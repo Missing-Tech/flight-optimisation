@@ -1,5 +1,5 @@
 from .apm import AircraftPerformanceModel
-from .contrails import CocipManager, ContrailGridManager
+from .contrails import CocipManager, ContrailGridManager, PSGridManager
 from .weather import WeatherGrid
 from .flight import RealFlight, Flight
 
@@ -11,12 +11,19 @@ class PerformanceModel:
         self.routing_graph_manager = routing_graph_manager
         self.get_apm()
         self.get_weather_grid()
+        self.get_ps_grid()
         self.get_cocip_manager()
         self.get_contrail_grid_manager()
         self.get_contrail_grid()
 
     def run_apm(self, flight_path):
         return self.apm.calculate_flight_characteristics(flight_path)
+
+    def get_ps_grid(self):
+        if hasattr(self, "ps_grid") is False:
+            weather_grid = self.get_weather_grid()
+            self.ps_grid = PSGridManager(weather_grid, self.config)
+        return self.ps_grid
 
     def get_apm(self):
         if hasattr(self, "apm") is False:
