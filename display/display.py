@@ -1,22 +1,39 @@
-from matplotlib.collections import LineCollection, PolyCollection
+from matplotlib.collections import PolyCollection
 import config
 import shapely
-import matplotlib.pyplot as plt
-import geopandas as gpd
 import pandas as pd
-from shapely.geometry import Point
 from cartopy import crs as ccrs
-from cartopy.feature import BORDERS, COASTLINE
-from cartopy.mpl.patch import geos_to_path
-import itertools
 import numpy as np
 import json
 from matplotlib.animation import FuncAnimation
 
 crs = ccrs.NearsidePerspective(central_latitude=51, central_longitude=-35)
-crs_proj4 = crs.proj4_init
 
-wgs84 = "WGS84"
+
+def get_contrail_polys_at_time(contrail_polys, time):
+    collections = {}
+    polys = contrail_polys["polys"]
+    for level in config.FLIGHT_LEVELS:
+        patches = []
+        for poly in polys:
+            if (
+                poly["properties"]["level"] == level
+                and poly["properties"]["time"] == time
+            ):
+                multipoly = shapely.from_geojson(json.dumps(poly))
+                for geom in multipoly.geoms:
+                    geom = geom.simplify(0.1)
+                    x, y = geom.exterior.coords.xy
+                    patches.append(np.asarray(tuple(zip(x, y))))
+        collection = PolyCollection(patches, facecolor="red", alpha=0.5)
+        collections[level] = collection
+
+    return collections
+
+
+def convert_time_string(time):
+    new_time_str = np.datetime_as_string(time, unit="s") + "Z"
+    return new_time_str
 
 
 def create_3d_flight_frame(
@@ -44,32 +61,6 @@ def create_3d_flight_frame(
         ax.add_collection3d(polys[level], zs=level * 100, zdir="z")
 
     return line
-
-
-def get_contrail_polys_at_time(contrail_polys, time):
-    collections = {}
-    polys = contrail_polys["polys"]
-    for level in config.FLIGHT_LEVELS:
-        patches = []
-        for poly in polys:
-            if (
-                poly["properties"]["level"] == level
-                and poly["properties"]["time"] == time
-            ):
-                multipoly = shapely.from_geojson(json.dumps(poly))
-                for geom in multipoly.geoms:
-                    geom = geom.simplify(0.1)
-                    x, y = geom.exterior.coords.xy
-                    patches.append(np.asarray(tuple(zip(x, y))))
-        collection = PolyCollection(patches, facecolor="red", alpha=0.5)
-        collections[level] = collection
-
-    return collections
-
-
-def convert_time_string(time):
-    new_time_str = np.datetime_as_string(time, unit="s") + "Z"
-    return new_time_str
 
 
 def create_3d_flight_animation(
