@@ -4,7 +4,7 @@ import numpy as np
 class RoutingGrid:
     def __init__(self, geodesic_path, config):
         self.config = config
-        self.path = geodesic_path.get_geodesic_path()
+        self.path = geodesic_path
 
     def calculate_new_coordinates(self, p1, distance, bearing):
         lat1, lon1, _ = p1

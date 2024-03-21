@@ -1,16 +1,14 @@
 import random
 import math
-from .flight import Flight
+from performance_model import Flight
 
 
 class Ant:
-    def __init__(self, rg, ag, cg, pm, config, objectives):
-        self.routing_graph = rg
-        self.altitude_grid = ag
-        self.contrail_grid = cg
-        self.performance_model = pm
-        self.config = config
+    def __init__(self, routing_graph_manager, objectives, config):
+        self.routing_graph_manager = routing_graph_manager
+        self.routing_graph = routing_graph_manager.get_routing_graph()
         self.objectives = objectives
+        self.config = config
 
     def run_ant(self, id):
         solution = self.construct_solution()
@@ -35,11 +33,9 @@ class Ant:
 
     def construct_solution(self):
         solution = Flight(
-            self.altitude_grid,
-            self.routing_graph,
-            self.performance_model,
-            self.config,
+            self.routing_graph_manager,
             [],
+            self.config,
         )
         solution.set_departure(
             ((0, self.config.GRID_WIDTH, self.config.STARTING_ALTITUDE))

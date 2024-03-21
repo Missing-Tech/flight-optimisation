@@ -9,14 +9,13 @@ from .ant import Ant
 
 
 class ACO:
-    def __init__(self, rg, ag, cg, pm, config):
-        self.routing_graph = rg
-        self.altitude_grid = ag
-        self.contrail_grid = cg
-        self.performance_model = pm
+    def __init__(self, routing_graph_manager, config):
+        self.routing_graph_manager = routing_graph_manager
+        self.routing_graph = routing_graph_manager.get_routing_graph()
         self.config = config
+
         self.objective_functions = [
-            objective(self.config, self.contrail_grid)
+            objective(self.routing_graph, self.config)
             for objective in config.OBJECTIVES
         ]
         self.objectives = [str(objective) for objective in self.objective_functions]
@@ -45,12 +44,9 @@ class ACO:
 
         ants = [
             Ant(
-                self.routing_graph,
-                self.altitude_grid,
-                self.contrail_grid,
-                self.performance_model,
-                self.config,
+                self.routing_graph_manager,
                 self.objective_functions,
+                self.config,
             )
             for _ in range(self.config.NO_OF_ANTS)
         ]

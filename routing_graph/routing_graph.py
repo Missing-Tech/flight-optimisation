@@ -5,10 +5,13 @@ from utils import Conversions
 
 
 class RoutingGraph:
-    def __init__(self, altitude_grid, contrail_grid, config):
+    def __init__(self, altitude_grid, performance_model, config):
         self.config = config
         self.altitude_grid = altitude_grid
-        self.contrail_grid = contrail_grid
+        self.performance_model = performance_model
+        self.contrail_grid = performance_model.get_contrail_grid()
+        self.routing_graph = self._init_routing_graph()
+        self.nodes = self.routing_graph.nodes
 
     def calculate_point_values(self, point, altitude):
         distance_from_departure = Conversions().calculate_distance_between_points(
@@ -128,10 +131,19 @@ class RoutingGraph:
         parts = s.strip("()").split(",")
         return tuple(map(int, parts))
 
-    def get_routing_graph(self):
+    def __getitem__(self, key):
+        return self.routing_graph[key]
+
+    def __setitem__(self, key, value):
+        self.routing_graph[key] = value
+
+    def _init_routing_graph(self):
         if os.path.exists("data/routing_graph.gml"):
-            return nx.read_gml("data/routing_graph.gml", destringizer=self.parse_node)
+            rg = nx.read_gml("data/routing_graph.gml", destringizer=self.parse_node)
+            self.routing_graph = rg
+            return rg
         else:
             rg = self.calculate_routing_graph()
             nx.write_gml(rg, "data/routing_graph.gml")
+            self.routing_graph = rg
             return rg

@@ -9,7 +9,6 @@ import xarray as xr
 class WeatherGrid:
     def __init__(self, altitude_grid, config):
         self.config = config
-        self.flight_path = altitude_grid
         self.met = self._get_met()
         self.rad = self._get_rad()
         self.altitude_grid = altitude_grid

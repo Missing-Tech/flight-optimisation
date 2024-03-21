@@ -1,8 +1,8 @@
 class Objective:
-    def __init__(self, config, contrail_grid):
+    def __init__(self, routing_graph, config):
         self.weight = 1
         self.name = NotImplemented
-        self.contrail_grid = contrail_grid
+        self.routing_graph = routing_graph
 
     def _run_objective_function(self, flight_path):
         return NotImplemented
@@ -18,19 +18,21 @@ class Objective:
 
 
 class ContrailObjective(Objective):
-    def __init__(self, config, contrail_grid):
-        super().__init__(config, contrail_grid)
+    def __init__(self, routing_graph, config):
+        super().__init__(routing_graph, config)
         self.name = "contrail"
         self.weight = config.CONTRAIL_WEIGHT
 
     def _run_objective_function(self, flight_path):
-        contrail_ef = self.contrail_grid.interpolate_contrail_grid(flight_path)
+        contrail_ef = self.routing_graph.contrail_grid.interpolate_contrail_grid(
+            flight_path
+        )
         return contrail_ef
 
 
 class CO2Objective(Objective):
-    def __init__(self, config, contrail_grid):
-        super().__init__(config, contrail_grid)
+    def __init__(self, routing_graph, config):
+        super().__init__(routing_graph, config)
         self.name = "co2"
         self.weight = config.CO2_WEIGHT
 
@@ -48,8 +50,8 @@ class CO2Objective(Objective):
 
 
 class TimeObjective(Objective):
-    def __init__(self, config, contrail_grid):
-        super().__init__(config, contrail_grid)
+    def __init__(self, routing_graph, config):
+        super().__init__(routing_graph, config)
         self.name = "time"
         self.weight = config.TIME_WEIGHT
 

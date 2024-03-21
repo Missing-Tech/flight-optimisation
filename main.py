@@ -1,12 +1,12 @@
 import display
-from config import Config
+from config import Config, ContrailMaxConfig
 import random
 import warnings
 from dotenv import load_dotenv
 
 from routing_graph import RoutingGraphManager
-from performance_model import PerformanceModel
-from aco import ACO, RealFlight
+from performance_model import PerformanceModel, RealFlight
+from aco import ACO
 
 if __name__ == "__main__":
     load_dotenv()
@@ -19,17 +19,14 @@ if __name__ == "__main__":
     routing_grid = routing_graph_manager.get_routing_grid()
     altitude_grid = routing_graph_manager.get_altitude_grid()
 
-    performance_model = PerformanceModel(altitude_grid, config)
-    contrail_grid = performance_model.get_contrail_grid()
+    performance_model = PerformanceModel(routing_graph_manager, config)
     cocip_manager = performance_model.get_cocip_manager()
-    weather_grid = performance_model.get_weather_grid()
-    apm = performance_model.get_apm()
 
-    routing_graph = routing_graph_manager.get_routing_graph(contrail_grid)
+    routing_graph_manager.set_performance_model(performance_model)
 
-    ant_colony = ACO(routing_graph, altitude_grid, contrail_grid, apm, config)
+    ant_colony = ACO(routing_graph_manager, config)
 
-    real_flight = RealFlight("jan-31.csv", altitude_grid, routing_graph, apm, config)
+    real_flight = RealFlight("jan-31.csv", routing_graph_manager, config)
     real_flight.run_performance_model()
 
     _, ax_blank = display.create_blank_ax()

@@ -3,12 +3,16 @@ import numpy as np
 # Equations from Wikipedia https://en.wikipedia.org/wiki/Great-circle_navigation
 
 
-class GeodesicPath:
+class GeodesicPath(list):
     def __init__(self, config):
         self.departure_airport = config.DEPARTURE_AIRPORT
         self.destination_airport = config.DESTINATION_AIRPORT
         self.no_of_points = config.NO_OF_POINTS
         self.config = config
+        self.path = self.calculate_path(
+            self.no_of_points, self.departure_airport, self.destination_airport
+        )
+        super().__init__(self.path)
 
     def reduce_angle(self, angle):
         while angle < -180:
@@ -125,9 +129,3 @@ class GeodesicPath:
         points.append((lat1, lon1, 0))
 
         return points
-
-    def get_geodesic_path(self):
-        path = self.calculate_path(
-            self.no_of_points, self.departure_airport, self.destination_airport
-        )
-        return path
