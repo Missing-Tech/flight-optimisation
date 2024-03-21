@@ -118,7 +118,7 @@ class GeodesicPath(list):
 
         total_distance = self.config.R * central_angle
         step = total_distance / no_of_points
-        for i in range(1, no_of_points - 1):
+        for i in range(1, no_of_points):
             distance = angle1 + ((i * step) / self.config.R)
             points.append(
                 self.find_point_distance_along_great_circle(

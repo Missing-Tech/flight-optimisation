@@ -9,6 +9,7 @@ class RoutingGraph:
         self.performance_model = performance_model
         self.routing_graph = self._init_routing_graph()
         self.nodes = self.routing_graph.nodes
+        self.edges = self.routing_graph.edges
 
     def get_consecutive_points(
         self,
@@ -66,6 +67,10 @@ class RoutingGraph:
 
                     if consecutive_points is None:
                         continue
+                    graph.add_node(
+                        (xi, yi, altitude),
+                        **heuristic_data,
+                    )
                     for next_point in consecutive_points:
                         pheromone_data = {
                             f"{objective(self.performance_model,self.config)}_pheromone": self.config.TAU_MAX
@@ -82,10 +87,6 @@ class RoutingGraph:
                             (xi, yi, altitude),
                             (next_point[0], next_point[1], next_point[2]),
                             **pheromone_data,
-                        )
-                        graph.add_node(
-                            (xi, yi, altitude),
-                            **heuristic_data,
                         )
                         next_lat, next_lon, _ = next_point
                         graph.add_node(

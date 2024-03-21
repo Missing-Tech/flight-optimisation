@@ -21,7 +21,7 @@ class TestGeodesicPath(unittest.TestCase):
         geodesic_path = GeodesicPath(self.config)
         path = geodesic_path.calculate_path(100, (0, 0), (0, 1))
         self.assertIsInstance(path, list)
-        self.assertEqual(len(path), 100)
+        self.assertEqual(len(path), 101)
 
     def test_calculate_alpha1(self):
         geodesic_path = GeodesicPath(self.config)
