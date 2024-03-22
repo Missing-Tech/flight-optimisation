@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 
 class Blank:
@@ -34,6 +35,7 @@ class Blank:
             linestyle=linestyle,
             linewidth=linewidth,
         )
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
         ax.set_title(title)

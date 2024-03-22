@@ -71,17 +71,42 @@ if __name__ == "__main__":
         random_pareto_path.flight_path, columns=["latitude", "longitude"]
     )
 
+    objectives = {key: [] for key in ant_colony.objectives_over_time[0].keys()}
+    for entry in ant_colony.objectives_over_time:
+        for key, value in entry.items():
+            objectives[key].append(value)
+
     # Display results
     display = Display()
     blank = display.blank
     maps = display.maps
     _, objective_axs = blank.create_fig(3, 1)
-    objectives = {
-        key: [d[key] for d in ant_colony.objectives_over_time]
-        for key in ant_colony.objectives_over_time[0]
-    }
-    for i, objective in enumerate(objectives):
-        display.blank.show_plot(objective, objective_axs[i])
+
+    # Show objectives over time
+    display.blank.show_plot(
+        objectives["contrail"],
+        objective_axs[0],
+        color="b",
+        title="Lowest contrail EF over iterations",
+        x_label="Iteration",
+        y_label="EF",
+    )
+    display.blank.show_plot(
+        objectives["co2"],
+        objective_axs[1],
+        color="r",
+        title="Least kg of CO2 over iterations",
+        x_label="Iteration",
+        y_label="kg of CO2",
+    )
+    display.blank.show_plot(
+        objectives["time"],
+        objective_axs[2],
+        color="g",
+        title="Shortest time over iterations",
+        x_label="Iteration",
+        y_label="Time (s)",
+    )
 
     _, map_axs = maps.create_fig(2, 1)
     maps.show_path(geodesic_path, map_axs[0], linestyle="--")
