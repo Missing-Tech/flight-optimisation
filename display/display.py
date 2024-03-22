@@ -1,10 +1,10 @@
 from matplotlib.collections import PolyCollection
-import config
 import shapely
+import json
+import config
 import pandas as pd
 from cartopy import crs as ccrs
 import numpy as np
-import json
 from matplotlib.animation import FuncAnimation
 
 crs = ccrs.NearsidePerspective(central_latitude=51, central_longitude=-35)

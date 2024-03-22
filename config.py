@@ -23,11 +23,11 @@ class Config:
     HEURISTIC_WEIGHT = 1
     TAU_MIN = 0.1
     TAU_MAX = 1
-    NO_OF_ANTS = 8
+    NO_OF_ANTS = 1
     NO_OF_ITERATIONS = 1
 
     # Aircraft
-    AIRCRAFT_TYPE = "B772"
+    AIRCRAFT_TYPE = "B77W"
     N_ENGINES = 4
     WINGSPAN = 60.920
     STARTING_WEIGHT = 240000

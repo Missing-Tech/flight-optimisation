@@ -131,11 +131,11 @@ class AircraftPerformanceModel:
         return ground_speed
 
     def calculate_emissions(self, FF):
-        emission = Emission(ac="B77W", eng="GE90-115B")
+        emission = Emission(ac=self.config.AIRCRAFT_TYPE)
         return emission.co2(FF)
 
     def calculate_fuel_flow(self, point, mass):
-        fuelflow = FuelFlow(ac="B77W", eng="GE90-115B")
+        fuelflow = FuelFlow(ac=self.config.AIRCRAFT_TYPE)
 
         FF = fuelflow.enroute(
             mass=mass,

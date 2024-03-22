@@ -19,6 +19,9 @@ class PerformanceModel:
     def run_apm(self, flight_path):
         return self.apm.calculate_flight_characteristics(flight_path)
 
+    def get_contrail_polys(self):
+        return self.contrail_manager.contrail_polys
+
     def get_ps_grid(self):
         if hasattr(self, "ps_grid") is False:
             weather_grid = self.get_weather_grid()

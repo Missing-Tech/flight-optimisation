@@ -58,6 +58,7 @@ class Ant:
                     # reached the destination
                     choice = n
                     break
+
                 probabilities.append(probability)
             if not choice:
                 choice = random.choices(list(neighbours), weights=probabilities, k=1)[0]

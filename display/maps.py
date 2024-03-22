@@ -29,7 +29,7 @@ class Map:
         return ax
 
     def show_path(self, path, ax, color="green", linewidth=1, linestyle="solid"):
-        ax.plot(
+        return ax.plot(
             path["longitude"],
             path["latitude"],
             transform=self.crs,
@@ -56,8 +56,20 @@ class Map:
             ax=ax,
         )
 
+    def show_contrail_grid(self, contrail_grid, ax):
+        ax.pcolormesh(
+            contrail_grid["longitude"],
+            contrail_grid["latitude"],
+            contrail_grid["ef_per_m"].transpose(),
+            shading="gourard",
+            vmin=-1e9,
+            vmax=1e9,
+            cmap="coolwarm",
+            transform=ccrs.PlateCarree(),
+        )
+
     def show_grid(self, grid, ax, color="blue", s=0.2):
-        ax.scatter(
+        return ax.scatter(
             grid["longitude"],
             grid["latitude"],
             transform=ccrs.PlateCarree(),
@@ -70,15 +82,17 @@ class Map3D(Map):
     def __init__(self, crs=None):
         pass
 
-    def create_map(self, fig, grid_pos):
-        ax = fig.add_subplot(grid_pos, projection="3d")
+    def _create_map(self, fig, grid_pos):
+        ax = fig.add_subplot(int(grid_pos), projection="3d")
 
         lc = self.extract_map_geometry()
         ax.add_collection3d(lc, zs=30_000, zdir="z")
 
         ax.set_zlim(30000, 40000)
+        ax.set_xlim(-75, 10)
+        ax.set_ylim(35, 65)
 
-        return fig, ax
+        return ax
 
     def extract_map_geometry(self):
         coastline_geoms = COASTLINE.geometries()
@@ -103,7 +117,7 @@ class Map3D(Map):
 
     # Function to display altitude grid as 3D scatter plot
     # Method from https://stackoverflow.com/questions/23785408/3d-cartopy-similar-to-matplotlib-basemap
-    def show_3d_grid(self, grid, ax=None):
+    def show_3d_grid(self, grid, ax):
         ax.scatter(
             grid["latitude"],
             grid["longitude"],
@@ -122,10 +136,10 @@ class Map3D(Map):
         ax.set_ylabel("latitude")
         ax.set_zlabel("altitude")
 
-        return ax  # Return the modified axis
+        return ax
 
-    def show_3d_path(self, flight_path, ax=None, color="k", linewidth=1):
-        ax.plot(
+    def show_3d_path(self, flight_path, ax, color="k", linewidth=1):
+        return ax.plot(
             flight_path["longitude"],
             flight_path["latitude"],
             flight_path["altitude_ft"],
