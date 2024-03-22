@@ -1,4 +1,4 @@
-from config import Config, ContrailMaxConfig
+from __future__ import print_function, unicode_literals
 import random
 import warnings
 from dotenv import load_dotenv
@@ -6,7 +6,9 @@ import pandas as pd
 import typer
 from rich import print
 from rich.progress import Progress, SpinnerColumn, TextColumn
+import inquirer
 
+from config import Config, ContrailMaxConfig
 from routing_graph import RoutingGraphManager
 from performance_model import PerformanceModel, RealFlight
 from aco import ACO
@@ -114,55 +116,70 @@ def main():
         for key, value in entry.items():
             objectives[key].append(value)
 
+    questions = [
+        inquirer.Checkbox(
+            "graphs",
+            message="What plots would you like to see?",
+            choices=["Objectives over time", "Flight path comparison"],
+            carousel=True,
+        ),
+    ]
+    answers = inquirer.prompt(questions)
+
     # Display results
     display = Display()
     blank = display.blank
     maps = display.maps
-    _, objective_axs = blank.create_fig(3, 1)
 
-    # Show objectives over time
-    display.blank.show_plot(
-        objectives["contrail"],
-        objective_axs[0],
-        color="b",
-        title="Lowest contrail EF over iterations",
-        x_label="Iteration",
-        y_label="EF",
-    )
-    display.blank.show_plot(
-        objectives["co2"],
-        objective_axs[1],
-        color="r",
-        title="Least kg of CO2 over iterations",
-        x_label="Iteration",
-        y_label="kg of CO2",
-    )
-    display.blank.show_plot(
-        objectives["time"],
-        objective_axs[2],
-        color="g",
-        title="Shortest time over iterations",
-        x_label="Iteration",
-        y_label="Time (s)",
-    )
+    if "Objectives over time" in answers["graphs"]:
+        _, objective_axs = blank.create_fig(3, 1)
 
-    _, map_axs = maps.create_fig(2, 1)
-    maps.show_path(geodesic_path, map_axs[0], linestyle="--")
-    maps.show_path(real_flight_df, map_axs[0], color="red", linewidth=1)
-    maps.set_title(map_axs[0], "BA177 Flight Path - Jan 31 2024")
+        # Show objectives over time
+        display.blank.show_plot(
+            objectives["contrail"],
+            objective_axs[0],
+            color="b",
+            title="Lowest contrail EF over iterations",
+            x_label="Iteration",
+            y_label="EF",
+        )
+        display.blank.show_plot(
+            objectives["co2"],
+            objective_axs[1],
+            color="r",
+            title="Least kg of CO2 over iterations",
+            x_label="Iteration",
+            y_label="kg of CO2",
+        )
+        display.blank.show_plot(
+            objectives["time"],
+            objective_axs[2],
+            color="g",
+            title="Shortest time over iterations",
+            x_label="Iteration",
+            y_label="Time (s)",
+        )
 
-    maps.show_path(geodesic_path, map_axs[1], linestyle="--")
-    maps.show_path(random_pareto_path_df, map_axs[1], color="red", linewidth=1)
-    maps.set_title(map_axs[1], "ACO Flight Path")
+    if "Flight path comparison" in answers["graphs"]:
+        _, map_axs = maps.create_fig(2, 1)
+        maps.show_path(geodesic_path, map_axs[0], linestyle="--")
+        maps.show_path(real_flight_df, map_axs[0], color="red", linewidth=1)
+        maps.set_title(map_axs[0], "BA177 Flight Path - Jan 31 2024")
 
-    for ant_path in pareto_set:
-        path_df = pd.DataFrame(ant_path.flight_path, columns=["latitude", "longitude"])
-        maps.show_path(path_df, map_axs[1], color="gray", linewidth=0.5)
+        maps.show_path(geodesic_path, map_axs[1], linestyle="--")
+        maps.show_path(random_pareto_path_df, map_axs[1], color="red", linewidth=1)
+        maps.set_title(map_axs[1], "ACO Flight Path")
 
-    maps.show_grid(routing_grid_df, map_axs[1])
+        for ant_path in pareto_set:
+            path_df = pd.DataFrame(
+                ant_path.flight_path, columns=["latitude", "longitude"]
+            )
+            maps.show_path(path_df, map_axs[1], color="gray", linewidth=0.5)
 
-    maps.show_contrails(fp_cocip, map_axs[0])
-    maps.show_contrails(aco_cocip, map_axs[1])
+        maps.show_grid(routing_grid_df, map_axs[1])
+
+        maps.show_contrails(fp_cocip, map_axs[0])
+        maps.show_contrails(aco_cocip, map_axs[1])
 
     display.show()
 
