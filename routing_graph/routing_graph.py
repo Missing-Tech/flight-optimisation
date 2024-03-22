@@ -1,5 +1,7 @@
 import networkx as nx
 import os
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich import print
 
 
 class RoutingGraph:
@@ -111,13 +113,19 @@ class RoutingGraph:
         self.routing_graph[key] = value
 
     def _init_routing_graph(self, test=False):
-        if os.path.exists("data/routing_graph.gml") and not test:
-            rg = nx.read_gml("data/routing_graph.gml", destringizer=self.parse_node)
-            self.routing_graph = rg
-            return rg
-        else:
-            rg = self.calculate_routing_graph()
-            if not test:
-                nx.write_gml(rg, "data/routing_graph.gml")
-            self.routing_graph = rg
-            return rg
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Creating routing graph...", total=None)
+            if os.path.exists("data/routing_graph.gml") and not test:
+                rg = nx.read_gml("data/routing_graph.gml", destringizer=self.parse_node)
+                self.routing_graph = rg
+            else:
+                rg = self.calculate_routing_graph()
+                if not test:
+                    nx.write_gml(rg, "data/routing_graph.gml")
+                self.routing_graph = rg
+        print("[bold green]:white_check_mark: Routing graph constructed.[/bold green]")
+        return self.routing_graph

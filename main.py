@@ -3,44 +3,82 @@ import random
 import warnings
 from dotenv import load_dotenv
 import pandas as pd
+import typer
+from rich import print
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from routing_graph import RoutingGraphManager
 from performance_model import PerformanceModel, RealFlight
 from aco import ACO
 from display import Display
 
-if __name__ == "__main__":
-    load_dotenv()
-    warnings.filterwarnings("ignore")
 
+def main():
     config = Config()
 
     # Construct all required grids + models
-    routing_graph_manager = RoutingGraphManager(config)
-    geodesic_path = routing_graph_manager.get_geodesic_path()
-    routing_grid = routing_graph_manager.get_routing_grid()
-    altitude_grid = routing_graph_manager.get_altitude_grid()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        progress.add_task(description="Creating altitude grid...", total=None)
+        routing_graph_manager = RoutingGraphManager(config)
+        geodesic_path = routing_graph_manager.get_geodesic_path()
+        routing_grid = routing_graph_manager.get_routing_grid()
+        altitude_grid = routing_graph_manager.get_altitude_grid()
+    print("[bold green]:white_check_mark: Altitude grid constructed.[/bold green]")
 
-    performance_model = PerformanceModel(routing_graph_manager, config)
-    cocip_manager = performance_model.get_cocip_manager()
+    # Construct performance model
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        progress.add_task(description="Creating performance model...", total=None)
+        performance_model = PerformanceModel(routing_graph_manager, config)
+        cocip_manager = performance_model.get_cocip_manager()
+        routing_graph_manager.set_performance_model(performance_model)
+    print("[bold green]:white_check_mark: Performance model constructed.[/bold green]")
 
-    routing_graph_manager.set_performance_model(performance_model)
+    _ = routing_graph_manager.get_routing_graph()
 
     # Run ACO
     ant_colony = ACO(routing_graph_manager, config)
     pareto_set = ant_colony.run_aco_colony()
+    print("[bold green]:white_check_mark: ACO complete.[/bold green]")
     random_pareto_path = random.choice(pareto_set)
 
     # Run performance model on a real flight
-    real_flight = RealFlight("jan-31.csv", routing_graph_manager, config)
-    real_flight.run_performance_model()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        progress.add_task(
+            description="Running performance model on real flight...", total=None
+        )
+        real_flight = RealFlight("jan-31.csv", routing_graph_manager, config)
+        real_flight.run_performance_model()
+    print(
+        "[bold green]:white_check_mark: Performance model run on real flight.[/bold green]"
+    )
 
     # Calculate CoCiP for both paths
-    fp_ef, fp_df, fp_cocip = cocip_manager.calculate_ef_from_flight_path(
-        real_flight.flight_path
-    )
-    aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(
-        random_pareto_path.flight_path
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        progress.add_task(description="Running CoCiP for both flights...", total=None)
+        fp_ef, fp_df, fp_cocip = cocip_manager.calculate_ef_from_flight_path(
+            real_flight.flight_path
+        )
+        aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(
+            random_pareto_path.flight_path
+        )
+    print(
+        "[bold green]:white_check_mark: CoCiP calculated for both flights.[/bold green]"
     )
 
     # Create required dataframes
@@ -127,3 +165,10 @@ if __name__ == "__main__":
     maps.show_contrails(aco_cocip, map_axs[1])
 
     display.show()
+
+
+if __name__ == "__main__":
+    app = typer.Typer()
+    load_dotenv()
+    warnings.filterwarnings("ignore")
+    typer.run(main)

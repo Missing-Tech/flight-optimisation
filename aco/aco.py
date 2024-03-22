@@ -6,6 +6,7 @@ import networkx as nx
 import numpy as np
 
 from .ant import Ant
+from rich.progress import track
 
 
 class ACO:
@@ -41,7 +42,6 @@ class ACO:
 
     def run_aco_colony(self):
         best_objectives = dict.fromkeys(self.objectives, np.inf)
-
         ants = [
             Ant(
                 self.routing_graph_manager,
@@ -50,11 +50,10 @@ class ACO:
             )
             for _ in range(self.config.NO_OF_ANTS)
         ]
-        before2 = time.perf_counter()
-        with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
-            for i in range(self.config.NO_OF_ITERATIONS):
-                before = time.perf_counter()
-
+        for i in track(range(self.config.NO_OF_ITERATIONS)):
+            with ProcessPoolExecutor(
+                max_workers=multiprocessing.cpu_count()
+            ) as executor:
                 # Run the ants
                 futures = [
                     executor.submit(ant.run_ant, i) for i, ant in enumerate(ants)
@@ -90,11 +89,6 @@ class ACO:
                 self.pheromone_update(
                     iteration_best_solution, iteration_best_objectives, best_objectives
                 )
-                after = time.perf_counter()
-                print(f"iteration time: {after-before}")
-
-        after2 = time.perf_counter()
-        print(f"total time: {after2-before2}")
 
         return self.pareto_set
 
