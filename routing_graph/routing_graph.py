@@ -3,11 +3,11 @@ import os
 
 
 class RoutingGraph:
-    def __init__(self, altitude_grid, performance_model, config):
+    def __init__(self, altitude_grid, performance_model, config, test=False):
         self.config = config
         self.altitude_grid = altitude_grid
         self.performance_model = performance_model
-        self.routing_graph = self._init_routing_graph()
+        self.routing_graph = self._init_routing_graph(test=test)
         self.nodes = self.routing_graph.nodes
         self.edges = self.routing_graph.edges
 
@@ -67,10 +67,11 @@ class RoutingGraph:
 
                     if consecutive_points is None:
                         continue
-                    graph.add_node(
-                        (xi, yi, altitude),
-                        **heuristic_data,
-                    )
+                    if not graph.has_node((xi, yi, altitude)):
+                        graph.add_node(
+                            (xi, yi, altitude),
+                            **heuristic_data,
+                        )
                     for next_point in consecutive_points:
                         pheromone_data = {
                             f"{objective(self.performance_model,self.config)}_pheromone": self.config.TAU_MAX
@@ -89,8 +90,10 @@ class RoutingGraph:
                             **pheromone_data,
                         )
                         next_lat, next_lon, _ = next_point
+
+                    if not graph.has_node(next_point):
                         graph.add_node(
-                            next_point,
+                            (next_point[0], next_point[1], next_point[2]),
                             **next_heuristic_data,
                         )
 
@@ -107,13 +110,14 @@ class RoutingGraph:
     def __setitem__(self, key, value):
         self.routing_graph[key] = value
 
-    def _init_routing_graph(self):
-        if os.path.exists("data/routing_graph.gml"):
+    def _init_routing_graph(self, test=False):
+        if os.path.exists("data/routing_graph.gml") and not test:
             rg = nx.read_gml("data/routing_graph.gml", destringizer=self.parse_node)
             self.routing_graph = rg
             return rg
         else:
             rg = self.calculate_routing_graph()
-            nx.write_gml(rg, "data/routing_graph.gml")
+            if not test:
+                nx.write_gml(rg, "data/routing_graph.gml")
             self.routing_graph = rg
             return rg

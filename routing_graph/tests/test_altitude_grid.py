@@ -32,7 +32,6 @@ class TestAltitudeGrid(unittest.TestCase):
                 [(6, 6), (7, 7), (8, 8)],
             ]
         )
-        # Assert expected altitude grid structure
         self.assertEqual(len(altitude_grid), 4)
         self.assertEqual(len(altitude_grid[0]), 3)
         self.assertEqual(len(altitude_grid[0][0]), 3)
