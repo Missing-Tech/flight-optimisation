@@ -3,6 +3,7 @@ from objectives import ContrailObjective, CO2Objective, TimeObjective
 
 
 class Config:
+    NAME = "overall"
     # Flight Path
     DEPARTURE_AIRPORT = (50.74045, -3.00313)
     DESTINATION_AIRPORT = (41.59918, -71.57000)
@@ -55,20 +56,24 @@ class Config:
 
 
 class ContrailConfig(Config):
+    NAME = "contrail"
     OBJECTIVES = [ContrailObjective]
     CONTRAIL_WEIGHT = 1
 
 
 class CO2Config(Config):
+    NAME = "co2"
     OBJECTIVES = [CO2Objective]
     CO2_WEIGHT = 1
 
 
 class TimeConfig(Config):
+    NAME = "time"
     OBJECTIVES = [TimeObjective]
     TIME_WEIGHT = 1
 
 
 class ContrailMaxConfig(Config):
+    NAME = "contrail_max"
     OBJECTIVES = [ContrailObjective]
     CONTRAIL_WEIGHT = -10

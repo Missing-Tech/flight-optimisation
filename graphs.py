@@ -41,7 +41,7 @@ def show_flight_frames(display, real_flight_df, aco_path, contrail_grid, config)
     maps = display.maps
     fig, map_axs = maps.create_fig(2, 2)
 
-    fig.title = "Flight Path Comparison"
+    fig.title = "Flight Path Comparison Over Time"
 
     time = aco_path["time"].min()
     aco_cutoff_df = get_path_before_time(aco_path, time)
@@ -76,6 +76,8 @@ def show_flight_frames(display, real_flight_df, aco_path, contrail_grid, config)
             flight_level=nearest_flight_level_index, time=nearest_timestamp_index
         )
         maps.show_contrail_grid(interpolated_grid, ax)
+
+    return fig
 
 
 def get_path_before_time(path, time):
@@ -113,7 +115,7 @@ def show_3d_flight_frames(
     maps = display.maps3d
     fig, map_axs = maps.create_fig(2, 2)
 
-    fig.title = "Flight Path Comparison"
+    fig.title = "3D Flight Path Comparison"
 
     time = aco_path["time"].min()
     aco_cutoff_df = get_path_before_time(aco_path, time)
@@ -150,6 +152,8 @@ def show_3d_flight_frames(
         for level in polys_at_time:
             ax.add_collection3d(polys_at_time[level], zs=level * 100, zdir="z")
 
+    return fig
+
 
 def show_flight_path_comparison(
     display,
@@ -161,7 +165,10 @@ def show_flight_path_comparison(
     aco_cocip,
 ):
     maps = display.maps
-    _, map_axs = maps.create_fig(2, 1)
+    fig, map_axs = maps.create_fig(2, 1)
+
+    fig.title = "Flight Path Comparison"
+
     maps.show_path(geodesic_path, map_axs[0], linestyle="--")
     maps.show_path(real_flight_df, map_axs[0], color="red", linewidth=2)
     maps.set_title(map_axs[0], "BA177 Flight Path - Jan 31 2024")
@@ -176,3 +183,4 @@ def show_flight_path_comparison(
 
     maps.show_contrails(fp_cocip, map_axs[0])
     maps.show_contrails(aco_cocip, map_axs[1])
+    return fig
