@@ -10,7 +10,7 @@ import inquirer
 import pickle
 
 import graphs
-from config import Config, ContrailMaxConfig
+from config import Config, ContrailMaxConfig, ContrailConfig, CO2Config, TimeConfig
 from routing_graph import RoutingGraphManager
 from performance_model import PerformanceModel, RealFlight
 from aco import ACO
@@ -25,6 +25,14 @@ def load_pickle(file_path):
 def save_pickle(file_path, data):
     with open(file_path, "wb") as f:
         pickle.dump(data, f)
+
+
+def load_csv(file_path):
+    return pd.read_csv(file_path)
+
+
+def save_csv(file_path, data):
+    data.to_csv(file_path, index=False)
 
 
 def main():
@@ -49,7 +57,7 @@ def main():
             real_flight = load_pickle("results/real_flight.pkl")
             random_pareto_path = load_pickle("results/random_pareto_path.pkl")
             pareto_set = load_pickle("results/pareto_set.pkl")
-            objectives = load_pickle("results/objectives.pkl")
+            objectives = load_csv("results/objectives.csv")
             fp_cocip = load_pickle("results/fp_cocip.pkl")
             aco_cocip = load_pickle("results/aco_cocip.pkl")
             contrail_grid = load_pickle("results/contrail_grid.pkl")
@@ -61,7 +69,7 @@ def main():
             inquirer.List(
                 "config",
                 message="Which configuration would you like to use?",
-                choices=["Default", "ContrailMax"],
+                choices=["Default", "ContrailMax", "Contrail", "CO2", "Time"],
                 carousel=True,
             ),
             inquirer.List(
@@ -70,14 +78,34 @@ def main():
                 choices=[1, 10, 100, 300, 1000],
                 carousel=True,
             ),
+            inquirer.List(
+                "evaporation_rate",
+                message="Choose an evaporation rate.",
+                choices=[0.2, 0.5, 0.8],
+                carousel=True,
+            ),
+            inquirer.List(
+                "no_of_ants",
+                message="Choose a number of ants.",
+                choices=[1, 8, 16],
+                carousel=True,
+            ),
         ]
         answers = inquirer.prompt(questions)
         if answers["config"] == "Default":
             config = Config()
+        elif answers["config"] == "Contrail":
+            config = ContrailConfig()
+        elif answers["config"] == "CO2":
+            config = CO2Config()
+        elif answers["config"] == "Time":
+            config = TimeConfig()
         else:
             config = ContrailMaxConfig()
 
         config.NO_OF_ITERATIONS = answers["iterations"]
+        config.EVAPORATION_RATE = answers["evaporation_rate"]
+        config.NO_OF_ANTS = answers["no_of_ants"]
 
         # Construct all required grids + models
         with Progress(
@@ -154,6 +182,13 @@ def main():
         for entry in ant_colony.objectives_over_time:
             for key, value in entry.items():
                 objectives[key].append(value)
+
+        pareto_set_objectives = []
+        for solution in pareto_set:
+            pareto_set_objectives.append(solution.objectives)
+
+        real_flight_objectives = real_flight.calculate_objectives()
+
         questions = [
             inquirer.Confirm(
                 "save",
@@ -176,12 +211,20 @@ def main():
                 save_pickle("results/real_flight.pkl", real_flight)
                 save_pickle("results/random_pareto_path.pkl", random_pareto_path)
                 save_pickle("results/pareto_set.pkl", pareto_set)
-                save_pickle("results/objectives.pkl", objectives)
                 save_pickle("results/fp_cocip.pkl", fp_cocip)
                 save_pickle("results/aco_cocip.pkl", aco_cocip)
                 save_pickle("results/contrail_grid.pkl", contrail_grid)
                 save_pickle("results/contrail_polys.pkl", contrail_polys)
                 save_pickle("results/config.pkl", config)
+                save_csv("results/objectives.csv", pd.DataFrame(objectives))
+                save_csv(
+                    "results/real_flight_objectives.csv",
+                    pd.DataFrame(real_flight_objectives, index=[0]),
+                )
+                save_csv(
+                    "results/pareto_set_objectives.csv",
+                    pd.DataFrame(pareto_set_objectives),
+                )
             print("[bold green]:white_check_mark: Results saved.[/bold green]")
 
     # Create required dataframes

@@ -15,15 +15,15 @@ class Config:
     GRID_SPACING = 20  # km
 
     # ACO
-    EVAPORATION_RATE = 0.5
+    EVAPORATION_RATE = 0.3
     CO2_WEIGHT = 1
     CONTRAIL_WEIGHT = 1
     TIME_WEIGHT = 1
-    PHEROMONE_WEIGHT = 4
+    PHEROMONE_WEIGHT = 2
     HEURISTIC_WEIGHT = 1
     TAU_MIN = 0.1
     TAU_MAX = 1
-    NO_OF_ANTS = 1
+    NO_OF_ANTS = 8
     NO_OF_ITERATIONS = 1
 
     # Aircraft
@@ -45,13 +45,28 @@ class Config:
     MAX_ALTITUDE = 39000
     MAX_ALTITUDE_VAR = 2000
     ALTITUDE_STEP = 2000
-    OFFSET_VAR = 16
+    OFFSET_VAR = 20
 
     # Objective Functions
     OBJECTIVES = [ContrailObjective, CO2Objective, TimeObjective]
 
     # Earth radius in km
     R = 6371
+
+
+class ContrailConfig(Config):
+    OBJECTIVES = [ContrailObjective]
+    CONTRAIL_WEIGHT = 1
+
+
+class CO2Config(Config):
+    OBJECTIVES = [CO2Objective]
+    CO2_WEIGHT = 1
+
+
+class TimeConfig(Config):
+    OBJECTIVES = [TimeObjective]
+    TIME_WEIGHT = 1
 
 
 class ContrailMaxConfig(Config):

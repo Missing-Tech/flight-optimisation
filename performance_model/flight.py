@@ -70,3 +70,14 @@ class RealFlight(Flight):
             path.append(path_point)
 
         return path
+
+    def calculate_objectives(self):
+        objectives = {}
+        for objective in self.config.OBJECTIVES:
+            objective = objective(self.performance_model, self.config)
+            objective_name = str(objective)
+            objective_value = objective._run_objective_function(self.flight_path)
+            objectives[objective_name] = objective_value
+
+        self.objectives = objectives
+        return objectives
