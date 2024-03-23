@@ -7,13 +7,9 @@ import typer
 from rich import print
 from rich.progress import Progress, SpinnerColumn, TextColumn
 import inquirer
-from matplotlib.patches import Patch
-import numpy as np
+import pickle
 
-from matplotlib.collections import PolyCollection
-import shapely
-import json
-
+import graphs
 from config import Config, ContrailMaxConfig
 from routing_graph import RoutingGraphManager
 from performance_model import PerformanceModel, RealFlight
@@ -21,251 +17,176 @@ from aco import ACO
 from display import Display
 
 
-def show_objectives_over_time(display, objectives):
-    blank = display.blank
-    _, objective_axs = blank.create_fig(3, 1)
-
-    # Show objectives over time
-    blank.show_plot(
-        objectives["contrail"],
-        objective_axs[0],
-        color="b",
-        title="Lowest contrail EF over iterations",
-        x_label="Iteration",
-        y_label="EF",
-    )
-    blank.show_plot(
-        objectives["co2"],
-        objective_axs[1],
-        color="r",
-        title="Least kg of CO2 over iterations",
-        x_label="Iteration",
-        y_label="kg of CO2",
-    )
-    blank.show_plot(
-        objectives["time"],
-        objective_axs[2],
-        color="g",
-        title="Shortest time over iterations",
-        x_label="Iteration",
-        y_label="Time (s)",
-    )
+def load_pickle(file_path):
+    with open(file_path, "rb") as f:
+        return pickle.load(f)
 
 
-def show_flight_frames(display, real_flight_df, aco_path, contrail_grid, config):
-    maps = display.maps
-    fig, map_axs = maps.create_fig(2, 2)
-
-    fig.title = "Flight Path Comparison"
-
-    time = aco_path["time"].min()
-    aco_cutoff_df = get_path_before_time(aco_path, time)
-
-    legend_patches = [
-        Patch(color="blue", label="BA177 Flight Path"),
-        Patch(color="red", label="ACO Flight Path"),
-    ]
-
-    timestamps = contrail_grid["time"]
-    fig.legend(handles=legend_patches)
-
-    for ax in map_axs:
-        flight_duration = real_flight_df["time"].max() - real_flight_df["time"].min()
-        time_step = flight_duration / len(map_axs)
-        time = time + pd.Timedelta(time_step)
-
-        aco_cutoff_df = get_path_before_time(aco_path, time)
-        real_cutoff_df = get_path_before_time(real_flight_df, time)
-        maps.show_path(real_cutoff_df, ax, color="blue", linewidth=2)
-        maps.show_path(aco_cutoff_df, ax, color="red", linewidth=2)
-        ax.set_title("Time: {}".format(time))
-        #
-        # Interpolate contrail grid data at the given timestamp
-        nearest_timestamp_index = np.argmin(
-            np.abs(timestamps - np.datetime64(time)).values
-        )
-        nearest_flight_level_index = np.argmin(
-            np.abs(config.FLIGHT_LEVELS - (aco_cutoff_df["altitude_ft"].iloc[-1] / 100))
-        )
-        interpolated_grid = contrail_grid.isel(
-            flight_level=nearest_flight_level_index, time=nearest_timestamp_index
-        )
-        maps.show_contrail_grid(interpolated_grid, ax)
-
-
-def get_path_before_time(path, time):
-    time = pd.Timestamp(time)
-    return path[path["time"] <= time]
-
-
-def show_3d_flight_frames(
-    display, real_flight_df, aco_path, contrail_polys, contrail_grid, config
-):
-    def get_contrail_polys_at_time(contrail_polys, time):
-        collections = {}
-        polys = contrail_polys["polys"]
-        for level in config.FLIGHT_LEVELS:
-            patches = []
-            for poly in polys:
-                if (
-                    poly["properties"]["level"] == level
-                    and poly["properties"]["time"] == time
-                ):
-                    multipoly = shapely.from_geojson(json.dumps(poly))
-                    for geom in multipoly.geoms:
-                        geom = geom.simplify(0.3)
-                        x, y = geom.exterior.coords.xy
-                        patches.append(np.asarray(tuple(zip(x, y))))
-            collection = PolyCollection(patches, facecolor="red", alpha=0.3)
-            collections[level] = collection
-
-        return collections
-
-    def convert_time_string(time):
-        new_time_str = np.datetime_as_string(time, unit="s") + "Z"
-        return new_time_str
-
-    maps = display.maps3d
-    fig, map_axs = maps.create_fig(2, 2)
-
-    fig.title = "Flight Path Comparison"
-
-    time = aco_path["time"].min()
-    aco_cutoff_df = get_path_before_time(aco_path, time)
-
-    legend_patches = [
-        Patch(color="blue", label="BA177 Flight Path"),
-        Patch(color="red", label="ACO Flight Path"),
-    ]
-
-    fig.legend(handles=legend_patches)
-
-    for ax in map_axs:
-        flight_duration = real_flight_df["time"].max() - real_flight_df["time"].min()
-        time_step = flight_duration / len(map_axs)
-        time = time + pd.Timedelta(time_step)
-
-        aco_cutoff_df = get_path_before_time(aco_path, time)
-        real_cutoff_df = get_path_before_time(real_flight_df, time)
-        maps.show_3d_path(real_cutoff_df, ax, color="blue", linewidth=2)
-        maps.show_3d_path(aco_cutoff_df, ax, color="red", linewidth=2)
-        ax.set_title("Time: {}".format(time))
-
-        timestamps = contrail_grid["time"]
-
-        # Interpolate contrail grid data at the given timestamp
-        nearest_timestamp_index = np.argmin(
-            np.abs(timestamps - np.datetime64(time)).values
-        )
-        time_string = convert_time_string(
-            contrail_grid["time"][nearest_timestamp_index].values
-        )
-        # Interpolate contrail grid data at the given timestamp
-        polys_at_time = get_contrail_polys_at_time(contrail_polys, time_string)
-        for level in polys_at_time:
-            ax.add_collection3d(polys_at_time[level], zs=level * 100, zdir="z")
-
-
-def show_flight_path_comparison(
-    display,
-    geodesic_path,
-    real_flight_df,
-    random_pareto_path_df,
-    pareto_set,
-    fp_cocip,
-    aco_cocip,
-):
-    maps = display.maps
-    _, map_axs = maps.create_fig(2, 1)
-    maps.show_path(geodesic_path, map_axs[0], linestyle="--")
-    maps.show_path(real_flight_df, map_axs[0], color="red", linewidth=2)
-    maps.set_title(map_axs[0], "BA177 Flight Path - Jan 31 2024")
-
-    maps.show_path(geodesic_path, map_axs[1], linestyle="--")
-    maps.show_path(random_pareto_path_df, map_axs[1], color="red", linewidth=2)
-    maps.set_title(map_axs[1], "ACO Flight Path")
-
-    for ant_path in pareto_set:
-        path_df = pd.DataFrame(ant_path.flight_path, columns=["latitude", "longitude"])
-        maps.show_path(path_df, map_axs[1], color="gray", linewidth=0.5)
-
-    maps.show_contrails(fp_cocip, map_axs[0])
-    maps.show_contrails(aco_cocip, map_axs[1])
+def save_pickle(file_path, data):
+    with open(file_path, "wb") as f:
+        pickle.dump(data, f)
 
 
 def main():
-    config = Config()
+    questions = [
+        inquirer.List(
+            "choice",
+            message="What would you like to do?",
+            choices=["Run ACO", "Load ACO Results"],
+            carousel=True,
+        ),
+    ]
 
-    # Construct all required grids + models
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
-    ) as progress:
-        progress.add_task(description="Creating altitude grid...", total=None)
-        routing_graph_manager = RoutingGraphManager(config)
-        geodesic_path = routing_graph_manager.get_geodesic_path()
-        routing_grid = routing_graph_manager.get_routing_grid()
-        altitude_grid = routing_graph_manager.get_altitude_grid()
-    print("[bold green]:white_check_mark: Altitude grid constructed.[/bold green]")
+    answers = inquirer.prompt(questions)
+    if answers["choice"] == "Load ACO Results":
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Loading results...", total=None)
+            geodesic_path = load_pickle("results/geodesic_path.pkl")
+            real_flight = load_pickle("results/real_flight.pkl")
+            random_pareto_path = load_pickle("results/random_pareto_path.pkl")
+            pareto_set = load_pickle("results/pareto_set.pkl")
+            objectives = load_pickle("results/objectives.pkl")
+            fp_cocip = load_pickle("results/fp_cocip.pkl")
+            aco_cocip = load_pickle("results/aco_cocip.pkl")
+            contrail_grid = load_pickle("results/contrail_grid.pkl")
+            contrail_polys = load_pickle("results/contrail_polys.pkl")
+            config = load_pickle("results/config.pkl")
+        print("[bold green]:white_check_mark: Results loaded.[/bold green]")
+    else:
+        questions = [
+            inquirer.List(
+                "config",
+                message="Which configuration would you like to use?",
+                choices=["Default", "ContrailMax"],
+                carousel=True,
+            ),
+            inquirer.List(
+                "iterations",
+                message="How many iterations would you like to run?",
+                choices=[1, 10, 100, 300, 1000],
+                carousel=True,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
+        if answers["config"] == "Default":
+            config = Config()
+        else:
+            config = ContrailMaxConfig()
 
-    # Construct performance model
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
-    ) as progress:
-        progress.add_task(description="Creating performance model...", total=None)
-        performance_model = PerformanceModel(routing_graph_manager, config)
-        contrail_grid = performance_model.get_contrail_grid()
-        contrail_polys = performance_model.get_contrail_polys()
-        cocip_manager = performance_model.get_cocip_manager()
-        routing_graph_manager.set_performance_model(performance_model)
-    print("[bold green]:white_check_mark: Performance model constructed.[/bold green]")
+        config.NO_OF_ITERATIONS = answers["iterations"]
 
-    _ = routing_graph_manager.get_routing_graph()
+        # Construct all required grids + models
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Creating altitude grid...", total=None)
+            routing_graph_manager = RoutingGraphManager(config)
+            geodesic_path = routing_graph_manager.get_geodesic_path()
+            # routing_grid = routing_graph_manager.get_routing_grid()
+            # altitude_grid = routing_graph_manager.get_altitude_grid()
+        print("[bold green]:white_check_mark: Altitude grid constructed.[/bold green]")
 
-    # Run ACO
-    ant_colony = ACO(routing_graph_manager, config)
-    pareto_set = ant_colony.run_aco_colony()
-    print("[bold green]:white_check_mark: ACO complete.[/bold green]")
-    random_pareto_path = random.choice(pareto_set)
-
-    # Run performance model on a real flight
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
-    ) as progress:
-        progress.add_task(
-            description="Running performance model on real flight...", total=None
+        # Construct performance model
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Creating performance model...", total=None)
+            performance_model = PerformanceModel(routing_graph_manager, config)
+            contrail_grid = performance_model.get_contrail_grid()
+            contrail_polys = performance_model.get_contrail_polys()
+            cocip_manager = performance_model.get_cocip_manager()
+            routing_graph_manager.set_performance_model(performance_model)
+        print(
+            "[bold green]:white_check_mark: Performance model constructed.[/bold green]"
         )
-        real_flight = RealFlight("jan-31.csv", routing_graph_manager, config)
-        real_flight.run_performance_model()
-    print(
-        "[bold green]:white_check_mark: Performance model run on real flight.[/bold green]"
-    )
 
-    # Calculate CoCiP for both paths
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
-    ) as progress:
-        progress.add_task(description="Running CoCiP for both flights...", total=None)
-        fp_ef, fp_df, fp_cocip = cocip_manager.calculate_ef_from_flight_path(
-            real_flight.flight_path
+        _ = routing_graph_manager.get_routing_graph()
+
+        # Run ACO
+        ant_colony = ACO(routing_graph_manager, config)
+        pareto_set = ant_colony.run_aco_colony()
+        print("[bold green]:white_check_mark: ACO complete.[/bold green]")
+        random_pareto_path = random.choice(pareto_set)
+
+        # Run performance model on a real flight
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                description="Running performance model on real flight...", total=None
+            )
+            real_flight = RealFlight("jan-31.csv", routing_graph_manager, config)
+            real_flight.run_performance_model()
+        print(
+            "[bold green]:white_check_mark: Performance model run on real flight.[/bold green]"
         )
-        aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(
-            random_pareto_path.flight_path
+
+        # Calculate CoCiP for both paths
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(
+                description="Running CoCiP for both flights...", total=None
+            )
+            fp_ef, fp_df, fp_cocip = cocip_manager.calculate_ef_from_flight_path(
+                real_flight.flight_path
+            )
+            aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(
+                random_pareto_path.flight_path
+            )
+        print(
+            "[bold green]:white_check_mark: CoCiP calculated for both flights.[/bold green]"
         )
-    print(
-        "[bold green]:white_check_mark: CoCiP calculated for both flights.[/bold green]"
-    )
+
+        objectives = {key: [] for key in ant_colony.objectives_over_time[0].keys()}
+        for entry in ant_colony.objectives_over_time:
+            for key, value in entry.items():
+                objectives[key].append(value)
+        questions = [
+            inquirer.Confirm(
+                "save",
+                message="Would you like to save the results?",
+                default=True,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
+        if answers["save"]:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                transient=True,
+            ) as progress:
+                progress.add_task(
+                    description="Saving results...",
+                    total=None,
+                )
+                save_pickle("results/geodesic_path.pkl", geodesic_path)
+                save_pickle("results/real_flight.pkl", real_flight)
+                save_pickle("results/random_pareto_path.pkl", random_pareto_path)
+                save_pickle("results/pareto_set.pkl", pareto_set)
+                save_pickle("results/objectives.pkl", objectives)
+                save_pickle("results/fp_cocip.pkl", fp_cocip)
+                save_pickle("results/aco_cocip.pkl", aco_cocip)
+                save_pickle("results/contrail_grid.pkl", contrail_grid)
+                save_pickle("results/contrail_polys.pkl", contrail_polys)
+                save_pickle("results/config.pkl", config)
+            print("[bold green]:white_check_mark: Results saved.[/bold green]")
 
     # Create required dataframes
-    grid = sum(routing_grid.get_routing_grid(), [])
-    routing_grid_df = pd.DataFrame(grid, columns=["latitude", "longitude"])
+    # grid = sum(routing_grid.get_routing_grid(), [])
+    # routing_grid_df = pd.DataFrame(grid, columns=["latitude", "longitude"])
 
     # alt_grid_df = altitude_grid
     #
@@ -293,11 +214,6 @@ def main():
         columns=["latitude", "longitude", "time", "altitude_ft"],
     )
 
-    objectives = {key: [] for key in ant_colony.objectives_over_time[0].keys()}
-    for entry in ant_colony.objectives_over_time:
-        for key, value in entry.items():
-            objectives[key].append(value)
-
     questions = [
         inquirer.Checkbox(
             "graphs",
@@ -317,10 +233,10 @@ def main():
     display = Display()
 
     if "Objectives over time" in answers["graphs"]:
-        show_objectives_over_time(display, objectives)
+        graphs.show_objectives_over_time(display, objectives)
 
     if "Flight path comparison" in answers["graphs"]:
-        show_flight_path_comparison(
+        graphs.show_flight_path_comparison(
             display,
             geodesic_path,
             real_flight_df,
@@ -331,7 +247,7 @@ def main():
         )
 
     if "Flight path over time" in answers["graphs"]:
-        show_flight_frames(
+        graphs.show_flight_frames(
             display,
             real_flight_df,
             random_pareto_path_df,
@@ -340,7 +256,7 @@ def main():
         )
 
     if "3D Flight path over time" in answers["graphs"]:
-        show_3d_flight_frames(
+        graphs.show_3d_flight_frames(
             display,
             real_flight_df,
             random_pareto_path_df,
