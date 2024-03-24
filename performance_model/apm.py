@@ -45,19 +45,28 @@ class AircraftPerformanceModel:
                 fuel_flow = self.calculate_fuel_flow(point, point["aircraft_mass"])
                 point["fuel_flow"] = fuel_flow
                 point["CO2"] = self.calculate_emissions(fuel_flow)
+                point["segment_length"] = 0
             else:
                 previous_point = flight_path[i - 1]
-
+                point["segment_length"] = gp.distance(
+                    (point["latitude"], point["longitude"]),
+                    (previous_point["latitude"], previous_point["longitude"]),
+                ).m
                 fuel_flow = self.calculate_fuel_flow(
                     point, previous_point["aircraft_mass"]
                 )
+                time_elapsed = pd.Timedelta(
+                    point["time"] - previous_point["time"]
+                ).seconds
                 point["fuel_flow"] = fuel_flow
-                point["CO2"] = self.calculate_emissions(fuel_flow)
-                point["engine_efficiency"] = self.config.NOMINAL_ENGINE_EFFICIENCY
+                point["CO2"] = (
+                    self.calculate_emissions(fuel_flow) * time_elapsed
+                ) / 1000  # kg
                 point["aircraft_mass"] = (
-                    previous_point["aircraft_mass"]
-                    - point["fuel_flow"] * time_elapsed.total_seconds()
+                    previous_point["aircraft_mass"] - point["fuel_flow"] * time_elapsed
                 )
+
+            point["engine_efficiency"] = self.config.NOMINAL_ENGINE_EFFICIENCY
 
         return flight_path
 
@@ -132,7 +141,7 @@ class AircraftPerformanceModel:
 
     def calculate_emissions(self, FF):
         emission = Emission(ac=self.config.AIRCRAFT_TYPE)
-        return emission.co2(FF)
+        return emission.co2(FF)  # g/s
 
     def calculate_fuel_flow(self, point, mass):
         fuelflow = FuelFlow(ac=self.config.AIRCRAFT_TYPE)

@@ -9,6 +9,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 import inquirer
 import pickle
 from pathlib import Path
+import os
 
 import graphs
 from config import Config, ContrailMaxConfig, ContrailConfig, CO2Config, TimeConfig
@@ -24,7 +25,7 @@ def load_pickle(file_path):
 
 
 def save_pickle(file_path, data):
-    Path(file_path).mkdir(parents=True, exist_ok=True)
+    Path(os.path.dirname(file_path)).mkdir(parents=True, exist_ok=True)
     with open(file_path, "wb") as f:
         pickle.dump(data, f)
 
@@ -34,7 +35,7 @@ def load_csv(file_path):
 
 
 def save_csv(file_path, data):
-    Path(file_path).mkdir(parents=True, exist_ok=True)
+    Path(os.path.dirname(file_path)).mkdir(parents=True, exist_ok=True)
     data.to_csv(file_path, index=False)
 
 
@@ -243,10 +244,11 @@ def save_figs(dir: str, results, config):
         contrail_grid.contrail_grid,
         config,
     )
+    Path(dir).mkdir(parents=True, exist_ok=True)
 
-    fig1.savefig(f"{dir}flight_path_comparison.png")
-    fig2.savefig(f"{dir}flight_frames.png")
-    fig3.savefig(f"{dir}3d_flight_frames.png")
+    fig1.savefig(f"{dir}flight_path_comparison.png", dpi=300)
+    fig2.savefig(f"{dir}flight_frames.png", dpi=300)
+    fig3.savefig(f"{dir}3d_flight_frames.png", dpi=300)
 
 
 def result_run(config, dir: str):
@@ -272,33 +274,61 @@ def automate_results():
         "evaporation_rate": 0.5,
         "no_of_ants": 8,
     }
+    questions = [
+        inquirer.Checkbox(
+            "results",
+            message="What results would you like to collect?",
+            choices=[
+                "Iterations",
+                "Configs",
+                "Evaporation rates",
+                "No of ants",
+            ],
+            carousel=True,
+        )
+    ]
+    answers = inquirer.prompt(questions)
 
-    for config in configs:
-        config.NO_OF_ITERATIONS = constants["no_of_iterations"]
-        config.EVAPORATION_RATE = constants["evaporation_rate"]
-        config.NO_OF_ANTS = constants["no_of_ants"]
-        result_run(config, f"results/configs/{config.NAME}/")
+    if "Iterations" in answers["results"]:
+        print("[bold blue]Collecting iterations data...[/bold blue]")
+        for iteration in iterations:
+            print(f"[blue]Running {iteration} iterations...[/blue]")
+            config = Config()
+            config.NO_OF_ITERATIONS = iteration
+            config.EVAPORATION_RATE = constants["evaporation_rate"]
+            config.NO_OF_ANTS = constants["no_of_ants"]
+            result_run(config, f"results/iterations/{iteration}/")
 
-    for iteration in iterations:
-        config = Config()
-        config.NO_OF_ITERATIONS = iteration
-        config.EVAPORATION_RATE = constants["evaporation_rate"]
-        config.NO_OF_ANTS = constants["no_of_ants"]
-        result_run(config, f"results/iterations/{iteration}/")
+    if "Configs" in answers["results"]:
+        print("[bold blue]Collecting configs data...[/bold blue]")
+        for config in configs:
+            print(f"[blue]Running {config.NAME}...[/blue]")
+            config.NO_OF_ITERATIONS = constants["no_of_iterations"]
+            config.EVAPORATION_RATE = constants["evaporation_rate"]
+            config.NO_OF_ANTS = constants["no_of_ants"]
+            result_run(config, f"results/configs/{config.NAME}/")
 
-    for evaporation_rate in evaporation_rates:
-        config = Config()
-        config.EVAPORATION_RATE = evaporation_rate
-        config.NO_OF_ITERATIONS = constants["no_of_iterations"]
-        config.NO_OF_ANTS = constants["no_of_ants"]
-        result_run(config, f"results/evaporation_rates/{evaporation_rate}/")
+    if "Evaporation rates" in answers["results"]:
+        print("[bold blue]Collecting evaporation rates data...[/bold blue]")
+        for evaporation_rate in evaporation_rates:
+            print(f"[blue]Running {evaporation_rate} evaporation rate...[/blue]")
+            config = Config()
+            config.EVAPORATION_RATE = evaporation_rate
+            config.NO_OF_ITERATIONS = constants["no_of_iterations"]
+            config.NO_OF_ANTS = constants["no_of_ants"]
+            result_run(config, f"results/evaporation_rates/{evaporation_rate}/")
 
-    for no_of_ant in no_of_ants:
-        config = Config()
-        config.NO_OF_ANTS = no_of_ant
-        config.NO_OF_ITERATIONS = constants["no_of_iterations"]
-        config.EVAPORATION_RATE = constants["evaporation_rate"]
-        result_run(config, f"results/no_of_ants/{no_of_ant}/")
+    if "No of ants" in answers["results"]:
+        print("[bold blue]Collecting no of ants data...[/bold blue]")
+        for no_of_ant in no_of_ants:
+            print(f"[blue]Running {no_of_ant} ants...[/blue]")
+            config = Config()
+            config.NO_OF_ANTS = no_of_ant
+            config.NO_OF_ITERATIONS = constants["no_of_iterations"]
+            config.EVAPORATION_RATE = constants["evaporation_rate"]
+            result_run(config, f"results/no_of_ants/{no_of_ant}/")
+
+    print("[bold green]:white_check_mark: Results collected.[/bold green]")
 
 
 def main():

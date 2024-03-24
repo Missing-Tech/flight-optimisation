@@ -1,6 +1,7 @@
 import random
 import math
 from performance_model import Flight
+from rich import print
 
 
 class Ant:
@@ -46,7 +47,7 @@ class Ant:
         neighbours = self.routing_graph[solution.indices[0]]
         while neighbours:
             probabilities = []
-            choice = None
+            choice = random.choice(list(neighbours))
             random_objective = random.choice(self.objectives)
             for n in neighbours:
                 probability = self.calculate_probability_at_neighbour(
@@ -54,13 +55,14 @@ class Ant:
                     neighbours[n][f"{random_objective}_pheromone"],
                     random_objective,
                 )
-                if probability == -1:
+                if probability is None:
                     # reached the destination
                     choice = n
                     break
 
                 probabilities.append(probability)
-            if not choice:
+            if not choice and probabilities:
+                print(probabilities)
                 choice = random.choices(list(neighbours), weights=probabilities, k=1)[0]
 
             solution.add_point_from_index(choice)
@@ -82,7 +84,7 @@ class Ant:
         beta = self.config.HEURISTIC_WEIGHT
 
         if len(neighbours) <= 1:
-            return -1
+            return None
         for n in neighbours:
             total_neighbour_factor += math.pow(
                 neighbours[n][f"{objective}_pheromone"], alpha

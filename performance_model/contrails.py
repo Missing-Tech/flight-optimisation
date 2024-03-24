@@ -9,6 +9,7 @@ import tempfile
 import json
 from utils import Conversions
 from pycontrails.models.ps_model import PSGrid
+from rich import print
 
 
 class CocipManager:
@@ -99,16 +100,19 @@ class ContrailGrid:
         da = self.contrail_grid["ef_per_m"]
 
         flight_path = pd.DataFrame(
-            grid, columns=["latitude", "longitude", "altitude_ft"]
+            grid,
+            columns=["latitude", "longitude", "altitude_ft", "time", "segment_length"],
         )
 
         fl_ds = flight_path.copy()
+        fl_ds.pop("segment_length")
         fl_ds["flight_level"] = fl_ds.pop("altitude_ft") / 100
         fl_ds = xr.Dataset.from_dataframe(fl_ds)
 
         ef_per_m = da.interp(**fl_ds.data_vars)
+        total_flight = ef_per_m * flight_path["segment_length"]
 
-        return ef_per_m.sum().item()
+        return total_flight.sum().item()
 
 
 class ContrailGridManager:
