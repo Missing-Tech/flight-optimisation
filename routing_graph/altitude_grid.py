@@ -1,4 +1,5 @@
 from utils import Conversions
+from rich import print
 
 
 class AltitudeGrid:
@@ -6,6 +7,7 @@ class AltitudeGrid:
         self.config = config
         self.base_altitude = self.config.STARTING_ALTITUDE
         self.altitude_step = self.config.ALTITUDE_STEP
+        self.max_altitude_var = self.config.MAX_ALTITUDE_VAR
         self.max_altitude = self.config.MAX_ALTITUDE
         self.routing_grid = routing_grid.get_routing_grid()
         self.altitude_grid = self.calculate_altitude_grid(self.routing_grid)
@@ -29,7 +31,7 @@ class AltitudeGrid:
                 for point in step:
                     index = grid.index(step)
                     max_altitude_at_step = min(
-                        self.base_altitude + (index * self.altitude_step),
+                        self.base_altitude + (index * self.max_altitude_var),
                         self.max_altitude,
                     )
                     if altitude > max_altitude_at_step:
