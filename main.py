@@ -177,6 +177,8 @@ def load_results(dir: str):
     contrail_grid = load_pickle(f"{dir}contrail_grid.pkl")
     contrail_polys = load_pickle(f"{dir}contrail_polys.pkl")
     config = load_pickle(f"{dir}config.pkl")
+    real_flight_objectives = load_csv(f"{dir}real_flight_objectives.csv")
+    pareto_set_objectives = load_csv(f"{dir}pareto_set_objectives.csv")
 
     return (
         geodesic_path,
@@ -188,6 +190,8 @@ def load_results(dir: str):
         aco_cocip,
         contrail_grid,
         contrail_polys,
+        real_flight_objectives,
+        pareto_set_objectives,
         config,
     )
 
@@ -266,7 +270,7 @@ def automate_results():
         CO2Config(),
         TimeConfig(),
     ]
-    iterations = [1, 10, 100, 500]
+    iterations = [1, 10, 50, 100]
     evaporation_rates = [0.2, 0.5, 0.8]
     no_of_ants = [1, 8, 16]
     constants = {
@@ -336,12 +340,83 @@ def main():
         inquirer.List(
             "choice",
             message="What would you like to do?",
-            choices=["Run ACO", "Load ACO Results", "Automate Results"],
+            choices=[
+                "Run ACO",
+                "Load ACO Results",
+                "Automate Results",
+                "Analyse CoCiP",
+            ],
             carousel=True,
         ),
     ]
 
     answers = inquirer.prompt(questions)
+    if answers["choice"] == "Analyse CoCiP":
+        questions = [
+            inquirer.Path(
+                "dir",
+                message="Where are the results located?",
+                default="results/user/",
+                path_type=inquirer.Path.DIRECTORY,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
+        results = load_results(answers["dir"])
+        (
+            geodesic_path,
+            real_flight,
+            random_pareto_path,
+            pareto_set,
+            objectives,
+            fp_cocip,
+            aco_cocip,
+            contrail_grid,
+            contrail_polys,
+            real_flight_objectives,
+            pareto_set_objectives,
+            config,
+        ) = results
+
+        print("[bold green]:white_check_mark: Results loaded.[/bold green]")
+        print("[bold blue]Analyzing CoCiP...[/bold blue]")
+
+        routing_graph_manager = RoutingGraphManager(config)
+        performance_model = PerformanceModel(routing_graph_manager, config)
+        real_flight.objectives["contrail"] = fp_cocip.contrail["ef"].sum()
+        random_pareto_path.objectives["contrail"] = aco_cocip.contrail["ef"].sum()
+        for i, pareto in enumerate(pareto_set):
+            ef, _, _ = performance_model.cocip_manager.calculate_ef_from_flight_path(
+                pareto.flight_path
+            )
+            pareto.objectives["contrail"] = ef
+            pareto_set_objectives["contrail"][i] = ef.sum()
+
+        print("[bold green]:white_check_mark: CoCiP analyzed.[/bold green]")
+        questions = [
+            inquirer.Path(
+                "dir",
+                message="Where would you like to save the results?",
+                default=answers["dir"],
+                path_type=inquirer.Path.DIRECTORY,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
+        results = (
+            geodesic_path,
+            real_flight,
+            random_pareto_path,
+            pareto_set,
+            objectives,
+            fp_cocip,
+            aco_cocip,
+            contrail_grid,
+            contrail_polys,
+            real_flight_objectives,
+            pareto_set_objectives,
+        )
+        save_results(answers["dir"], results, config)
+        print("[bold green]:white_check_mark: Results saved.[/bold green]")
+        return
     if answers["choice"] == "Automate Results":
         automate_results()
         print("[bold green]:white_check_mark: Results automated.[/bold green]")
@@ -376,6 +451,7 @@ def main():
                 contrail_polys,
                 real_flight_objectives,
                 pareto_set_objectives,
+                config,
             ) = results
         print("[bold green]:white_check_mark: Results loaded.[/bold green]")
     else:
@@ -389,7 +465,7 @@ def main():
             inquirer.List(
                 "iterations",
                 message="How many iterations would you like to run?",
-                choices=[1, 10, 100, 300, 1000],
+                choices=[1, 10, 100, 300],
                 carousel=True,
             ),
             inquirer.List(
