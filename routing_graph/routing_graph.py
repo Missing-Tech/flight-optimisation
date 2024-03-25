@@ -69,11 +69,10 @@ class RoutingGraph:
 
                     if consecutive_points is None:
                         continue
-                    if not graph.has_node((xi, yi, altitude)):
-                        graph.add_node(
-                            (xi, yi, altitude),
-                            **heuristic_data,
-                        )
+                    graph.add_node(
+                        (xi, yi, altitude),
+                        **heuristic_data,
+                    )
                     for next_point in consecutive_points:
                         pheromone_data = {
                             f"{objective(self.performance_model,self.config)}_pheromone": self.config.TAU_MAX

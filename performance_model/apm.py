@@ -2,6 +2,7 @@ from geopy import distance as gp
 import pandas as pd
 import numpy as np
 from openap import FuelFlow, Emission
+import math
 
 
 class AircraftPerformanceModel:
@@ -48,10 +49,16 @@ class AircraftPerformanceModel:
                 point["segment_length"] = 0
             else:
                 previous_point = flight_path[i - 1]
-                point["segment_length"] = gp.distance(
+                flat_distance = gp.distance(
                     (point["latitude"], point["longitude"]),
                     (previous_point["latitude"], previous_point["longitude"]),
                 ).m
+                euclidean_distance = math.sqrt(
+                    flat_distance**2
+                    + ((point["altitude_ft"] - previous_point["altitude_ft"]) / 3.281)
+                    ** 2
+                )
+                point["segment_length"] = euclidean_distance
                 fuel_flow = self.calculate_fuel_flow(
                     point, previous_point["aircraft_mass"]
                 )

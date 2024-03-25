@@ -1,6 +1,7 @@
 import pandas as pd
 from openap import Emission
 import geopy.distance as gd
+import math
 
 
 class Objective:
@@ -20,10 +21,14 @@ class Objective:
         return NotImplemented
 
     def _calculate_time_estimation(self, point):
-        distance_from_departure = gd.distance(
+        flat_distance_from_departure = gd.distance(
             (point[0], point[1]),
             self.config.DEPARTURE_AIRPORT,
         ).m
+        distance_from_departure = math.sqrt(
+            flat_distance_from_departure**2
+            + (point[2] - self.config.STARTING_ALTITUDE) ** 2
+        )
         speed = (
             self.config.NOMINAL_THRUST * 343
         )  # times by speed of sound for rough speed estimate
