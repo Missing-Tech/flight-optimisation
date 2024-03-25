@@ -21,6 +21,7 @@ class TestAircraftPerformanceModel(unittest.TestCase):
             )
             NOMINAL_ENGINE_EFFICIENCY = 0.85
             STARTING_WEIGHT = 100000
+            AIRCRAFT_TYPE = "A320"
 
         self.mock_weather_grid = MockWeatherGrid()
         self.mock_config = MockConfig()

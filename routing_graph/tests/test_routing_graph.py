@@ -32,17 +32,20 @@ class TestRoutingGraph(unittest.TestCase):
         class MockObjective:
             def __init__(self, performance_model, config):
                 self.config = config
+                self.name = "test"
                 self.performance_model = performance_model
 
             def calculate_heuristic(self, point):
                 return 1
+
+            def __str__(self):
+                return self.name
 
         class MockConfig(Config):
             OBJECTIVES = [MockObjective]
             STARTING_ALTITUDE = 0
             MAX_ALTITUDE = 0
             OFFSET_VAR = 1
-            MAX_ALTITUDE_VAR = 2
             ALTITUDE_STEP = 1
             TAU_MAX = 1
 
@@ -88,6 +91,14 @@ class TestRoutingGraph(unittest.TestCase):
         # Assert getting an item from routing graph
         self.assertIsNotNone(item)
 
+    def test_pheromones(self):
+        routing_graph = self.routing_graph._init_routing_graph(test=True)
+        for edge in routing_graph.edges:
+            pheromones = routing_graph.edges[edge]["test_pheromone"]
+            self.assertEqual(pheromones, 1)
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_heuristic(self):
+        routing_graph = self.routing_graph._init_routing_graph(test=True)
+        for node in routing_graph.nodes:
+            heuristic = routing_graph.nodes[node]["test_heuristic"]
+            self.assertEqual(heuristic, 1)

@@ -111,4 +111,4 @@ class TestAnt(unittest.TestCase):
             (0, 1, 10000), 1, self.mock_objective
         )
         # Assert that the probability is calculated correctly
-        self.assertEqual(probability, -1)
+        self.assertEqual(probability, None)

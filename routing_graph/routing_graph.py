@@ -92,7 +92,6 @@ class RoutingGraph:
                         )
                         next_lat, next_lon, _ = next_point
 
-                    if not graph.has_node(next_point):
                         graph.add_node(
                             (next_point[0], next_point[1], next_point[2]),
                             **next_heuristic_data,
