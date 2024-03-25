@@ -519,15 +519,18 @@ def main():
                 message="Would you like to save the results?",
                 default=True,
             ),
-            inquirer.Path(
-                "dir",
-                message="Where would you like to save the results?",
-                default="results/user/",
-                path_type=inquirer.Path.DIRECTORY,
-            ),
         ]
         answers = inquirer.prompt(questions)
         if answers["save"]:
+            questions = [
+                inquirer.Path(
+                    "dir",
+                    message="Where would you like to save the results?",
+                    default="results/user/",
+                    path_type=inquirer.Path.DIRECTORY,
+                ),
+            ]
+            answers = inquirer.prompt(questions)
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),

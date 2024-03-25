@@ -47,7 +47,7 @@ class Ant:
         neighbours = self.routing_graph[solution.indices[0]]
         while neighbours:
             probabilities = []
-            choice = random.choice(list(neighbours))
+            choice = None
             random_objective = random.choice(self.objectives)
             for n in neighbours:
                 probability = self.calculate_probability_at_neighbour(
@@ -62,7 +62,6 @@ class Ant:
 
                 probabilities.append(probability)
             if not choice and probabilities:
-                print(probabilities)
                 choice = random.choices(list(neighbours), weights=probabilities, k=1)[0]
 
             solution.add_point_from_index(choice)
@@ -77,14 +76,18 @@ class Ant:
         objective,
     ):
         heuristic = self.routing_graph.nodes[node][f"{objective}_heuristic"]
-        total_neighbour_factor = 0.01
+        total_neighbour_factor = 0
         neighbours = self.routing_graph[node]
 
         alpha = self.config.PHEROMONE_WEIGHT
         beta = self.config.HEURISTIC_WEIGHT
-
-        if len(neighbours) <= 1:
+        if (
+            node[0] == self.config.DESTINATION_AIRPORT[0]
+            and node[1] == self.config.DESTINATION_AIRPORT[1]
+        ):
             return None
+        if len(neighbours) == 0:
+            return 0.0001
         for n in neighbours:
             total_neighbour_factor += math.pow(
                 neighbours[n][f"{objective}_pheromone"], alpha

@@ -13,7 +13,7 @@ class Map:
         self.crs = ccrs.PlateCarree()
 
     def create_fig(self, grid_width, grid_height):
-        fig = plt.figure(figsize=(12.8, 9.6), dpi=300)
+        fig = plt.figure(figsize=(12.8, 9.6), dpi=100)
         fig.tight_layout()
         axs = []
         for i in range(1, grid_width * grid_height + 1):
