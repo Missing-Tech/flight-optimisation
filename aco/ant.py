@@ -81,10 +81,7 @@ class Ant:
 
         alpha = self.config.PHEROMONE_WEIGHT
         beta = self.config.HEURISTIC_WEIGHT
-        if (
-            node[0] == self.config.DESTINATION_AIRPORT[0]
-            and node[1] == self.config.DESTINATION_AIRPORT[1]
-        ):
+        if node[0] == self.config.NO_OF_POINTS and node[1] == 0:
             return None
         if len(neighbours) == 0:
             return 0.0001

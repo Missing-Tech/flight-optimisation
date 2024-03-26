@@ -270,7 +270,7 @@ def automate_results():
         CO2Config(),
         TimeConfig(),
     ]
-    iterations = [1, 10, 50, 100]
+    iterations = [1, 10, 50, 100, 200]
     evaporation_rates = [0.2, 0.5, 0.8]
     no_of_ants = [1, 8, 16]
     constants = {
@@ -465,7 +465,7 @@ def main():
             inquirer.List(
                 "iterations",
                 message="How many iterations would you like to run?",
-                choices=[1, 10, 100, 300],
+                choices=[1, 10, 50, 100, 200],
                 carousel=True,
             ),
             inquirer.List(
