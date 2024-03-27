@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from openap import FuelFlow, Emission
 import math
+import pycontrails as pc
+from utils import Conversions
 
 
 class AircraftPerformanceModel:
@@ -11,6 +13,25 @@ class AircraftPerformanceModel:
         self.config = config
 
     def calculate_flight_characteristics(self, flight_path):
+        flight_path = self.calculate_coarse_characteristics(flight_path)
+        flight_path = self.resample(flight_path)
+        for i, point in enumerate(flight_path):
+            if i != len(flight_path) - 1:
+                next_point = flight_path[i + 1]
+            else:
+                next_point = None
+
+            if i == 0:
+                previous_point = None
+            else:
+                previous_point = flight_path[i - 1]
+
+            point = self.recalculate_flight_characteristics(i, point, next_point)
+            point = self.calculate_emission_data(i, point, previous_point)
+
+        return flight_path
+
+    def calculate_coarse_characteristics(self, flight_path):
         for i in range(len(flight_path)):
             point = flight_path[i]
 
@@ -19,7 +40,6 @@ class AircraftPerformanceModel:
                 point["course"] = self.calculate_course_at_point(point, next_point)
                 point["climb_angle"] = self.calculate_climb_angle(point, next_point)
             else:
-                previous_point = flight_path[i - 1]
                 point["course"] = 0
                 point["climb_angle"] = 0
 
@@ -41,41 +61,86 @@ class AircraftPerformanceModel:
             point["heading"] = point["course"] - crabbing_angle
             point["ground_speed"] = self.calculate_ground_speed(point, u, v)
 
-            if i == 0:
-                point["aircraft_mass"] = self.config.STARTING_WEIGHT
-                fuel_flow = self.calculate_fuel_flow(point, point["aircraft_mass"])
-                point["fuel_flow"] = fuel_flow
-                point["CO2"] = self.calculate_emissions(fuel_flow)
-                point["segment_length"] = 0
-            else:
-                previous_point = flight_path[i - 1]
-                flat_distance = gp.distance(
-                    (point["latitude"], point["longitude"]),
-                    (previous_point["latitude"], previous_point["longitude"]),
-                ).m
-                euclidean_distance = math.sqrt(
-                    flat_distance**2
-                    + ((point["altitude_ft"] - previous_point["altitude_ft"]) / 3.281)
-                    ** 2
-                )
-                point["segment_length"] = euclidean_distance
-                fuel_flow = self.calculate_fuel_flow(
-                    point, previous_point["aircraft_mass"]
-                )
-                time_elapsed = pd.Timedelta(
-                    point["time"] - previous_point["time"]
-                ).seconds
-                point["fuel_flow"] = fuel_flow
-                point["CO2"] = (
-                    self.calculate_emissions(fuel_flow) * time_elapsed
-                ) / 1000  # kg
-                point["aircraft_mass"] = (
-                    previous_point["aircraft_mass"] - point["fuel_flow"] * time_elapsed
-                )
-
-            point["engine_efficiency"] = self.config.NOMINAL_ENGINE_EFFICIENCY
-
         return flight_path
+
+    def recalculate_flight_characteristics(self, i, point, next_point):
+        # if i != len(flight_path) - 1:
+        #     next_point = flight_path[i + 1]
+        if next_point is not None:
+            point["course"] = self.calculate_course_at_point(point, next_point)
+            point["climb_angle"] = self.calculate_climb_angle(point, next_point)
+            point["segment_length"] = self.calculate_segment_length(next_point, point)
+        else:
+            point["segment_length"] = 0
+            point["course"] = 0
+            point["climb_angle"] = 0
+
+        point["level"] = Conversions().convert_altitude_to_pressure_bounded(
+            point["altitude_ft"],
+            self.config.PRESSURE_LEVELS[-1],
+            self.config.PRESSURE_LEVELS[0],
+        )
+        weather_at_point = self.weather_grid.get_weather_data_at_point(point)
+        temperature = self.weather_grid.get_temperature_at_point(weather_at_point)
+        u, v = self.weather_grid.get_wind_vector_at_point(weather_at_point)
+        point["thrust"] = self.config.NOMINAL_THRUST
+
+        point["true_airspeed"] = self.calculate_true_air_speed(
+            point["thrust"], temperature
+        )
+        crabbing_angle = self.calculate_crabbing_angle(point, u, v)
+        point["heading"] = point["course"] - crabbing_angle
+        point["ground_speed"] = self.calculate_ground_speed(point, u, v)
+        return point
+
+    def calculate_emission_data(self, i, point, previous_point):
+        if i == 0:
+            point["aircraft_mass"] = self.config.STARTING_WEIGHT
+            fuel_flow = self.calculate_fuel_flow(point, point["aircraft_mass"])
+            point["fuel_flow"] = fuel_flow
+            point["CO2"] = self.calculate_emissions(fuel_flow)
+        else:
+            fuel_flow = self.calculate_fuel_flow(point, previous_point["aircraft_mass"])
+            time_elapsed = pd.Timedelta(point["time"] - previous_point["time"]).seconds
+            point["fuel_flow"] = fuel_flow
+            point["CO2"] = (
+                self.calculate_emissions(fuel_flow) * time_elapsed
+            ) / 1000  # kg
+            point["aircraft_mass"] = (
+                previous_point["aircraft_mass"] - point["fuel_flow"] * time_elapsed
+            )
+
+        return point
+
+    def resample(self, flight_path):
+        flight_path_df = pd.DataFrame(flight_path)
+
+        attrs = {
+            "flight_id": 123,
+            "aircraft_type": self.config.AIRCRAFT_TYPE,
+            "wingspan": self.config.WINGSPAN,
+            "nvpm_ei_n": 1.897264e15,
+            "n_engine": self.config.N_ENGINES,
+            "engine_efficiency": self.config.NOMINAL_ENGINE_EFFICIENCY,
+        }
+
+        flight = pc.Flight(flight_path_df, flight_id=123, attrs=attrs)
+        resample_path = flight.resample_and_fill("1min")
+        resample_df = resample_path.dataframe
+        resample_df["altitude_ft"] = resample_df["altitude"] * 3.28084
+        resample_path = resample_df.to_dict("records")
+        return resample_path
+
+    def calculate_segment_length(self, point, previous_point):
+        flat_distance = gp.distance(
+            (point["latitude"], point["longitude"]),
+            (previous_point["latitude"], previous_point["longitude"]),
+        ).m
+        euclidean_distance = math.sqrt(
+            flat_distance**2
+            + ((point["altitude_ft"] - previous_point["altitude_ft"]) / 3.281) ** 2
+        )
+        return euclidean_distance
 
     def calculate_time_at_point(self, point, previous_point):
         distance = gp.distance(
@@ -155,8 +220,8 @@ class AircraftPerformanceModel:
 
         FF = fuelflow.enroute(
             mass=mass,
-            tas=point["true_airspeed"],
             alt=point["altitude_ft"],
+            tas=point["true_airspeed"],
             path_angle=point["heading"],
         )
         return FF

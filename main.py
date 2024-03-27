@@ -12,7 +12,14 @@ from pathlib import Path
 import os
 
 import graphs
-from config import Config, ContrailMaxConfig, ContrailConfig, CO2Config, TimeConfig
+from config import (
+    Config,
+    ContrailMaxConfig,
+    ContrailConfig,
+    CO2Config,
+    TimeConfig,
+    CocipConfig,
+)
 from routing_graph import RoutingGraphManager
 from performance_model import PerformanceModel, RealFlight
 from aco import ACO
@@ -83,7 +90,7 @@ def run_aco(config: Config):
         progress.add_task(
             description="Running performance model on real flight...", total=None
         )
-        real_flight = RealFlight("jan-31.csv", routing_graph_manager, config)
+        real_flight = RealFlight("jan-31-cleaned.csv", routing_graph_manager, config)
         real_flight.run_performance_model()
     print(
         "[bold green]:white_check_mark: Performance model run on real flight.[/bold green]"
@@ -344,14 +351,14 @@ def main():
                 "Run ACO",
                 "Load ACO Results",
                 "Automate Results",
-                "Analyse CoCiP",
+                "Re-analyze objectives",
             ],
             carousel=True,
         ),
     ]
 
     answers = inquirer.prompt(questions)
-    if answers["choice"] == "Analyse CoCiP":
+    if answers["choice"] == "Re-analyze objectives":
         questions = [
             inquirer.Path(
                 "dir",
@@ -378,20 +385,57 @@ def main():
         ) = results
 
         print("[bold green]:white_check_mark: Results loaded.[/bold green]")
-        print("[bold blue]Analyzing CoCiP...[/bold blue]")
+        print("[bold blue]Analyzing objectives...[/bold blue]")
 
         routing_graph_manager = RoutingGraphManager(config)
         performance_model = PerformanceModel(routing_graph_manager, config)
-        real_flight.objectives["contrail"] = fp_cocip.contrail["ef"].sum()
-        random_pareto_path.objectives["contrail"] = aco_cocip.contrail["ef"].sum()
+        real_flight.objectives["cocip"] = fp_cocip.contrail["ef"].sum()
+        random_pareto_path.objectives["cocip"] = aco_cocip.contrail["ef"].sum()
+        real_flight.objectives["contrail"] = (
+            performance_model.contrail_grid.interpolate_contrail_grid(
+                real_flight.flight_path
+            )
+        )
+        random_pareto_path.objectives["contrail"] = (
+            performance_model.contrail_grid.interpolate_contrail_grid(
+                random_pareto_path.flight_path
+            )
+        )
+        real_flight_objectives["cocip"] = real_flight.objectives["cocip"]
+        real_flight_objectives["contrail"] = real_flight.objectives["contrail"]
+        if "cocip" not in pareto_set_objectives:
+            pareto_set_objectives["cocip"] = [0] * len(pareto_set)
+        if "time" not in pareto_set_objectives:
+            pareto_set_objectives["time"] = [0] * len(pareto_set)
+        if "co2" not in pareto_set_objectives:
+            pareto_set_objectives["co2"] = [0] * len(pareto_set)
+        if "contrail" not in pareto_set_objectives:
+            pareto_set_objectives["contrail"] = [0] * len(pareto_set)
+
         for i, pareto in enumerate(pareto_set):
             ef, _, _ = performance_model.cocip_manager.calculate_ef_from_flight_path(
                 pareto.flight_path
             )
-            pareto.objectives["contrail"] = ef
-            pareto_set_objectives["contrail"][i] = ef.sum()
+            contrail_objective = (
+                performance_model.contrail_grid.interpolate_contrail_grid(
+                    pareto.flight_path
+                )
+            )
+            pareto.objectives["cocip"] = ef.sum()
+            pareto_set_objectives["cocip"][i] = ef.sum()
+            pareto.objectives["contrail"] = contrail_objective
+            pareto_set_objectives["contrail"][i] = contrail_objective
+            pareto_set_objectives["time"][i] = (
+                pareto.flight_path[-1]["time"] - pareto.flight_path[0]["time"]
+            ).seconds / 3600
+            pareto_set_objectives["co2"][i] = (
+                sum(point["CO2"] for point in pareto.flight_path)
+                * pareto_set_objectives["time"][i]
+                * 3600
+                / 1000  # convert g/s to kg
+            )
 
-        print("[bold green]:white_check_mark: CoCiP analyzed.[/bold green]")
+        print("[bold green]:white_check_mark: Objectives re-analyzed.[/bold green]")
         questions = [
             inquirer.Path(
                 "dir",
@@ -459,7 +503,7 @@ def main():
             inquirer.List(
                 "config",
                 message="Which configuration would you like to use?",
-                choices=["Default", "ContrailMax", "Contrail", "CO2", "Time"],
+                choices=["Default", "ContrailMax", "Contrail", "CO2", "Time", "CoCiP"],
                 carousel=True,
             ),
             inquirer.List(
@@ -490,6 +534,8 @@ def main():
             config = CO2Config()
         elif answers["config"] == "Time":
             config = TimeConfig()
+        elif answers["config"] == "CoCiP":
+            config = CocipConfig()
         else:
             config = ContrailMaxConfig()
 

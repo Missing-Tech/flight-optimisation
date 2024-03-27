@@ -1,12 +1,12 @@
 import pandas as pd
-from objectives import ContrailObjective, CO2Objective, TimeObjective
+from objectives import ContrailObjective, CO2Objective, TimeObjective, CocipObjective
 
 
 class Config:
     NAME = "overall"
     # Flight Path
     DEPARTURE_AIRPORT = (50.74045, -3.00313)
-    DESTINATION_AIRPORT = (41.59918, -71.57000)
+    DESTINATION_AIRPORT = (41.82151, -71.12919)  # ToD for the real flight path
     DEPARTURE_DATE = pd.Timestamp(
         year=2024, month=1, day=31, hour=13, minute=45, second=57
     )
@@ -55,9 +55,16 @@ class Config:
     R = 6371
 
 
+# Uses gridded CoCiP data
 class ContrailConfig(Config):
     NAME = "contrail"
     OBJECTIVES = [ContrailObjective]
+    CONTRAIL_WEIGHT = 1
+
+
+class CocipConfig(Config):
+    NAME = "cocip"
+    OBJECTIVES = [CocipObjective, CO2Objective, TimeObjective]
     CONTRAIL_WEIGHT = 1
 
 

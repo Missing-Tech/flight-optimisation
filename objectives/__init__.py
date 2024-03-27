@@ -63,6 +63,26 @@ class ContrailObjective(Objective):
         return -contrails_at_point
 
 
+class CocipObjective(Objective):
+    def __init__(self, performance_model, config):
+        super().__init__(performance_model, config)
+        self.name = "contrail"
+        self.weight = config.CONTRAIL_WEIGHT
+
+    def _run_objective_function(self, flight_path):
+        ef, _, _ = self.performance_model.cocip_manager.calculate_ef_from_flight_path(
+            flight_path,
+        )
+        return ef.sum()
+
+    def calculate_heuristic(self, point):
+        contrails_at_point = max(
+            self.performance_model.contrail_grid.interpolate_contrail_point(point),
+            0.01,
+        )
+        return -contrails_at_point
+
+
 class CO2Objective(Objective):
     def __init__(self, performance_model, config):
         super().__init__(performance_model, config)
@@ -91,7 +111,7 @@ class CO2Objective(Objective):
             "time": time_at_point,
         }
         fuel_flow_estimation = ps_grid.get_performance_data_at_point(point)["fuel_flow"]
-        co2 = Emission(ac="B77W", eng="GE90-115B").co2(fuel_flow_estimation)
+        co2 = Emission(ac=self.config.AIRCRAFT_TYPE).co2(fuel_flow_estimation)
         return -co2
 
 

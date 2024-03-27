@@ -27,9 +27,11 @@ class CocipManager:
             "wingspan": self.config.WINGSPAN,
             "nvpm_ei_n": 1.897264e15,
             "n_engine": self.config.N_ENGINES,
+            "engine_efficiency": self.config.NOMINAL_ENGINE_EFFICIENCY,
         }
 
         flight = pc.Flight(data=flight_path_df, flight_id=123, attrs=attrs)
+
         params = {
             "process_emissions": False,
             "radiative_heating_effects": True,
@@ -95,12 +97,12 @@ class ContrailGrid:
 
     def interpolate_contrail_grid(
         self,
-        grid,
+        flight_path,
     ):
         da = self.contrail_grid["ef_per_m"]
 
         flight_path = pd.DataFrame(
-            grid,
+            flight_path,
             columns=["latitude", "longitude", "altitude_ft", "time", "segment_length"],
         )
 
