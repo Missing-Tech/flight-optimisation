@@ -1,13 +1,27 @@
 import numpy as np
+from config import Config
+from _types import Point2D, Path2D, Grid2D
 
 
 class RoutingGrid:
-    def __init__(self, geodesic_path, config):
+    """
+    A class representing a routing grid based on geodesic paths
+    """
+
+    def __init__(self, geodesic_path: Path2D, config: Config):
+        """
+        Initialises the RoutingGrid object
+        """
         self.config = config
         self.path = geodesic_path
 
-    def calculate_new_coordinates(self, p1, distance, bearing):
-        lat1, lon1, _ = p1
+    def calculate_new_coordinates(
+        self, p1: Point2D, distance: float, bearing: float
+    ) -> Point2D:
+        """
+        Calculates new coordinates based on initial point, distance, and bearing
+        """
+        lat1, lon1 = p1
 
         lat1 = np.radians(lat1)
         lon1 = np.radians(lon1)
@@ -21,14 +35,20 @@ class RoutingGrid:
             np.cos(distance / self.config.R) - np.sin(lat1) * np.sin(lat2),
         )
 
-        return np.degrees(lat2), np.degrees(lon2), bearing
+        return np.degrees(lat2), np.degrees(lon2)
 
-    def calculate_normal_bearing(self, bearing):
+    def calculate_normal_bearing(self, bearing: float) -> float:
+        """
+        Calculates the normal bearing by adding pi/2 to the given bearing
+        """
         return (bearing + np.pi / 2) % (2 * np.pi)
 
-    def calculate_bearing(self, p1, p2):
-        lat1, lon1, _ = p1
-        lat2, lon2, _ = p2
+    def calculate_bearing(self, p1: Point2D, p2: Point2D) -> float:
+        """
+        Calculates the bearing between two points
+        """
+        lat1, lon1 = p1
+        lat2, lon2 = p2
         delta_lon = lon2 - lon1
 
         lat1 = np.radians(lat1)
@@ -43,10 +63,13 @@ class RoutingGrid:
 
         return z
 
-    def calculate_routing_grid(self):
+    def calculate_routing_grid(self) -> Grid2D:
+        """
+        Calculates the routing grid
+        """
         grid = []
         for point in self.path:
-            lat, lon, _ = point
+            lat, lon = point
             positive_waypoints = []
             negative_waypoints = []
             potential_waypoints = []
@@ -68,18 +91,23 @@ class RoutingGrid:
                 new_point_negative = self.calculate_new_coordinates(
                     point, self.config.GRID_SPACING * i * -1, bearing
                 )
-                plat, plon, _ = new_point_positive
-                nlat, nlon, _ = new_point_negative
-                positive_waypoints.append((plat, plon))
-                negative_waypoints.append((nlat, nlon))
+                plat, plon = new_point_positive
+                nlat, nlon = new_point_negative
+                positive_waypoints.append(Point2D(plat, plon))
+                negative_waypoints.append(Point2D(nlat, nlon))
             # reverse positive waypoints
             positive_waypoints = list(reversed(positive_waypoints))
-            potential_waypoints = positive_waypoints + [(lat, lon)] + negative_waypoints
+            potential_waypoints = (
+                positive_waypoints + [Point2D(lat, lon)] + negative_waypoints
+            )
 
             grid.append(potential_waypoints)
         return grid
 
-    def get_routing_grid(self):
+    def get_routing_grid(self) -> Grid2D:
+        """
+        Gets the routing grid
+        """
         if not hasattr(self, "routing_grid"):
             self.routing_grid = self.calculate_routing_grid()
         return self.routing_grid

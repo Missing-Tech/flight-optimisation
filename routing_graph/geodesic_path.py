@@ -1,6 +1,6 @@
 import numpy as np
 from config import Config
-from types import Point2D
+from _types import Point2D, Path2D
 
 
 class GeodesicPath(list):
@@ -16,7 +16,7 @@ class GeodesicPath(list):
         self.destination_airport: (float, float) = config.DESTINATION_AIRPORT
         self.no_of_points: int = config.NO_OF_POINTS
         self.config: Config = config
-        self.path: list(Point2D) = self.calculate_path(
+        self.path: Path2D = self.calculate_path(
             self.no_of_points, self.departure_airport, self.destination_airport
         )
         super().__init__(self.path)
@@ -100,7 +100,7 @@ class GeodesicPath(list):
 
     def find_point_distance_along_great_circle(
         self, distance: float, azimuth: float, equator_longitude: float
-    ) -> float:
+    ) -> Point2D:
         """
         Find a lat/lon point a certain distance along the great circle path
         """
@@ -117,15 +117,9 @@ class GeodesicPath(list):
         phi = np.degrees(phi)
         lambda1 = np.degrees(lambda1)
 
-        azimuth_numerator = np.tan(azimuth)
-        azimuth_denominator = np.cos(distance)
-        local_azimuth = np.arctan2(azimuth_numerator, azimuth_denominator)
+        return Point2D(self.reduce_angle(phi), self.reduce_angle(lambda1))
 
-        return (self.reduce_angle(phi), self.reduce_angle(lambda1), local_azimuth)
-
-    def calculate_path(self, no_of_points: int, p1: Point2D, p2: Point2D) -> list(
-        Point2D
-    ):
+    def calculate_path(self, no_of_points: int, p1: Point2D, p2: Point2D) -> Path2D:
         """
         Calculates the geodesic path with several points evenly spaced between two points
         """
@@ -149,7 +143,7 @@ class GeodesicPath(list):
         angle1 = self.calculate_angle_1(alpha1, phi1)
         equator_longitude = self.calculate_equator_longitude(azimuth, angle1, lambda1)
 
-        points = [(lat0, lon0, 0)]
+        points = [Point2D(lat0, lon0)]
 
         total_distance = self.config.R * central_angle
         step = total_distance / no_of_points
@@ -161,6 +155,6 @@ class GeodesicPath(list):
                 )
             )
 
-        points.append((lat1, lon1, 0))
+        points.append(Point2D(lat1, lon1))
 
         return points
