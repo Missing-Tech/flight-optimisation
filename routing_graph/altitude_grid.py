@@ -1,19 +1,27 @@
 from utils import Conversions
-from rich import print
+from _types import Grid2D, Grid3D, IndexPoint3D, FlightPoint
+from config import Config
 
 
 class AltitudeGrid:
-    def __init__(self, routing_grid, config):
-        self.config = config
-        self.base_altitude = self.config.STARTING_ALTITUDE
-        self.altitude_step = self.config.ALTITUDE_STEP
-        self.max_altitude_var = self.config.MAX_ALTITUDE_VAR
-        self.max_altitude = self.config.MAX_ALTITUDE
-        self.routing_grid = routing_grid.get_routing_grid()
-        self.altitude_grid = self.calculate_altitude_grid(self.routing_grid)
+    def __init__(self, routing_grid: Grid2D, config: Config):
+        """
+        Constructs an AltitudeGrid object from a routing grid
+        """
+        self.config: Config = config
+        self.base_altitude: int = self.config.STARTING_ALTITUDE
+        self.altitude_step: int = self.config.ALTITUDE_STEP
+        self.max_altitude_var: int = self.config.MAX_ALTITUDE_VAR
+        self.max_altitude: int = self.config.MAX_ALTITUDE
+        self.routing_grid: Grid2D = routing_grid.get_routing_grid()
+        self.altitude_grid: Grid3D = self.calculate_altitude_grid(self.routing_grid)
 
-    def calculate_altitude_grid(self, grid):
-        def calculate_altitudes():
+    def calculate_altitude_grid(self, grid: Grid2D) -> Grid3D:
+        """
+        Calculates which points are reachable at each altitude, and constructs the grid object
+        """
+
+        def calculate_altitudes() -> list[int]:
             altitudes = []
             current_altitude = self.base_altitude
             while current_altitude <= self.max_altitude:
@@ -43,7 +51,10 @@ class AltitudeGrid:
 
         return altitude_grid
 
-    def convert_index_to_point(self, index):
+    def convert_index_to_point(self, index: IndexPoint3D) -> FlightPoint:
+        """
+        Converts an IndexPoint to a FlightPoint
+        """
         thrust = self.config.NOMINAL_THRUST
         altitude_point = self.altitude_grid[index[2]][index[0]][index[1]]
         path_point = {
@@ -59,11 +70,11 @@ class AltitudeGrid:
         }
         return path_point
 
-    def __iter__(self):
+    def __iter__(self) -> iter:
         return iter(self.altitude_grid)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> Grid2D:
         return self.altitude_grid[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: int, value: Grid2D) -> None:
         self.altitude_grid[key] = value

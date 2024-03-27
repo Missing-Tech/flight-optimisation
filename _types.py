@@ -1,5 +1,17 @@
 from collections import namedtuple
+from typing import TypedDict
 
+
+class FlightPoint(TypedDict):
+    longitude: float
+    latitude: float
+    altitude_ft: float
+    altitude: float
+    level: float
+    thrust: float
+
+
+IndexPoint3D = namedtuple("IndexPoint3D", "lat lon alt")
 Point2D = namedtuple("Point2D", "lat lon")
 Point3D = namedtuple("Point3D", "lat lon alt")
 Point4D = namedtuple("Point4D", "lat lon alt time")

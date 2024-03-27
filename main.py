@@ -218,9 +218,7 @@ def save_figs(dir: str, results, config):
         real_flight_objectives,
         pareto_set_objectives,
     ) = results
-    geodesic_path = pd.DataFrame(
-        geodesic_path, columns=["latitude", "longitude", "azimuth"]
-    )
+    geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
     real_flight_df = pd.DataFrame(
         real_flight.flight_path,
         columns=["latitude", "longitude", "time", "altitude_ft"],
@@ -590,9 +588,7 @@ def main():
 
             print("[bold green]:white_check_mark: Results saved.[/bold green]")
 
-    geodesic_path = pd.DataFrame(
-        geodesic_path, columns=["latitude", "longitude", "azimuth"]
-    )
+    geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
     real_flight_df = pd.DataFrame(
         real_flight.flight_path,
         columns=["latitude", "longitude", "time", "altitude_ft"],
