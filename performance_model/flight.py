@@ -45,23 +45,21 @@ class RealFlight(Flight):
             [],
             config,
         )
-        flight_path = pd.read_csv(f"data/{flight_name}")
-        self.flight_path = flight_path[flight_path["AltMSL"] > 30000]
+        self.flight_path = pd.read_csv(f"data/{flight_name}")
         self.flight_path = self.convert_real_flight_path()
         self.config = config
 
     def convert_real_flight_path(self):
         path = []
         for _, row in self.flight_path.iterrows():
-            time = datetime.strptime(row["DateTime"], "%Y-%m-%d %H:%M:%S")
             path_point = {
-                "latitude": row["Latitude"],
-                "longitude": row["Longitude"],
-                "altitude_ft": row["AltMSL"],
+                "latitude": row["latitude"],
+                "longitude": row["longitude"],
+                "altitude_ft": row["altitude_ft"],
                 "thrust": self.config.NOMINAL_THRUST,
-                "time": time,
+                "time": row["time"],
                 "level": Conversions().convert_altitude_to_pressure_bounded(
-                    row["AltMSL"],
+                    row["altitude_ft"],
                     self.config.PRESSURE_LEVELS[-1],
                     self.config.PRESSURE_LEVELS[0],
                 ),
