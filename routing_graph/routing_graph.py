@@ -1,25 +1,42 @@
-import networkx as nx
+from networkx import DiGraph, read_gml, write_gml
+from networkx.classes.reportviews import NodeView, EdgeView
 import os
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich import print
+from config import Config
+from performance_model import PerformanceModel
+from .altitude_grid import AltitudeGrid
+from _types import IndexPoint3D, Grid3D
 
 
 class RoutingGraph:
-    def __init__(self, altitude_grid, performance_model, config, test=False):
-        self.config = config
-        self.altitude_grid = altitude_grid
-        self.performance_model = performance_model
-        self.routing_graph = self._init_routing_graph(test=test)
-        self.nodes = self.routing_graph.nodes
-        self.edges = self.routing_graph.edges
+    def __init__(
+        self,
+        altitude_grid: AltitudeGrid,
+        performance_model: PerformanceModel,
+        config: Config,
+        test: bool = False,
+    ):
+        """
+        Create a RoutingGraph object
+        """
+        self.config: Config = config
+        self.altitude_grid: AltitudeGrid = altitude_grid
+        self.performance_model: PerformanceModel = performance_model
+        self.routing_graph: DiGraph = self._init_routing_graph(test=test)
+        self.nodes: NodeView = self.routing_graph.nodes
+        self.edges: EdgeView = self.routing_graph.edges
 
     def get_consecutive_points(
         self,
-        xi,
-        yi,
-        altitude,
-        grid,
-    ):
+        point: IndexPoint3D,
+        grid: Grid3D,
+    ) -> list[IndexPoint3D] or None:
+        """
+        Get a list of consecutive points from the current position
+        """
+
+        xi, yi, altitude = point
         max_lateral_var = self.config.OFFSET_VAR
         max_altitude_var = self.config.MAX_ALTITUDE_VAR
         altitude_step = self.config.ALTITUDE_STEP
@@ -42,8 +59,11 @@ class RoutingGraph:
 
         return points
 
-    def calculate_routing_graph(self):
-        graph = nx.DiGraph()
+    def calculate_routing_graph(self) -> DiGraph:
+        """
+        Calculates a full routing graph from an altitude grid
+        """
+        graph = DiGraph()
 
         altitude_grid = self.altitude_grid
 
@@ -57,7 +77,7 @@ class RoutingGraph:
                     yi = step.index(point)
 
                     consecutive_points = self.get_consecutive_points(
-                        xi, yi, altitude, altitude_grid
+                        IndexPoint3D(xi, yi, altitude), altitude_grid
                     )
 
                     heuristic_data = {
@@ -99,18 +119,20 @@ class RoutingGraph:
 
         return graph
 
-    def parse_node(self, s):
-        # Assuming the input format is like '(0, 0, 31000)'
+    def parse_node(self, s: str) -> IndexPoint3D:
+        """
+        Parses a GML node into an IndexPoint3D
+        """
         parts = s.strip("()").split(",")
         return tuple(map(int, parts))
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: IndexPoint3D) -> NodeView:
         return self.routing_graph[key]
 
-    def __setitem__(self, key, value):
-        self.routing_graph[key] = value
-
-    def _init_routing_graph(self, test=False):
+    def _init_routing_graph(self, test: bool = False) -> DiGraph:
+        """
+        Retrieves the routing graph from a file or calculates it
+        """
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -118,12 +140,12 @@ class RoutingGraph:
         ) as progress:
             progress.add_task(description="Creating routing graph...", total=None)
             if os.path.exists("data/routing_graph.gml") and not test:
-                rg = nx.read_gml("data/routing_graph.gml", destringizer=self.parse_node)
+                rg = read_gml("data/routing_graph.gml", destringizer=self.parse_node)
                 self.routing_graph = rg
             else:
                 rg = self.calculate_routing_graph()
                 if not test:
-                    nx.write_gml(rg, "data/routing_graph.gml")
+                    write_gml(rg, "data/routing_graph.gml")
                 self.routing_graph = rg
         print("[bold green]:white_check_mark: Routing graph constructed.[/bold green]")
         return self.routing_graph
