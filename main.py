@@ -590,24 +590,6 @@ def main():
 
             print("[bold green]:white_check_mark: Results saved.[/bold green]")
 
-    # Create required dataframes
-    # grid = sum(routing_grid.get_routing_grid(), [])
-    # routing_grid_df = pd.DataFrame(grid, columns=["latitude", "longitude"])
-
-    # alt_grid_df = altitude_grid
-    #
-    # for alt in alt_grid_df:
-    #     alt_grid_df[alt] = [x for x in sum(alt_grid_df[alt], []) if x is not None]
-    #
-    # alt_grid_df = pd.DataFrame(
-    #     [
-    #         (alt, *coords)
-    #         for alt, coords_list in alt_grid_df.items()
-    #         for coords in coords_list
-    #     ],
-    #     columns=["altitude", "longitude", "latitude"],
-    # )
-
     geodesic_path = pd.DataFrame(
         geodesic_path, columns=["latitude", "longitude", "azimuth"]
     )
