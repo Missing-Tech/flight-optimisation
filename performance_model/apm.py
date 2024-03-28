@@ -8,7 +8,7 @@ import pycontrails as pc
 from utils import Conversions
 from .weather import WeatherGrid
 from config import Config
-from _types import FlightPoint, FlightPath
+from _types import FlightPoint, FlightPath, WindVector, Point2D
 
 
 class AircraftPerformanceModel:
@@ -101,7 +101,7 @@ class AircraftPerformanceModel:
         point["true_airspeed"] = self.calculate_true_air_speed(
             point["thrust"], temperature
         )
-        crabbing_angle = self.calculate_crabbing_angle(point,wind_vector)
+        crabbing_angle = self.calculate_crabbing_angle(point, wind_vector)
         point["heading"] = point["course"] - crabbing_angle
         point["ground_speed"] = self.calculate_ground_speed(point, wind_vector)
         return point
@@ -145,7 +145,9 @@ class AircraftPerformanceModel:
         resample_path = resample_df.to_dict("records")
         return resample_path
 
-    def calculate_segment_length(self, point: FlightPoint, previous_point: FlightPoint) -> float:
+    def calculate_segment_length(
+        self, point: FlightPoint, previous_point: FlightPoint
+    ) -> float:
         """
         Calculates the segment length between two points
         """
@@ -159,7 +161,9 @@ class AircraftPerformanceModel:
         )
         return euclidean_distance
 
-    def calculate_time_at_point(self, point: FlightPoint, previous_point: FlightPoint) -> pd.Timedelta:
+    def calculate_time_at_point(
+        self, point: FlightPoint, previous_point: FlightPoint
+    ) -> pd.Timedelta:
         """
         Calculates the time between two points
         """
@@ -192,7 +196,9 @@ class AircraftPerformanceModel:
 
         return z
 
-    def calculate_course_at_point(self, point: FlightPoint, next_point: FlightPoint) -> float:
+    def calculate_course_at_point(
+        self, point: FlightPoint, next_point: FlightPoint
+    ) -> float:
         """
         Calculates the course between two points
         """
@@ -213,7 +219,9 @@ class AircraftPerformanceModel:
         true_air_speed = mach * speed_of_sound * np.sqrt(air_temp_ratio)
         return true_air_speed  # in m/s
 
-    def calculate_crabbing_angle(self, point: FlightPoint, wind_vector: WindVector) -> float:
+    def calculate_crabbing_angle(
+        self, point: FlightPoint, wind_vector: WindVector
+    ) -> float:
         """
         Calculates the crabbing angle accounting for wind
         """
@@ -222,7 +230,9 @@ class AircraftPerformanceModel:
         crabbing_angle = np.arcsin(numerator / point["true_airspeed"])
         return crabbing_angle
 
-    def calculate_climb_angle(self, point: FlightPoint, next_point: FlightPoint) -> float::
+    def calculate_climb_angle(
+        self, point: FlightPoint, next_point: FlightPoint
+    ) -> float:
         """
         Calculates the climb angle between two points
         """
