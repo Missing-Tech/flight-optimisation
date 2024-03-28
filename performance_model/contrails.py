@@ -14,10 +14,9 @@ import typing
 from utils import Conversions
 
 if typing.TYPE_CHECKING:
-    from routing_graph import AltitudeGrid
     from .weather import WeatherGrid
     from config import Config
-    from _types import FlightPath, FlightPoint, Point3D
+    from _types import FlightPath, FlightPoint, Point3D, Grid2D
 
 
 class CocipManager:
@@ -150,13 +149,13 @@ class ContrailGrid:
 
 
 class ContrailGridManager:
-    def __init__(self, altitude_grid: "AltitudeGrid", config: "Config"):
+    def __init__(self, routing_grid: "Grid2D", config: "Config"):
         """
         Wrapper for the contrail grid and contrail polys
         """
         self.config: "Config" = config
+        self.routing_grid: "Grid2D" = routing_grid
         self.contrail_polys: dict = self._get_contrail_polys()
-        self.altitude_grid: "AltitudeGrid" = altitude_grid
         self.contrail_grid: ContrailGrid = ContrailGrid(self._get_contrail_grid())
 
     def _get_contrail_grid(self) -> xr.Dataset:
@@ -191,16 +190,8 @@ class ContrailGridManager:
         api_key = os.getenv("API_KEY")
         headers = {"x-api-key": api_key}
 
-        flight_path = pd.DataFrame(
-            [
-                (alt, *coords)
-                for alt, coords_list in self.altitude_grid.items()
-                for coords in coords_list
-            ],
-            columns=["altitude_ft", "latitude", "longitude"],
-        )
-
-        grid_df = pd.DataFrame(flight_path, columns=["latitude", "longitude"])
+        grid = sum(self.routing_grid, [])
+        grid_df = pd.DataFrame(grid, columns=["latitude", "longitude"])
         params = {
             "bbox": [
                 grid_df["longitude"].min() - 1,

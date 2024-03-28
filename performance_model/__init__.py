@@ -8,7 +8,7 @@ from .flight import RealFlight, Flight
 
 if typing.TYPE_CHECKING:
     from config import Config
-    from routing_graph import RoutingGraphManager, AltitudeGrid
+    from routing_graph import RoutingGraphManager, RoutingGrid, AltitudeGrid
     from _types import FlightPath
 
 
@@ -18,6 +18,7 @@ class PerformanceModel:
         Wrapper for all the performance model classes
         """
         self.config: "Config" = config
+        self.routing_grid: "RoutingGrid" = routing_graph_manager.get_routing_grid()
         self.altitude_grid: "AltitudeGrid" = routing_graph_manager.get_altitude_grid()
         self.routing_graph_manager: "RoutingGraphManager" = routing_graph_manager
         self.get_apm()
@@ -89,5 +90,7 @@ class PerformanceModel:
         Gets the contrail grid manager
         """
         if hasattr(self, "contrail_manager") is False:
-            self.contrail_manager = ContrailGridManager(self.altitude_grid, self.config)
+            self.contrail_manager = ContrailGridManager(
+                self.routing_grid.get_routing_grid(), self.config
+            )
         return self.contrail_manager
