@@ -69,14 +69,14 @@ class AircraftPerformanceModel:
 
             weather_at_point = self.weather_grid.get_weather_data_at_point(point)
             temperature = self.weather_grid.get_temperature_at_point(weather_at_point)
-            u, v = self.weather_grid.get_wind_vector_at_point(weather_at_point)
+            wind_vector = self.weather_grid.get_wind_vector_at_point(weather_at_point)
 
             point["true_airspeed"] = self.calculate_true_air_speed(
                 point["thrust"], temperature
             )
-            crabbing_angle = self.calculate_crabbing_angle(point, u, v)
+            crabbing_angle = self.calculate_crabbing_angle(point, wind_vector)
             point["heading"] = point["course"] - crabbing_angle
-            point["ground_speed"] = self.calculate_ground_speed(point, u, v)
+            point["ground_speed"] = self.calculate_ground_speed(point, wind_vector)
 
         return flight_path
 
@@ -210,8 +210,8 @@ class AircraftPerformanceModel:
         Calculates the course between two points
         """
         bearing = self.calculate_bearing(
-            Point2D(point["longitude"], point["latitude"]),
-            Point2D(next_point["longitude"], next_point["latitude"]),
+            (point["longitude"], point["latitude"]),
+            (next_point["longitude"], next_point["latitude"]),
         )
         return bearing
 
@@ -277,14 +277,14 @@ class AircraftPerformanceModel:
         emission = Emission(ac=self.config.AIRCRAFT_TYPE)
         return emission.co2(FF)  # g/s
 
-    def calculate_fuel_flow(self, point: "FlightPoint") -> float:
+    def calculate_fuel_flow(self, point: "FlightPoint", mass: float) -> float:
         """
         Calculates the fuel flow of a point
         """
         fuelflow = FuelFlow(ac=self.config.AIRCRAFT_TYPE)
 
         FF = fuelflow.enroute(
-            mass=point["aircraft_mass"],
+            mass=mass,
             alt=point["altitude_ft"],
             tas=point["true_airspeed"],
             path_angle=point["heading"],

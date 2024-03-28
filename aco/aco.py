@@ -60,7 +60,7 @@ class ACO:
         """
         Runs the ACO algorithm and generates a pareto front of solutions
         """
-        best_objectives = Objectives.fromkeys(self.objectives, np.inf)
+        best_objectives = dict.fromkeys(self.objectives, np.inf)
         ants = [
             Ant(
                 self.routing_graph_manager,
@@ -78,8 +78,8 @@ class ACO:
                     executor.submit(ant.run_ant, i) for i, ant in enumerate(ants)
                 ]
 
-                iteration_best_solution = Objectives.fromkeys(self.objectives, None)
-                iteration_best_objectives = Objectives.fromkeys(self.objectives, np.inf)
+                iteration_best_solution = dict.fromkeys(self.objectives, None)
+                iteration_best_objectives = dict.fromkeys(self.objectives, np.inf)
 
                 # Get the results
                 for future in as_completed(futures):

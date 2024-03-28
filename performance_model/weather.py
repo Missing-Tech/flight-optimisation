@@ -119,7 +119,7 @@ class WeatherGrid:
         u = point["eastward_wind"].values
         v = point["northward_wind"].values
 
-        return WindVector(u, v)
+        return (u, v)
 
     def get_temperature_at_point(self, point: xr.Dataset) -> float:
         """

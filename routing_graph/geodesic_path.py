@@ -120,7 +120,7 @@ class GeodesicPath(list):
         phi = np.degrees(phi)
         lambda1 = np.degrees(lambda1)
 
-        return "Point2D"(self.reduce_angle(phi), self.reduce_angle(lambda1))
+        return (self.reduce_angle(phi), self.reduce_angle(lambda1))
 
     def calculate_path(
         self, no_of_points: int, p1: "Point2D", p2: "Point2D"
@@ -148,7 +148,7 @@ class GeodesicPath(list):
         angle1 = self.calculate_angle_1(alpha1, phi1)
         equator_longitude = self.calculate_equator_longitude(azimuth, angle1, lambda1)
 
-        points = "Path2D"(lat0, lon0)
+        points = [(lat0, lon0)]
 
         total_distance = self.config.R * central_angle
         step = total_distance / no_of_points
@@ -160,6 +160,6 @@ class GeodesicPath(list):
                 )
             )
 
-        points.append("Point2D"(lat1, lon1))
+        points.append((lat1, lon1))
 
         return points

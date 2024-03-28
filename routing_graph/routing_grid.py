@@ -96,13 +96,11 @@ class RoutingGrid:
                 )
                 plat, plon = new_point_positive
                 nlat, nlon = new_point_negative
-                positive_waypoints.append(Point2D(plat, plon))
-                negative_waypoints.append(Point2D(nlat, nlon))
+                positive_waypoints.append((plat, plon))
+                negative_waypoints.append((nlat, nlon))
             # reverse positive waypoints
             positive_waypoints = list(reversed(positive_waypoints))
-            potential_waypoints = (
-                positive_waypoints + [Point2D(lat, lon)] + negative_waypoints
-            )
+            potential_waypoints = positive_waypoints + [(lat, lon)] + negative_waypoints
 
             grid.append(potential_waypoints)
         return grid
