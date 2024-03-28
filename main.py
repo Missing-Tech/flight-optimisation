@@ -6,11 +6,11 @@ import pandas as pd
 import typer
 from rich import print
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 import inquirer
 import pickle
 from pathlib import Path
 import os
-
 import graphs
 from config import (
     Config,
@@ -79,7 +79,6 @@ def run_aco(config: Config):
     ant_colony = ACO(routing_graph_manager, config)
     pareto_set = ant_colony.run_aco_colony()
     print("[bold green]:white_check_mark: ACO complete.[/bold green]")
-    random_pareto_path = random.choice(pareto_set)
 
     # Run performance model on a real flight
     with Progress(
@@ -92,9 +91,41 @@ def run_aco(config: Config):
         )
         real_flight = RealFlight("jan-31-cleaned.csv", routing_graph_manager, config)
         real_flight.run_performance_model()
+        real_flight_objectives = real_flight.calculate_objectives()
     print(
         "[bold green]:white_check_mark: Performance model run on real flight.[/bold green]"
     )
+
+    table = Table()
+    table.add_column("Solution", style="bold")
+    table.add_column("Contrail EF", style="blue")
+    table.add_column("kg of CO2", style="red")
+    table.add_column("Time (h)", style="green")
+    table.add_row(
+        "Real Flight",
+        str(real_flight_objectives["contrail"]),
+        str(real_flight_objectives["co2"]),
+        str(real_flight_objectives["time"]),
+    )
+    for i, solution in enumerate(pareto_set):
+        table.add_row(
+            str(i + 1),
+            str(solution.objectives["contrail"]),
+            str(solution.objectives["co2"]),
+            str(solution.objectives["time"]),
+        )
+    print(table)
+
+    questions = [
+        inquirer.List(
+            "results",
+            message="What path would you like to choose?",
+            choices=[i + 1 for i in range(len(pareto_set) - 1)],
+            carousel=True,
+        )
+    ]
+    answers = inquirer.prompt(questions)
+    chosen_pareto_path = pareto_set[answers["results"] - 1]
 
     # Calculate CoCiP for both paths
     with Progress(
@@ -107,7 +138,7 @@ def run_aco(config: Config):
             real_flight.flight_path
         )
         aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(
-            random_pareto_path.flight_path
+            chosen_pareto_path.flight_path
         )
     print(
         "[bold green]:white_check_mark: CoCiP calculated for both flights.[/bold green]"
@@ -122,12 +153,10 @@ def run_aco(config: Config):
     for solution in pareto_set:
         pareto_set_objectives.append(solution.objectives)
 
-    real_flight_objectives = real_flight.calculate_objectives()
-
     return (
         geodesic_path,
         real_flight,
-        random_pareto_path,
+        chosen_pareto_path,
         pareto_set,
         objectives,
         fp_cocip,
