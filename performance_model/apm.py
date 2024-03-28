@@ -5,6 +5,7 @@ from openap import FuelFlow, Emission
 import math
 import pycontrails as pc
 import typing
+from rich import print
 
 from utils import Conversions
 from .weather import WeatherGrid
@@ -146,7 +147,7 @@ class AircraftPerformanceModel:
         flight = pc.Flight(
             flight_path_df,
         )
-        resample_path = flight.resample_and_fill("1min")
+        resample_path = flight.resample_and_fill("1min", nominal_rocd=4.45)
         resample_df = resample_path.dataframe
         resample_df["altitude_ft"] = resample_df["altitude"] * 3.28084
         resample_path = resample_df.to_dict("records")

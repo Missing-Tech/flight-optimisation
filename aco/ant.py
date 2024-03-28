@@ -32,28 +32,9 @@ class Ant:
         """
         solution = self.construct_solution()
         solution.run_performance_model()
-        objectives = self.objective_function(solution.flight_path)
-        solution.set_objective_value(objectives)
+        solution.calculate_objectives()
 
         return solution
-
-    def objective_function(self, flight_path: "FlightPath") -> "Objectives":
-        """
-        Calculates the relevant objectives for the constructed flight path
-        """
-        objectives = {}
-        for objective in self.objectives:
-            # Get the string representation of the class name
-            objective_name = str(objective)
-
-            # Call the 'calculate_objectives' method of the object
-            objective_value = objective.calculate_objective(
-                flight_path,
-            )
-
-            # Store the results in the dictionary
-            objectives[objective_name] = objective_value
-        return objectives
 
     def construct_solution(self) -> Flight:
         """

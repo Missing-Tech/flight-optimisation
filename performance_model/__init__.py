@@ -4,7 +4,7 @@ import typing
 from .apm import AircraftPerformanceModel
 from .contrails import CocipManager, ContrailGridManager, PSGridManager, ContrailGrid
 from .weather import WeatherGrid
-from .flight import RealFlight, Flight
+from .flight import RealFlight, Flight, RandomFlight
 
 if typing.TYPE_CHECKING:
     from config import Config

@@ -64,12 +64,6 @@ class TestFlight(unittest.TestCase):
         self.assertEqual(flight.flight_path[0]["altitude_ft"], 1)
         self.assertEqual(flight.flight_path[0]["thrust"], 1)
 
-    def test_set_objective_value(self):
-        flight = Flight(self.mock_routing_graph_manager, [], self.mock_config)
-        flight.set_objective_value({"objective1": 1, "objective2": 2})
-        # Assert objective values are correctly set
-        self.assertEqual(flight.objectives, {"objective1": 1, "objective2": 2})
-
 
 class TestRealFlight(unittest.TestCase):
     def setUp(self):

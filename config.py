@@ -50,10 +50,10 @@ class Config:
     FLIGHT_LEVELS: list[int] = [310, 330, 350, 370, 390]
     PRESSURE_LEVELS: list[int] = [300, 250, 200]
     STARTING_ALTITUDE: float = 31000
-    INITIAL_THRUST: float = 0.83
+    INITIAL_THRUST: float = 0.84
     MAX_THRUST_VAR: float = 0.01
-    MAX_THRUST: float = 0.83
-    NOMINAL_THRUST: float = 0.83
+    MAX_THRUST: float = 0.84
+    NOMINAL_THRUST: float = 0.84
     MAX_ALTITUDE: int = 39000
     MAX_ALTITUDE_VAR: int = 4000
     ALTITUDE_STEP: int = 2000

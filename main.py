@@ -21,7 +21,7 @@ from config import (
     CocipConfig,
 )
 from routing_graph import RoutingGraphManager
-from performance_model import PerformanceModel, RealFlight
+from performance_model import PerformanceModel, RealFlight, RandomFlight
 from aco import ACO
 from display import Display
 
@@ -95,6 +95,17 @@ def run_aco(config: Config, choose_path=False):
     print(
         "[bold green]:white_check_mark: Performance model run on real flight.[/bold green]"
     )
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        progress.add_task(description="Creating a random flight path...", total=None)
+        random_flight_path = RandomFlight(routing_graph_manager, config)
+        random_flight_path.construct_random_flight()
+        random_flight_path.calculate_objectives()
+    print("[bold green]:white_check_mark: Created a random flight path.[/bold green]")
 
     table = Table()
     table.add_column("Solution", style="bold")

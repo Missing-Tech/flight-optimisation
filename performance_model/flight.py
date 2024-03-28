@@ -1,3 +1,4 @@
+import random
 import pandas as pd
 from utils import Conversions
 import typing
@@ -54,11 +55,19 @@ class Flight:
         )
         self.flight_path.append(point)
 
-    def set_objective_value(self, objective_values: "Objectives") -> None:
+    def calculate_objectives(self) -> "Objectives":
         """
-        Sets the objective values for this flight path
+        Calculates the objective values for this flight path
         """
-        self.objectives = objective_values
+        objectives = {}
+        for objective in self.config.OBJECTIVES:
+            objective = objective(self.performance_model, self.config)
+            objective_name = str(objective)
+            objective_value = objective._run_objective_function(self.flight_path)
+            objectives[objective_name] = objective_value
+
+        self.objectives = objectives
+        return objectives
 
 
 class RealFlight(Flight):
@@ -100,16 +109,23 @@ class RealFlight(Flight):
 
         return path
 
-    def calculate_objectives(self) -> "Objectives":
-        """
-        Calculates the objective values for this flight path
-        """
-        objectives = {}
-        for objective in self.config.OBJECTIVES:
-            objective = objective(self.performance_model, self.config)
-            objective_name = str(objective)
-            objective_value = objective._run_objective_function(self.flight_path)
-            objectives[objective_name] = objective_value
 
-        self.objectives = objectives
-        return objectives
+class RandomFlight:
+    def __init__(self, routing_graph_manager, config):
+        self.routing_graph_manager = routing_graph_manager
+        self.routing_graph = routing_graph_manager.get_routing_graph()
+        self.flight = Flight(routing_graph_manager, [], config)
+
+    def construct_random_flight(self):
+        path = [(0, self.config.GRID_WIDTH, self.config.STARTING_ALTITUDE)]
+        consecutive_points = self.routing_graph[path[0]]
+        self.flight.set_departure(path[0])
+
+        while consecutive_points is not None:
+            choice = random.choice(consecutive_points)
+            consecutive_points = self.routing_graph[choice]
+            self.flight.add_point_from_index(choice)
+
+        self.flight.run_performance_model()
+
+        return path
