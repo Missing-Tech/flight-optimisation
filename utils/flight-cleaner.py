@@ -28,7 +28,7 @@ real_flight = convert_real_flight_path(real_flight)
 real_flight = pd.DataFrame(real_flight)
 flight = Flight(real_flight)
 
-flight = flight.clean_and_resample(nominal_rocd=20)
+flight = flight.clean_and_resample(nominal_rocd=4.45)
 
 fl_df = flight.dataframe
 # convert altitude to ft

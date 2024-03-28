@@ -37,7 +37,9 @@ def show_objectives_over_time(display, objectives):
     )
 
 
-def show_flight_frames(display, real_flight_df, aco_path, contrail_grid, config):
+def show_flight_frames(
+    display, real_flight_df, aco_path, random_path_df, contrail_grid, config
+):
     maps = display.maps
     fig, map_axs = maps.create_fig(2, 2)
 
@@ -48,6 +50,7 @@ def show_flight_frames(display, real_flight_df, aco_path, contrail_grid, config)
 
     legend_patches = [
         Patch(color="blue", label="BA177 Flight Path"),
+        Patch(color="green", label="Random Flight Path"),
         Patch(color="red", label="ACO Flight Path"),
     ]
 
@@ -60,8 +63,10 @@ def show_flight_frames(display, real_flight_df, aco_path, contrail_grid, config)
         time = time + pd.Timedelta(time_step)
 
         aco_cutoff_df = get_path_before_time(aco_path, time)
+        random_cutoff_df = get_path_before_time(random_path_df, time)
         real_cutoff_df = get_path_before_time(real_flight_df, time)
         maps.show_path(real_cutoff_df, ax, color="blue", linewidth=2)
+        maps.show_path(random_cutoff_df, ax, color="green", linewidth=2)
         maps.show_path(aco_cutoff_df, ax, color="red", linewidth=2)
         ax.set_title("Time: {}".format(time))
         #
@@ -86,7 +91,13 @@ def get_path_before_time(path, time):
 
 
 def show_3d_flight_frames(
-    display, real_flight_df, aco_path, contrail_polys, contrail_grid, config
+    display,
+    real_flight_df,
+    aco_path,
+    random_path_df,
+    contrail_polys,
+    contrail_grid,
+    config,
 ):
     def get_contrail_polys_at_time(contrail_polys, time):
         collections = {}
@@ -122,6 +133,7 @@ def show_3d_flight_frames(
 
     legend_patches = [
         Patch(color="blue", label="BA177 Flight Path"),
+        Patch(color="green", label="Random Flight Path"),
         Patch(color="red", label="ACO Flight Path"),
     ]
 
@@ -133,8 +145,10 @@ def show_3d_flight_frames(
         time = time + pd.Timedelta(time_step)
 
         aco_cutoff_df = get_path_before_time(aco_path, time)
+        random_cutoff_df = get_path_before_time(random_path_df, time)
         real_cutoff_df = get_path_before_time(real_flight_df, time)
         maps.show_3d_path(real_cutoff_df, ax, color="blue", linewidth=2)
+        maps.show_3d_path(random_cutoff_df, ax, color="green", linewidth=2)
         maps.show_3d_path(aco_cutoff_df, ax, color="red", linewidth=2)
         ax.set_title("Time: {}".format(time))
 
@@ -159,28 +173,36 @@ def show_flight_path_comparison(
     display,
     geodesic_path,
     real_flight_df,
-    random_pareto_path_df,
+    chosen_pareto_path_df,
+    random_path_df,
     pareto_set,
     fp_cocip,
     aco_cocip,
+    rand_cocip,
 ):
     maps = display.maps
-    fig, map_axs = maps.create_fig(2, 1)
+    fig, map_axs = maps.create_fig(3, 1)
 
     fig.title = "Flight Path Comparison"
 
-    maps.show_path(geodesic_path, map_axs[0], linestyle="--")
-    maps.show_path(real_flight_df, map_axs[0], color="red", linewidth=2)
+    maps.show_path(geodesic_path, map_axs[0], color="k", linestyle="--")
+    maps.show_path(real_flight_df, map_axs[0], color="blue", linewidth=2)
     maps.set_title(map_axs[0], "BA177 Flight Path - Jan 31 2024")
 
-    maps.show_path(geodesic_path, map_axs[1], linestyle="--")
-    maps.show_path(random_pareto_path_df, map_axs[1], color="red", linewidth=2)
-    maps.set_title(map_axs[1], "ACO Flight Path")
+    maps.show_path(geodesic_path, map_axs[1], color="k", linestyle="--")
+    maps.show_path(random_path_df, map_axs[1], color="green", linewidth=2)
+    maps.set_title(map_axs[1], "Random Flight Path")
+
+    maps.show_path(geodesic_path, map_axs[2], color="k", linestyle="--")
+    maps.show_path(chosen_pareto_path_df, map_axs[2], color="red", linewidth=2)
+    maps.set_title(map_axs[2], "ACO Flight Path")
 
     for ant_path in pareto_set:
         path_df = pd.DataFrame(ant_path.flight_path, columns=["latitude", "longitude"])
-        maps.show_path(path_df, map_axs[1], color="gray", linewidth=0.5)
+        maps.show_path(path_df, map_axs[2], color="gray", linewidth=0.5)
 
     maps.show_contrails(fp_cocip, map_axs[0])
-    maps.show_contrails(aco_cocip, map_axs[1])
+    maps.show_contrails(rand_cocip, map_axs[1])
+    maps.show_contrails(aco_cocip, map_axs[2])
+
     return fig

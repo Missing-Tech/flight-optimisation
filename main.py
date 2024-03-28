@@ -105,7 +105,7 @@ def run_aco(config: Config, choose_path=False):
         random_flight_path = RandomFlight(routing_graph_manager, config)
         random_flight_path.construct_random_flight()
         random_flight_path.run_performance_model()
-        random_flight_path.calculate_objectives()
+        random_objectives = random_flight_path.calculate_objectives()
     print("[bold green]:white_check_mark: Created a random flight path.[/bold green]")
 
     table = Table()
@@ -118,6 +118,12 @@ def run_aco(config: Config, choose_path=False):
         str(real_flight_objectives["contrail"]),
         str(real_flight_objectives["co2"]),
         str(real_flight_objectives["time"]),
+    )
+    table.add_row(
+        "Random Flight",
+        str(random_objectives["contrail"]),
+        str(random_objectives["co2"]),
+        str(random_objectives["time"]),
     )
     for i, solution in enumerate(pareto_set):
         table.add_row(
@@ -156,6 +162,9 @@ def run_aco(config: Config, choose_path=False):
         aco_ef, aco_df, aco_cocip = cocip_manager.calculate_ef_from_flight_path(
             chosen_pareto_path.flight_path
         )
+        rand_ef, rand_df, rand_cocip = cocip_manager.calculate_ef_from_flight_path(
+            random_flight_path.flight_path
+        )
     print(
         "[bold green]:white_check_mark: CoCiP calculated for both flights.[/bold green]"
     )
@@ -172,14 +181,17 @@ def run_aco(config: Config, choose_path=False):
     return (
         geodesic_path,
         real_flight,
+        random_flight_path,
         chosen_pareto_path,
         pareto_set,
         objectives,
         fp_cocip,
         aco_cocip,
+        rand_cocip,
         contrail_grid,
         contrail_polys,
         real_flight_objectives,
+        random_objectives,
         pareto_set_objectives,
     )
 
@@ -188,22 +200,27 @@ def save_results(dir: str, results, config):
     (
         geodesic_path,
         real_flight,
-        random_pareto_path,
+        random_flight_path,
+        chosen_pareto_path,
         pareto_set,
         objectives,
         fp_cocip,
         aco_cocip,
+        rand_cocip,
         contrail_grid,
         contrail_polys,
         real_flight_objectives,
+        random_objectives,
         pareto_set_objectives,
     ) = results
     save_pickle(f"{dir}geodesic_path.pkl", geodesic_path)
     save_pickle(f"{dir}real_flight.pkl", real_flight)
-    save_pickle(f"{dir}random_pareto_path.pkl", random_pareto_path)
+    save_pickle(f"{dir}chosen_pareto_path.pkl", chosen_pareto_path)
+    save_pickle(f"{dir}random_flight.pkl", random_flight_path)
     save_pickle(f"{dir}pareto_set.pkl", pareto_set)
     save_pickle(f"{dir}fp_cocip.pkl", fp_cocip)
     save_pickle(f"{dir}aco_cocip.pkl", aco_cocip)
+    save_pickle(f"{dir}rand_cocip.pkl", rand_cocip)
     save_pickle(f"{dir}contrail_grid.pkl", contrail_grid)
     save_pickle(f"{dir}contrail_polys.pkl", contrail_polys)
     save_pickle(f"{dir}config.pkl", config)
@@ -216,33 +233,43 @@ def save_results(dir: str, results, config):
         f"{dir}pareto_set_objectives.csv",
         pd.DataFrame(pareto_set_objectives),
     )
+    save_csv(
+        f"{dir}random_objectives.csv",
+        pd.DataFrame(random_objectives, index=[0]),
+    )
 
 
 def load_results(dir: str):
     geodesic_path = load_pickle(f"{dir}geodesic_path.pkl")
     real_flight = load_pickle(f"{dir}real_flight.pkl")
-    random_pareto_path = load_pickle(f"{dir}random_pareto_path.pkl")
+    chosen_pareto_path = load_pickle(f"{dir}chosen_pareto_path.pkl")
+    random_flight_path = load_pickle(f"{dir}random_flight.pkl")
     pareto_set = load_pickle(f"{dir}pareto_set.pkl")
     objectives = load_csv(f"{dir}objectives.csv")
     fp_cocip = load_pickle(f"{dir}fp_cocip.pkl")
     aco_cocip = load_pickle(f"{dir}aco_cocip.pkl")
+    rand_cocip = load_pickle(f"{dir}rand_cocip.pkl")
     contrail_grid = load_pickle(f"{dir}contrail_grid.pkl")
     contrail_polys = load_pickle(f"{dir}contrail_polys.pkl")
     config = load_pickle(f"{dir}config.pkl")
     real_flight_objectives = load_csv(f"{dir}real_flight_objectives.csv")
     pareto_set_objectives = load_csv(f"{dir}pareto_set_objectives.csv")
+    random_objectives = load_csv(f"{dir}random_objectives.csv")
 
     return (
         geodesic_path,
         real_flight,
-        random_pareto_path,
+        random_flight_path,
+        chosen_pareto_path,
         pareto_set,
         objectives,
         fp_cocip,
         aco_cocip,
+        rand_cocip,
         contrail_grid,
         contrail_polys,
         real_flight_objectives,
+        random_objectives,
         pareto_set_objectives,
         config,
     )
@@ -253,14 +280,17 @@ def save_figs(dir: str, results, config):
     (
         geodesic_path,
         real_flight,
-        random_pareto_path,
+        random_flight_path,
+        chosen_pareto_path,
         pareto_set,
         objectives,
         fp_cocip,
         aco_cocip,
+        rand_cocip,
         contrail_grid,
         contrail_polys,
         real_flight_objectives,
+        random_objectives,
         pareto_set_objectives,
     ) = results
     geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
@@ -268,24 +298,30 @@ def save_figs(dir: str, results, config):
         real_flight.flight_path,
         columns=["latitude", "longitude", "time", "altitude_ft"],
     )
-    random_pareto_path_df = pd.DataFrame(
-        random_pareto_path.flight_path,
+    chosen_pareto_path_df = pd.DataFrame(
+        chosen_pareto_path.flight_path,
+        columns=["latitude", "longitude", "time", "altitude_ft"],
+    )
+    random_path_df = pd.DataFrame(
+        chosen_pareto_path.flight_path,
         columns=["latitude", "longitude", "time", "altitude_ft"],
     )
     fig1 = graphs.show_flight_path_comparison(
         display,
         geodesic_path,
         real_flight_df,
-        random_pareto_path_df,
+        chosen_pareto_path_df,
+        random_path_df,
         pareto_set,
         fp_cocip,
         aco_cocip,
+        rand_cocip,
     )
 
     fig2 = graphs.show_flight_frames(
         display,
         real_flight_df,
-        random_pareto_path_df,
+        chosen_pareto_path_df,
         contrail_grid.contrail_grid,
         config,
     )
@@ -293,7 +329,7 @@ def save_figs(dir: str, results, config):
     fig3 = graphs.show_3d_flight_frames(
         display,
         real_flight_df,
-        random_pareto_path_df,
+        chosen_pareto_path_df,
         contrail_polys,
         contrail_grid.contrail_grid,
         config,
@@ -415,14 +451,17 @@ def main():
         (
             geodesic_path,
             real_flight,
-            random_pareto_path,
+            random_flight_path,
+            chosen_pareto_path,
             pareto_set,
             objectives,
             fp_cocip,
             aco_cocip,
+            rand_cocip,
             contrail_grid,
             contrail_polys,
             real_flight_objectives,
+            random_objectives,
             pareto_set_objectives,
             config,
         ) = results
@@ -433,19 +472,21 @@ def main():
         routing_graph_manager = RoutingGraphManager(config)
         performance_model = PerformanceModel(routing_graph_manager, config)
         real_flight.objectives["cocip"] = fp_cocip.contrail["ef"].sum()
-        random_pareto_path.objectives["cocip"] = aco_cocip.contrail["ef"].sum()
+        random_flight_path.objectives["cocip"] = rand_cocip.contrail["ef"].sum()
+        chosen_pareto_path.objectives["cocip"] = aco_cocip.contrail["ef"].sum()
         real_flight.objectives["contrail"] = (
             performance_model.contrail_grid.interpolate_contrail_grid(
                 real_flight.flight_path
             )
         )
-        random_pareto_path.objectives["contrail"] = (
+        chosen_pareto_path.objectives["contrail"] = (
             performance_model.contrail_grid.interpolate_contrail_grid(
-                random_pareto_path.flight_path
+                chosen_pareto_path.flight_path
             )
         )
         real_flight_objectives["cocip"] = real_flight.objectives["cocip"]
         real_flight_objectives["contrail"] = real_flight.objectives["contrail"]
+        random_objectives["cocip"] = random_flight_path.objectives["cocip"]
         if "cocip" not in pareto_set_objectives:
             pareto_set_objectives["cocip"] = [0] * len(pareto_set)
         if "time" not in pareto_set_objectives:
@@ -491,14 +532,17 @@ def main():
         results = (
             geodesic_path,
             real_flight,
-            random_pareto_path,
+            random_flight_path,
+            chosen_pareto_path,
             pareto_set,
             objectives,
             fp_cocip,
             aco_cocip,
+            rand_cocip,
             contrail_grid,
             contrail_polys,
             real_flight_objectives,
+            random_objectives,
             pareto_set_objectives,
         )
         save_results(answers["dir"], results, config)
@@ -529,14 +573,17 @@ def main():
             (
                 geodesic_path,
                 real_flight,
-                random_pareto_path,
+                random_flight_path,
+                chosen_pareto_path,
                 pareto_set,
                 objectives,
                 fp_cocip,
                 aco_cocip,
+                rand_cocip,
                 contrail_grid,
                 contrail_polys,
                 real_flight_objectives,
+                random_objectives,
                 pareto_set_objectives,
                 config,
             ) = results
@@ -591,14 +638,17 @@ def main():
         (
             geodesic_path,
             real_flight,
-            random_pareto_path,
+            random_flight_path,
+            chosen_pareto_path,
             pareto_set,
             objectives,
             fp_cocip,
             aco_cocip,
+            rand_cocip,
             contrail_grid,
             contrail_polys,
             real_flight_objectives,
+            random_objectives,
             pareto_set_objectives,
         ) = results
 
@@ -638,8 +688,12 @@ def main():
         real_flight.flight_path,
         columns=["latitude", "longitude", "time", "altitude_ft"],
     )
-    random_pareto_path_df = pd.DataFrame(
-        random_pareto_path.flight_path,
+    chosen_pareto_path_df = pd.DataFrame(
+        chosen_pareto_path.flight_path,
+        columns=["latitude", "longitude", "time", "altitude_ft"],
+    )
+    random_path_df = pd.DataFrame(
+        random_flight_path.flight_path,
         columns=["latitude", "longitude", "time", "altitude_ft"],
     )
 
@@ -669,17 +723,20 @@ def main():
             display,
             geodesic_path,
             real_flight_df,
-            random_pareto_path_df,
+            chosen_pareto_path_df,
+            random_path_df,
             pareto_set,
             fp_cocip,
             aco_cocip,
+            rand_cocip,
         )
 
     if "Flight path over time" in answers["graphs"]:
         graphs.show_flight_frames(
             display,
             real_flight_df,
-            random_pareto_path_df,
+            chosen_pareto_path_df,
+            random_path_df,
             contrail_grid.contrail_grid,
             config,
         )
@@ -688,7 +745,8 @@ def main():
         graphs.show_3d_flight_frames(
             display,
             real_flight_df,
-            random_pareto_path_df,
+            chosen_pareto_path_df,
+            random_path_df,
             contrail_polys,
             contrail_grid.contrail_grid,
             config,
