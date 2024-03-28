@@ -1,4 +1,4 @@
-from matplotlib.patches import Patch
+from matplotlib.patches import Patch, Circle
 import numpy as np
 from matplotlib.collections import PolyCollection
 import shapely
@@ -43,7 +43,7 @@ def show_flight_frames(
     maps = display.maps
     fig, map_axs = maps.create_fig(2, 2)
 
-    fig.title = "Flight Path Comparison Over Time"
+    fig.tight_layout()
 
     time = aco_path["time"].min()
     aco_cutoff_df = get_path_before_time(aco_path, time)
@@ -80,7 +80,16 @@ def show_flight_frames(
         interpolated_grid = contrail_grid.isel(
             flight_level=nearest_flight_level_index, time=nearest_timestamp_index
         )
-        maps.show_contrail_grid(interpolated_grid, ax)
+        plot = maps.show_contrail_grid(interpolated_grid, ax)
+    cbar = fig.colorbar(
+        plot,
+        ax=map_axs,
+        cmap="coolwarm",
+        orientation="horizontal",
+        shrink=0.5,
+    )
+    cbar.set_label("Contrail EF")
+    fig.suptitle("Flight paths over time", fontsize=16)
 
     return fig
 
@@ -126,7 +135,8 @@ def show_3d_flight_frames(
     maps = display.maps3d
     fig, map_axs = maps.create_fig(2, 2)
 
-    fig.title = "3D Flight Path Comparison"
+    fig.set_figwidth(10)
+    fig.set_figheight(8)
 
     time = aco_path["time"].min()
     aco_cutoff_df = get_path_before_time(aco_path, time)
@@ -135,6 +145,7 @@ def show_3d_flight_frames(
         Patch(color="blue", label="BA177 Flight Path"),
         Patch(color="green", label="Random Flight Path"),
         Patch(color="red", label="ACO Flight Path"),
+        Circle(xy=(0, 0), color="red", label="Contrail", alpha=0.3, radius=0.1),
     ]
 
     fig.legend(handles=legend_patches)
@@ -166,6 +177,7 @@ def show_3d_flight_frames(
         for level in polys_at_time:
             ax.add_collection3d(polys_at_time[level], zs=level * 100, zdir="z")
 
+    fig.suptitle("3D Flight paths over time", fontsize=16)
     return fig
 
 
@@ -182,6 +194,9 @@ def show_flight_path_comparison(
 ):
     maps = display.maps
     fig, map_axs = maps.create_fig(3, 1)
+    fig.set_figwidth(14)
+    fig.set_figheight(5)
+    fig.tight_layout()
 
     fig.title = "Flight Path Comparison"
 
@@ -194,15 +209,25 @@ def show_flight_path_comparison(
     maps.set_title(map_axs[1], "Random Flight Path")
 
     maps.show_path(geodesic_path, map_axs[2], color="k", linestyle="--")
-    maps.show_path(chosen_pareto_path_df, map_axs[2], color="red", linewidth=2)
-    maps.set_title(map_axs[2], "ACO Flight Path")
 
     for ant_path in pareto_set:
         path_df = pd.DataFrame(ant_path.flight_path, columns=["latitude", "longitude"])
         maps.show_path(path_df, map_axs[2], color="gray", linewidth=0.5)
 
+    maps.show_path(chosen_pareto_path_df, map_axs[2], color="red", linewidth=2)
+    maps.set_title(map_axs[2], "ACO Flight Path")
+
     maps.show_contrails(fp_cocip, map_axs[0])
     maps.show_contrails(rand_cocip, map_axs[1])
-    maps.show_contrails(aco_cocip, map_axs[2])
+    plot = maps.show_contrails(aco_cocip, map_axs[2])
+    cbar = fig.colorbar(
+        plot,
+        ax=map_axs,
+        cmap="coolwarm",
+        orientation="horizontal",
+        shrink=0.3,
+    )
+    cbar.set_label("Contrail EF")
+    fig.suptitle("Contrail lifetimes for different flight paths", fontsize=16)
 
     return fig

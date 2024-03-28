@@ -13,8 +13,7 @@ class Map:
         self.crs = ccrs.PlateCarree()
 
     def create_fig(self, grid_width, grid_height):
-        fig = plt.figure(figsize=(12.8, 9.6), dpi=100)
-        fig.tight_layout()
+        fig = plt.figure(figsize=(10, 8), dpi=100)
         axs = []
         for i in range(1, grid_width * grid_height + 1):
             ax = self._create_map(fig, f"{grid_height}{grid_width}{i}")
@@ -46,19 +45,19 @@ class Map:
         if cocip.contrail is None:
             return
 
-        cocip.contrail.plot.scatter(
-            "longitude",
-            "latitude",
-            c="ef",
+        plot = ax.scatter(
+            cocip.contrail["longitude"],
+            cocip.contrail["latitude"],
+            c=cocip.contrail["ef"],
             vmin=-1e12,
             vmax=1e12,
             transform=self.crs,
             cmap="coolwarm",
-            ax=ax,
         )
+        return plot
 
     def show_contrail_grid(self, contrail_grid, ax):
-        ax.pcolormesh(
+        plot = ax.pcolormesh(
             contrail_grid["longitude"],
             contrail_grid["latitude"],
             contrail_grid["ef_per_m"].transpose(),
@@ -68,6 +67,7 @@ class Map:
             cmap="coolwarm",
             transform=ccrs.PlateCarree(),
         )
+        return plot
 
     def show_grid(self, grid, ax, color="blue", s=0.2):
         return ax.scatter(
