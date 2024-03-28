@@ -110,22 +110,24 @@ class RealFlight(Flight):
         return path
 
 
-class RandomFlight:
+class RandomFlight(Flight):
     def __init__(self, routing_graph_manager, config):
+        super().__init__(
+            routing_graph_manager,
+            [],
+            config,
+        )
         self.routing_graph_manager = routing_graph_manager
         self.routing_graph = routing_graph_manager.get_routing_graph()
-        self.flight = Flight(routing_graph_manager, [], config)
+        self.config = config
 
     def construct_random_flight(self):
-        path = [(0, self.config.GRID_WIDTH, self.config.STARTING_ALTITUDE)]
-        consecutive_points = self.routing_graph[path[0]]
-        self.flight.set_departure(path[0])
+        self.set_departure((0, self.config.GRID_WIDTH, self.config.STARTING_ALTITUDE))
+        consecutive_points = self.routing_graph[self.indices[0]]
 
-        while consecutive_points is not None:
-            choice = random.choice(consecutive_points)
+        while consecutive_points != {}:
+            choice = random.choice(list(consecutive_points))
+            self.add_point_from_index(choice)
             consecutive_points = self.routing_graph[choice]
-            self.flight.add_point_from_index(choice)
 
-        self.flight.run_performance_model()
-
-        return path
+        return self.flight_path

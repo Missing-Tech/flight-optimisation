@@ -104,6 +104,7 @@ def run_aco(config: Config, choose_path=False):
         progress.add_task(description="Creating a random flight path...", total=None)
         random_flight_path = RandomFlight(routing_graph_manager, config)
         random_flight_path.construct_random_flight()
+        random_flight_path.run_performance_model()
         random_flight_path.calculate_objectives()
     print("[bold green]:white_check_mark: Created a random flight path.[/bold green]")
 

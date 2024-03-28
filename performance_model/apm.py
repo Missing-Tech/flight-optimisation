@@ -147,7 +147,9 @@ class AircraftPerformanceModel:
         flight = pc.Flight(
             flight_path_df,
         )
-        resample_path = flight.resample_and_fill("1min", nominal_rocd=4.45)
+        resample_path = flight.resample_and_fill(
+            "1min", nominal_rocd=4.45
+        )  # Calculated through trial and error
         resample_df = resample_path.dataframe
         resample_df["altitude_ft"] = resample_df["altitude"] * 3.28084
         resample_path = resample_df.to_dict("records")
