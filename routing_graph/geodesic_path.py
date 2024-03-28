@@ -1,29 +1,32 @@
 import numpy as np
-from config import Config
-from _types import Point2D, Path2D
+import typing
+
+if typing.TYPE_CHECKING:
+    from config import Config
+    from _types import Point2D, Path2D
 
 
 class GeodesicPath(list):
     """
     A class representing the geodesic path between two points.
-
-    Calculated with Great Circle equations
-    https://en.wikipedia.org/wiki/Great-circle_navigation
     """
 
-    def __init__(self, config: Config):
-        self.departure_airport: (float, float) = config.DEPARTURE_AIRPORT
-        self.destination_airport: (float, float) = config.DESTINATION_AIRPORT
+    def __init__(self, config: "Config"):
+        """
+        Initializes the GeodesicPath object.
+        """
+        self.departure_airport: Point2D = config.DEPARTURE_AIRPORT
+        self.destination_airport: Point2D = config.DESTINATION_AIRPORT
         self.no_of_points: int = config.NO_OF_POINTS
-        self.config: Config = config
-        self.path: Path2D = self.calculate_path(
+        self.config: "Config" = config
+        self.path: "Path2D" = self.calculate_path(
             self.no_of_points, self.departure_airport, self.destination_airport
         )
         super().__init__(self.path)
 
     def reduce_angle(self, angle: float) -> float:
         """
-        Reduces an angle to the range -180 to 180 degrees
+        Reduces an angle to the range -180 to 180 degrees.
         """
         while angle < -180:
             angle += 360
@@ -33,7 +36,7 @@ class GeodesicPath(list):
 
     def calculate_alpha1(self, phi1: float, phi2: float, delta: float) -> float:
         """
-        Calculates the initial alpha angle
+        Calculates the initial alpha angle.
         """
         numerator = np.cos(phi2) * np.sin(delta)
         denominator = (np.cos(phi1) * np.sin(phi2)) - (
@@ -46,7 +49,7 @@ class GeodesicPath(list):
 
     def calculate_central_angle(self, phi1: float, phi2: float, delta: float) -> float:
         """
-        Calculates the central angle (through the Earth's core) between two points
+        Calculates the central angle (through the Earth's core) between two points.
         """
         numerator = np.sqrt(
             pow(
@@ -67,7 +70,7 @@ class GeodesicPath(list):
 
     def calculate_azimuth(self, alpha1: float, phi1: float) -> float:
         """
-        Calculates the azimuth based off the longitude and the initial alpha angle
+        Calculates the azimuth based off the longitude and the initial alpha angle.
         """
         numerator = np.sin(alpha1) * np.cos(phi1)
         denominator = np.sqrt(
@@ -78,7 +81,7 @@ class GeodesicPath(list):
 
     def calculate_angle_1(self, alpha1: float, phi1: float) -> float:
         """
-        Calculates the angle between the alpha1 and the longitude
+        Calculates the angle between the alpha1 and the longitude.
         """
         if phi1 == 0 and alpha1 == np.pi / 2:
             return 0
@@ -91,7 +94,7 @@ class GeodesicPath(list):
         self, azimuth: float, angle1: float, lamda1: float
     ) -> float:
         """
-        Calculate the longitude at the intersection with the equator
+        Calculate the longitude at the intersection with the equator.
         """
         numerator = np.sin(azimuth) * np.sin(angle1)
         denominator = np.cos(angle1)
@@ -100,9 +103,9 @@ class GeodesicPath(list):
 
     def find_point_distance_along_great_circle(
         self, distance: float, azimuth: float, equator_longitude: float
-    ) -> Point2D:
+    ) -> "Point2D":
         """
-        Find a lat/lon point a certain distance along the great circle path
+        Find a lat/lon point a certain distance along the great circle path.
         """
         phi_numerator = np.cos(azimuth) * np.sin(distance)
         phi_denominator = np.sqrt(
@@ -117,11 +120,13 @@ class GeodesicPath(list):
         phi = np.degrees(phi)
         lambda1 = np.degrees(lambda1)
 
-        return Point2D(self.reduce_angle(phi), self.reduce_angle(lambda1))
+        return "Point2D"(self.reduce_angle(phi), self.reduce_angle(lambda1))
 
-    def calculate_path(self, no_of_points: int, p1: Point2D, p2: Point2D) -> Path2D:
+    def calculate_path(
+        self, no_of_points: int, p1: "Point2D", p2: "Point2D"
+    ) -> "Path2D":
         """
-        Calculates the geodesic path with several points evenly spaced between two points
+        Calculates the geodesic path with several points evenly spaced between two points.
         """
         lat0, lon0 = p1
         lat1, lon1 = p2
@@ -143,7 +148,7 @@ class GeodesicPath(list):
         angle1 = self.calculate_angle_1(alpha1, phi1)
         equator_longitude = self.calculate_equator_longitude(azimuth, angle1, lambda1)
 
-        points = [Point2D(lat0, lon0)]
+        points = "Path2D"(lat0, lon0)
 
         total_distance = self.config.R * central_angle
         step = total_distance / no_of_points
@@ -155,6 +160,6 @@ class GeodesicPath(list):
                 )
             )
 
-        points.append(Point2D(lat1, lon1))
+        points.append("Point2D"(lat1, lon1))
 
         return points

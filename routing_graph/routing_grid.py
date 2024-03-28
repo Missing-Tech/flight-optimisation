@@ -1,6 +1,9 @@
 import numpy as np
-from config import Config
-from _types import Point2D, Path2D, Grid2D
+import typing
+
+if typing.TYPE_CHECKING:
+    from _types import Point2D, Path2D, Grid2D
+    from config import Config
 
 
 class RoutingGrid:
@@ -8,7 +11,7 @@ class RoutingGrid:
     A class representing a routing grid based on geodesic paths
     """
 
-    def __init__(self, geodesic_path: Path2D, config: Config):
+    def __init__(self, geodesic_path: "Path2D", config: "Config"):
         """
         Initialises the RoutingGrid object
         """
@@ -16,8 +19,8 @@ class RoutingGrid:
         self.path = geodesic_path
 
     def calculate_new_coordinates(
-        self, p1: Point2D, distance: float, bearing: float
-    ) -> Point2D:
+        self, p1: "Point2D", distance: float, bearing: float
+    ) -> "Point2D":
         """
         Calculates new coordinates based on initial point, distance, and bearing
         """
@@ -43,7 +46,7 @@ class RoutingGrid:
         """
         return (bearing + np.pi / 2) % (2 * np.pi)
 
-    def calculate_bearing(self, p1: Point2D, p2: Point2D) -> float:
+    def calculate_bearing(self, p1: "Point2D", p2: "Point2D") -> float:
         """
         Calculates the bearing between two points
         """
@@ -63,7 +66,7 @@ class RoutingGrid:
 
         return z
 
-    def calculate_routing_grid(self) -> Grid2D:
+    def calculate_routing_grid(self) -> "Grid2D":
         """
         Calculates the routing grid
         """
@@ -104,7 +107,7 @@ class RoutingGrid:
             grid.append(potential_waypoints)
         return grid
 
-    def get_routing_grid(self) -> Grid2D:
+    def get_routing_grid(self) -> "Grid2D":
         """
         Gets the routing grid
         """

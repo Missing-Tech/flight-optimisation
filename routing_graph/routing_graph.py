@@ -3,35 +3,38 @@ from networkx.classes.reportviews import NodeView, EdgeView
 import os
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich import print
-from config import Config
-from performance_model import PerformanceModel
-from .altitude_grid import AltitudeGrid
-from _types import IndexPoint3D, Grid3D
+import typing
+
+if typing.TYPE_CHECKING:
+    from config import Config
+    from performance_model import PerformanceModel
+    from .altitude_grid import AltitudeGrid
+    from _types import IndexPoint3D, Grid3D
 
 
 class RoutingGraph:
     def __init__(
         self,
-        altitude_grid: AltitudeGrid,
-        performance_model: PerformanceModel,
-        config: Config,
+        altitude_grid: "AltitudeGrid",
+        performance_model: "PerformanceModel",
+        config: "Config",
         test: bool = False,
     ):
         """
         Create a RoutingGraph object
         """
-        self.config: Config = config
-        self.altitude_grid: AltitudeGrid = altitude_grid
-        self.performance_model: PerformanceModel = performance_model
+        self.config: "Config" = config
+        self.altitude_grid: "AltitudeGrid" = altitude_grid
+        self.performance_model: "PerformanceModel" = performance_model
         self.routing_graph: DiGraph = self._init_routing_graph(test=test)
         self.nodes: NodeView = self.routing_graph.nodes
         self.edges: EdgeView = self.routing_graph.edges
 
     def get_consecutive_points(
         self,
-        point: IndexPoint3D,
-        grid: Grid3D,
-    ) -> list[IndexPoint3D] or None:
+        point: "IndexPoint3D",
+        grid: "Grid3D",
+    ) -> list["IndexPoint3D"] or None:
         """
         Get a list of consecutive points from the current position
         """
@@ -77,7 +80,7 @@ class RoutingGraph:
                     yi = step.index(point)
 
                     consecutive_points = self.get_consecutive_points(
-                        IndexPoint3D(xi, yi, altitude), altitude_grid
+                        "IndexPoint3D"(xi, yi, altitude), altitude_grid
                     )
 
                     heuristic_data = {
@@ -90,7 +93,7 @@ class RoutingGraph:
                     if consecutive_points is None:
                         continue
                     graph.add_node(
-                        (xi, yi, altitude),
+                        "IndexPoint3D"(xi, yi, altitude),
                         **heuristic_data,
                     )
                     for next_point in consecutive_points:
@@ -106,27 +109,27 @@ class RoutingGraph:
                         }
 
                         graph.add_edge(
-                            (xi, yi, altitude),
-                            (next_point[0], next_point[1], next_point[2]),
+                            "IndexPoint3D"(xi, yi, altitude),
+                            "IndexPoint3D"(next_point[0], next_point[1], next_point[2]),
                             **pheromone_data,
                         )
                         next_lat, next_lon, _ = next_point
 
                         graph.add_node(
-                            (next_point[0], next_point[1], next_point[2]),
+                            "IndexPoint3D"(next_point[0], next_point[1], next_point[2]),
                             **next_heuristic_data,
                         )
 
         return graph
 
-    def parse_node(self, s: str) -> IndexPoint3D:
+    def parse_node(self, s: str) -> "IndexPoint3D":
         """
         Parses a GML node into an IndexPoint3D
         """
         parts = s.strip("()").split(",")
         return tuple(map(int, parts))
 
-    def __getitem__(self, key: IndexPoint3D) -> NodeView:
+    def __getitem__(self, key: "IndexPoint3D") -> NodeView:
         return self.routing_graph[key]
 
     def _init_routing_graph(self, test: bool = False) -> DiGraph:

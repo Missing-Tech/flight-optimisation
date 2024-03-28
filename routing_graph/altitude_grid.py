@@ -1,22 +1,29 @@
+import typing
 from utils import Conversions
-from _types import Grid2D, Grid3D, IndexPoint3D, FlightPoint
-from config import Config
+
+if typing.TYPE_CHECKING:
+    from _types import Grid2D, Grid3D, IndexPoint3D, FlightPoint
+    from config import Config
 
 
 class AltitudeGrid:
-    def __init__(self, routing_grid: Grid2D, config: Config):
+    """
+    A class representing an altitude grid based on a routing grid
+    """
+
+    def __init__(self, routing_grid: "Grid2D", config: "Config"):
         """
         Constructs an AltitudeGrid object from a routing grid
         """
-        self.config: Config = config
+        self.config: "Config" = config
         self.base_altitude: int = self.config.STARTING_ALTITUDE
         self.altitude_step: int = self.config.ALTITUDE_STEP
         self.max_altitude_var: int = self.config.MAX_ALTITUDE_VAR
         self.max_altitude: int = self.config.MAX_ALTITUDE
-        self.routing_grid: Grid2D = routing_grid.get_routing_grid()
-        self.altitude_grid: Grid3D = self.calculate_altitude_grid(self.routing_grid)
+        self.routing_grid: "Grid2D" = routing_grid.get_routing_grid()
+        self.altitude_grid: "Grid3D" = self.calculate_altitude_grid(self.routing_grid)
 
-    def calculate_altitude_grid(self, grid: Grid2D) -> Grid3D:
+    def calculate_altitude_grid(self, grid: "Grid2D") -> "Grid3D":
         """
         Calculates which points are reachable at each altitude, and constructs the grid object
         """
@@ -51,7 +58,7 @@ class AltitudeGrid:
 
         return altitude_grid
 
-    def convert_index_to_point(self, index: IndexPoint3D) -> FlightPoint:
+    def convert_index_to_point(self, index: "IndexPoint3D") -> "FlightPoint":
         """
         Converts an IndexPoint to a FlightPoint
         """
@@ -70,11 +77,11 @@ class AltitudeGrid:
         }
         return path_point
 
-    def __iter__(self) -> iter:
+    def __iter__(self) -> "iter":
         return iter(self.altitude_grid)
 
-    def __getitem__(self, key: int) -> Grid2D:
+    def __getitem__(self, key: int) -> "Grid2D":
         return self.altitude_grid[key]
 
-    def __setitem__(self, key: int, value: Grid2D) -> None:
+    def __setitem__(self, key: int, value: "Grid2D") -> None:
         self.altitude_grid[key] = value
