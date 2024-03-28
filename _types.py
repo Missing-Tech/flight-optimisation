@@ -23,6 +23,8 @@ class Objectives(TypedDict):
 
 FlightPath = list[FlightPoint]
 
+WindVector = namedtuple("WindVector", "u v")
+
 IndexPoint3D = namedtuple("IndexPoint3D", "lat lon alt")
 IndexPath = list[IndexPoint3D]
 
