@@ -2,26 +2,29 @@ import random
 import math
 from performance_model import Flight
 
-from config import Config
-from routing_graph import RoutingGraphManager, RoutingGraph
-from _types import FlightPath, Objectives, IndexPoint3D
+import typing
+
+if typing.TYPE_CHECKING:
+    from config import Config
+    from routing_graph import RoutingGraphManager, RoutingGraph
+    from _types import FlightPath, Objectives, IndexPoint3D
 
 
 class Ant:
     def __init__(
         self,
-        routing_graph_manager: RoutingGraphManager,
-        objectives: Objectives,
-        config: Config,
+        routing_graph_manager: "RoutingGraphManager",
+        objectives: "Objectives",
+        config: "Config",
     ):
         """
         A single ant during the ACO algorithm, containing relevant objective and
         heuristic information
         """
-        self.routing_graph_manager: RoutingGraphManager = routing_graph_manager
-        self.routing_graph: RoutingGraph = routing_graph_manager.get_routing_graph()
-        self.objectives: Objectives = objectives
-        self.config: Config = config
+        self.routing_graph_manager: "RoutingGraphManager" = routing_graph_manager
+        self.routing_graph: "RoutingGraph" = routing_graph_manager.get_routing_graph()
+        self.objectives: "Objectives" = objectives
+        self.config: "Config" = config
 
     def run_ant(self, id: int) -> Flight:
         """
@@ -34,7 +37,7 @@ class Ant:
 
         return solution
 
-    def objective_function(self, flight_path: FlightPath) -> Objectives:
+    def objective_function(self, flight_path: "FlightPath") -> "Objectives":
         """
         Calculates the relevant objectives for the constructed flight path
         """
@@ -92,7 +95,7 @@ class Ant:
 
     def calculate_probability_at_neighbour(
         self,
-        node: IndexPoint3D,
+        node: "IndexPoint3D",
         pheromone: float,
         objective: str,
     ) -> float or None:

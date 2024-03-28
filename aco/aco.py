@@ -7,34 +7,37 @@ import numpy as np
 from .ant import Ant
 from rich.progress import track
 
-from config import Config
-from routing_graph import RoutingGraphManager, RoutingGraph
-from types import Objectives
-from objectives import Objective
-from performance_model import Flight
+import typing
+
+if typing.TYPE_CHECKING:
+    from config import Config
+    from routing_graph import RoutingGraphManager, RoutingGraph
+    from types import Objectives
+    from objectives import Objective
+    from performance_model import Flight
 
 
 class ACO:
-    def __init__(self, routing_graph_manager: RoutingGraphManager, config: Config):
+    def __init__(self, routing_graph_manager: "RoutingGraphManager", config: "Config"):
         """
         Class to run the Ant Colony Optimisation algorithm
         """
-        self.routing_graph_manager: RoutingGraphManager = routing_graph_manager
-        self.routing_graph: RoutingGraph = routing_graph_manager.get_routing_graph()
-        self.config: Config = config
+        self.routing_graph_manager: "RoutingGraphManager" = routing_graph_manager
+        self.routing_graph: "RoutingGraph" = routing_graph_manager.get_routing_graph()
+        self.config: "Config" = config
 
-        self.objective_functions: list[Objective] = [
+        self.objective_functions: list["Objective"] = [
             objective(self.routing_graph_manager.performance_model, self.config)
             for objective in config.OBJECTIVES
         ]
         self.objectives: list[str] = [
             str(objective) for objective in self.objective_functions
         ]
-        self.objectives_over_time: list[Objectives] = []
-        self.solutions: list[Flight] = []
-        self.pareto_set: list[Flight] = []
+        self.objectives_over_time: list["Objectives"] = []
+        self.solutions: list["Flight"] = []
+        self.pareto_set: list["Flight"] = []
 
-    def check_pareto_dominance(self, solution: Flight) -> bool:
+    def check_pareto_dominance(self, solution: "Flight") -> bool:
         """
         Checks whether a solution belongs in the pareto set
         """
@@ -53,7 +56,7 @@ class ACO:
                 self.pareto_set.remove(existing_solution)
         return False
 
-    def run_aco_colony(self) -> list[Flight]:
+    def run_aco_colony(self) -> list["Flight"]:
         """
         Runs the ACO algorithm and generates a pareto front of solutions
         """
@@ -112,9 +115,9 @@ class ACO:
 
     def pheromone_update(
         self,
-        solution: Flight,
-        iteration_best_objective: Objectives,
-        best_objective: Objectives,
+        solution: "Flight",
+        iteration_best_objective: "Objectives",
+        best_objective: "Objectives",
     ) -> None:
         """
         Updates the pheromone structure based off the objective values
