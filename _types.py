@@ -13,6 +13,13 @@ class FlightPoint(TypedDict):
     time: pd.Timestamp or None
     aircraft_mass: float or None
     segment_length: float or None
+    course: float or None
+    climb_angle: float or None
+    true_airspeed: float or None
+    heading: float or None
+    ground_speed: float or None
+    fuel_flow: float or None
+    CO2: float or None
 
 
 class Objectives(TypedDict):
