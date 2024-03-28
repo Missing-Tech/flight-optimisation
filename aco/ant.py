@@ -1,17 +1,32 @@
 import random
 import math
 from performance_model import Flight
-from rich import print
+
+from config import Config
+from routing_graph import RoutingGraphManager, RoutingGraph
+from _types import FlightPath, Objectives, IndexPoint3D
 
 
 class Ant:
-    def __init__(self, routing_graph_manager, objectives, config):
-        self.routing_graph_manager = routing_graph_manager
-        self.routing_graph = routing_graph_manager.get_routing_graph()
-        self.objectives = objectives
-        self.config = config
+    def __init__(
+        self,
+        routing_graph_manager: RoutingGraphManager,
+        objectives: Objectives,
+        config: Config,
+    ):
+        """
+        A single ant during the ACO algorithm, containing relevant objective and
+        heuristic information
+        """
+        self.routing_graph_manager: RoutingGraphManager = routing_graph_manager
+        self.routing_graph: RoutingGraph = routing_graph_manager.get_routing_graph()
+        self.objectives: Objectives = objectives
+        self.config: Config = config
 
-    def run_ant(self, id):
+    def run_ant(self, id: int) -> Flight:
+        """
+        Runs an iteration of the ant going through the routing graph
+        """
         solution = self.construct_solution()
         solution.run_performance_model()
         objectives = self.objective_function(solution.flight_path)
@@ -19,7 +34,10 @@ class Ant:
 
         return solution
 
-    def objective_function(self, flight_path):
+    def objective_function(self, flight_path: FlightPath) -> Objectives:
+        """
+        Calculates the relevant objectives for the constructed flight path
+        """
         objectives = {}
         for objective in self.objectives:
             # Get the string representation of the class name
@@ -34,7 +52,10 @@ class Ant:
             objectives[objective_name] = objective_value
         return objectives
 
-    def construct_solution(self):
+    def construct_solution(self) -> Flight:
+        """
+        Constructs a solution by traversing the routing graph
+        """
         solution = Flight(
             self.routing_graph_manager,
             [],
@@ -71,10 +92,14 @@ class Ant:
 
     def calculate_probability_at_neighbour(
         self,
-        node,
-        pheromone,
-        objective,
-    ):
+        node: IndexPoint3D,
+        pheromone: float,
+        objective: str,
+    ) -> float or None:
+        """
+        Calculates the probability of an ant choosing this node based off the
+        pheromone and heuristic values of its neighbours
+        """
         heuristic = self.routing_graph.nodes[node][f"{objective}_heuristic"]
         total_neighbour_factor = 0
         neighbours = self.routing_graph[node]
