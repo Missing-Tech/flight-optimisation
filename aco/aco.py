@@ -7,23 +7,37 @@ import numpy as np
 from .ant import Ant
 from rich.progress import track
 
+from config import Config
+from routing_graph import RoutingGraphManager, RoutingGraph
+from types import Objectives
+from objectives import Objective
+from performance_model import Flight
+
 
 class ACO:
-    def __init__(self, routing_graph_manager, config):
-        self.routing_graph_manager = routing_graph_manager
-        self.routing_graph = routing_graph_manager.get_routing_graph()
-        self.config = config
+    def __init__(self, routing_graph_manager: RoutingGraphManager, config: Config):
+        """
+        Class to run the Ant Colony Optimisation algorithm
+        """
+        self.routing_graph_manager: RoutingGraphManager = routing_graph_manager
+        self.routing_graph: RoutingGraph = routing_graph_manager.get_routing_graph()
+        self.config: Config = config
 
-        self.objective_functions = [
+        self.objective_functions: list[Objective] = [
             objective(self.routing_graph_manager.performance_model, self.config)
             for objective in config.OBJECTIVES
         ]
-        self.objectives = [str(objective) for objective in self.objective_functions]
-        self.objectives_over_time = []
-        self.solutions = []
-        self.pareto_set = []
+        self.objectives: list[str] = [
+            str(objective) for objective in self.objective_functions
+        ]
+        self.objectives_over_time: list[Objectives] = []
+        self.solutions: list[Flight] = []
+        self.pareto_set: list[Flight] = []
 
-    def check_pareto_dominance(self, solution):
+    def check_pareto_dominance(self, solution: Flight) -> bool:
+        """
+        Checks whether a solution belongs in the pareto set
+        """
         for existing_solution in self.pareto_set:
             if all(
                 solution.objectives[objective]
@@ -39,8 +53,11 @@ class ACO:
                 self.pareto_set.remove(existing_solution)
         return False
 
-    def run_aco_colony(self):
-        best_objectives = dict.fromkeys(self.objectives, np.inf)
+    def run_aco_colony(self) -> list[Flight]:
+        """
+        Runs the ACO algorithm and generates a pareto front of solutions
+        """
+        best_objectives = Objectives.fromkeys(self.objectives, np.inf)
         ants = [
             Ant(
                 self.routing_graph_manager,
@@ -58,18 +75,20 @@ class ACO:
                     executor.submit(ant.run_ant, i) for i, ant in enumerate(ants)
                 ]
 
-                iteration_best_solution = dict.fromkeys(self.objectives, None)
-                iteration_best_objectives = dict.fromkeys(self.objectives, np.inf)
+                iteration_best_solution = Objectives.fromkeys(self.objectives, None)
+                iteration_best_objectives = Objectives.fromkeys(self.objectives, np.inf)
 
                 # Get the results
                 for future in as_completed(futures):
                     solution = future.result()
 
                     self.solutions.append(solution)
+                    # Only add to the pareto set if it is not dominated by any current solution
                     is_dominated = self.check_pareto_dominance(solution)
                     if not is_dominated:
                         self.pareto_set.append(solution)
 
+                    # Track the best objectives for each iteration and globally
                     for objective in self.objective_functions:
                         objective = str(objective)
                         if (
@@ -91,7 +110,15 @@ class ACO:
 
         return self.pareto_set
 
-    def pheromone_update(self, solution, iteration_best_objective, best_objective):
+    def pheromone_update(
+        self,
+        solution: Flight,
+        iteration_best_objective: Objectives,
+        best_objective: Objectives,
+    ) -> None:
+        """
+        Updates the pheromone structure based off the objective values
+        """
         evaporation_rate = self.config.EVAPORATION_RATE
         tau_min = self.config.TAU_MIN
         tau_max = self.config.TAU_MAX
