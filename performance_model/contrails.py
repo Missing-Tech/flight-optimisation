@@ -7,18 +7,31 @@ from pycontrails.models.humidity_scaling import ConstantHumidityScaling
 import os
 import tempfile
 import json
-from utils import Conversions
 from pycontrails.models.ps_model import PSGrid
 from rich import print
 
+from utils import Conversions
+from routing_graph import AltitudeGrid
+from .weather import WeatherGrid
+from config import Config
+from _types import FlightPath, FlightPoint, Point3D
+
 
 class CocipManager:
-    def __init__(self, weather_grid, config):
-        self.config = config
-        self.met = weather_grid.met
-        self.rad = weather_grid.rad
+    def __init__(self, weather_grid: WeatherGrid, config: Config):
+        """
+        Wrapper around the CoCiP model from pycontrails
+        """
+        self.config: Config = config
+        self.met: xr.Dataset = weather_grid.met
+        self.rad: xr.Dataset = weather_grid.rad
 
-    def calculate_ef_from_flight_path(self, flight_path):
+    def calculate_ef_from_flight_path(self, flight_path: FlightPath) -> tuple(
+        float, pd.DataFrame, Cocip
+    ):
+        """
+        Runs CoCiP on a given flight path
+        """
         flight_path_df = pd.DataFrame(flight_path)
 
         attrs = {
@@ -50,11 +63,17 @@ class CocipManager:
 
 
 class PSGridManager:
-    def __init__(self, weather_grid, config):
-        self.ps_grid = self._get_ps_grid(weather_grid)
-        self.config = config
+    def __init__(self, weather_grid: WeatherGrid, config: Config):
+        """
+        Retrieves a performance grid for a given weather grid
+        """
+        self.ps_grid: xr.Dataset = self._get_ps_grid(weather_grid)
+        self.config: Config = config
 
-    def _get_ps_grid(self, weather_grid):
+    def _get_ps_grid(self, weather_grid: WeatherGrid) -> xr.Dataset:
+        """
+        Calculates the PS grid, or retrieves it if it already exists
+        """
         if os.path.exists("data/ps_grid.nc"):
             return xr.open_dataset("data/ps_grid.nc")
         else:
@@ -64,7 +83,10 @@ class PSGridManager:
             ps_grid.data.to_netcdf("data/ps_grid.nc")
             return xr.open_dataset("data/ps_grid.nc")
 
-    def get_performance_data_at_point(self, point):
+    def get_performance_data_at_point(self, point: FlightPoint) -> xr.Dataset:
+        """
+        Retrieves performance data at a given point
+        """
         level = Conversions().convert_altitude_to_pressure_bounded(
             point["altitude_ft"],
             self.config.PRESSURE_LEVELS[-1],
@@ -82,13 +104,19 @@ class PSGridManager:
 
 
 class ContrailGrid:
-    def __init__(self, contrail_grid):
-        self.contrail_grid = contrail_grid
+    def __init__(self, contrail_grid: xr.Dataset):
+        """
+        Wrapper around the 4D contrail grid dataset
+        """
+        self.contrail_grid: xr.Dataset = contrail_grid
 
     def interpolate_contrail_point(
         self,
-        point,
-    ):  # Extract 4-D grid of interest
+        point: Point3D,
+    ) -> float:
+        """
+        Interpolates the ef_per_m at a flight point
+        """
         da = self.contrail_grid["ef_per_m"]
         ef_per_m = da.interp(
             latitude=point[0], longitude=point[1], flight_level=point[2] / 100
@@ -97,8 +125,11 @@ class ContrailGrid:
 
     def interpolate_contrail_grid(
         self,
-        flight_path,
-    ):
+        flight_path: FlightPath,
+    ) -> float:
+        """
+        Interpolates a flight path against the contral grid, to get a total ef for the flight
+        """
         da = self.contrail_grid["ef_per_m"]
 
         flight_path = pd.DataFrame(
@@ -118,13 +149,19 @@ class ContrailGrid:
 
 
 class ContrailGridManager:
-    def __init__(self, altitude_grid, config):
-        self.config = config
-        self.contrail_polys = self._get_contrail_polys()
-        self.altitude_grid = altitude_grid
-        self.contrail_grid = ContrailGrid(self._get_contrail_grid())
+    def __init__(self, altitude_grid: AltitudeGrid, config: Config):
+        """
+        Wrapper for the contrail grid and contrail polys
+        """
+        self.config: Config = config
+        self.contrail_polys: dict = self._get_contrail_polys()
+        self.altitude_grid: AltitudeGrid = altitude_grid
+        self.contrail_grid: ContrailGrid = ContrailGrid(self._get_contrail_grid())
 
-    def _get_contrail_grid(self):
+    def _get_contrail_grid(self) -> xr.Dataset:
+        """
+        Downloads the contrail grid or retrieves it
+        """
         if os.path.exists("data/contrail_grid.nc"):
             return xr.open_dataset("data/contrail_grid.nc")
         else:
@@ -132,7 +169,10 @@ class ContrailGridManager:
             contrail_grid.to_netcdf("data/contrail_grid.nc")
             return contrail_grid
 
-    def _get_contrail_polys(self):
+    def _get_contrail_polys(self) -> dict:
+        """
+        Downloads the contrail polys or retrieves it
+        """
         if os.path.exists("data/contrail_polys.json"):
             with open("data/contrail_polys.json", "r") as f:
                 return json.load(f)
@@ -142,7 +182,10 @@ class ContrailGridManager:
                 json.dump(contrail_polys, f)
             return contrail_polys
 
-    def _download_contrail_grid(self, format="netcdf"):
+    def _download_contrail_grid(self, format: str = "netcdf") -> xr.Dataset or dict:
+        """
+        Downloads the contrail polys or grid from the pycontrails API
+        """
         URL = os.getenv("API_URL_BASE")
         api_key = os.getenv("API_KEY")
         headers = {"x-api-key": api_key}
@@ -165,7 +208,7 @@ class ContrailGridManager:
                 grid_df["latitude"].max() + 1,
             ],
             "flight_level": self.config.FLIGHT_LEVELS,
-            "aircraft_type": "B737",
+            "aircraft_type": self.config.AIRCRAFT_TYPE,
             "format": format,
         }
 

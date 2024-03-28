@@ -7,18 +7,19 @@ class FlightPoint(TypedDict):
     longitude: float
     latitude: float
     altitude_ft: float
-    altitude: float
-    level: float
-    thrust: float
-    time: pd.Timestamp
-    aircraft_mass: float
+    altitude: float or None
+    level: float or None
+    thrust: float or None
+    time: pd.Timestamp or None
+    aircraft_mass: float or None
+    segment_length: float or None
 
 
 class Objectives(TypedDict):
-    contrail: float
-    co2: float
-    time: float
-    cocip: float
+    contrail: float or None
+    co2: float or None
+    time: float or None
+    cocip: float or None
 
 
 FlightPath = list[FlightPoint]
