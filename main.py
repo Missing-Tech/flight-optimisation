@@ -46,7 +46,7 @@ def save_csv(file_path, data):
     data.to_csv(file_path, index=False)
 
 
-def run_aco(config: Config):
+def run_aco(config: Config, choose_path=False):
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -114,18 +114,22 @@ def run_aco(config: Config):
             str(solution.objectives["co2"]),
             str(solution.objectives["time"]),
         )
-    print(table)
 
-    questions = [
-        inquirer.List(
-            "results",
-            message="What path would you like to choose?",
-            choices=[i + 1 for i in range(len(pareto_set) - 1)],
-            carousel=True,
-        )
-    ]
-    answers = inquirer.prompt(questions)
-    chosen_pareto_path = pareto_set[answers["results"] - 1]
+    print(table)
+    print("\n \n \n")  # Add some space between the table and the next question
+    if choose_path:
+        questions = [
+            inquirer.List(
+                "results",
+                message="What path would you like to choose?",
+                choices=[i + 1 for i, _ in enumerate(pareto_set)],
+                carousel=True,
+            )
+        ]
+        answers = inquirer.prompt(questions)
+        chosen_pareto_path = pareto_set[answers["results"] - 1]
+    else:
+        chosen_pareto_path = random.choice(pareto_set)
 
     # Calculate CoCiP for both paths
     with Progress(
@@ -571,7 +575,7 @@ def main():
         config.NO_OF_ANTS = answers["no_of_ants"]
 
         # Construct all required grids + models
-        results = run_aco(config)
+        results = run_aco(config, choose_path=True)
         (
             geodesic_path,
             real_flight,

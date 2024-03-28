@@ -80,7 +80,7 @@ class RoutingGraph:
                     yi = step.index(point)
 
                     consecutive_points = self.get_consecutive_points(
-                        "IndexPoint3D"(xi, yi, altitude), altitude_grid
+                        (xi, yi, altitude), altitude_grid
                     )
 
                     heuristic_data = {
@@ -93,7 +93,7 @@ class RoutingGraph:
                     if consecutive_points is None:
                         continue
                     graph.add_node(
-                        "IndexPoint3D"(xi, yi, altitude),
+                        (xi, yi, altitude),
                         **heuristic_data,
                     )
                     for next_point in consecutive_points:
@@ -109,14 +109,14 @@ class RoutingGraph:
                         }
 
                         graph.add_edge(
-                            "IndexPoint3D"(xi, yi, altitude),
-                            "IndexPoint3D"(next_point[0], next_point[1], next_point[2]),
+                            (xi, yi, altitude),
+                            (next_point[0], next_point[1], next_point[2]),
                             **pheromone_data,
                         )
                         next_lat, next_lon, _ = next_point
 
                         graph.add_node(
-                            "IndexPoint3D"(next_point[0], next_point[1], next_point[2]),
+                            (next_point[0], next_point[1], next_point[2]),
                             **next_heuristic_data,
                         )
 
