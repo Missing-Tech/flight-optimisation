@@ -1,23 +1,25 @@
 import xarray as xr
+import typing
 
 from .apm import AircraftPerformanceModel
 from .contrails import CocipManager, ContrailGridManager, PSGridManager, ContrailGrid
 from .weather import WeatherGrid
 from .flight import RealFlight, Flight
 
-from config import Config
-from routing_graph import RoutingGraphManager, AltitudeGrid
-from _types import FlightPath
+if typing.TYPE_CHECKING:
+    from config import Config
+    from routing_graph import RoutingGraphManager, AltitudeGrid
+    from _types import FlightPath
 
 
 class PerformanceModel:
-    def __init__(self, routing_graph_manager: RoutingGraphManager, config: Config):
+    def __init__(self, routing_graph_manager: "RoutingGraphManager", config: "Config"):
         """
         Wrapper for all the performance model classes
         """
-        self.config: Config = config
-        self.altitude_grid: AltitudeGrid = routing_graph_manager.get_altitude_grid()
-        self.routing_graph_manager: RoutingGraphManager = routing_graph_manager
+        self.config: "Config" = config
+        self.altitude_grid: "AltitudeGrid" = routing_graph_manager.get_altitude_grid()
+        self.routing_graph_manager: "RoutingGraphManager" = routing_graph_manager
         self.get_apm()
         self.get_weather_grid()
         self.get_ps_grid()
@@ -25,7 +27,7 @@ class PerformanceModel:
         self.get_contrail_grid_manager()
         self.get_contrail_grid()
 
-    def run_apm(self, flight_path: FlightPath) -> FlightPath:
+    def run_apm(self, flight_path: "FlightPath") -> "FlightPath":
         """
         Runs the Aircraft Performance Model on a flight path
         """

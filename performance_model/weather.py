@@ -4,21 +4,24 @@ from pycontrails.datalib.ecmwf import ERA5
 from pycontrails.core.met import MetDataset
 import pandas as pd
 import xarray as xr
+import typing
 
-from config import Config
 from routing_graph import AltitudeGrid
-from _types import FlightPoint, WindVector
+
+if typing.TYPE_CHECKING:
+    from config import Config
+    from _types import FlightPoint, WindVector
 
 
 class WeatherGrid:
-    def __init__(self, altitude_grid: AltitudeGrid, config: Config):
+    def __init__(self, altitude_grid: "AltitudeGrid", config: "Config"):
         """
         Class to interpolate weather data along the routing grid
         """
-        self.config: Config = config
+        self.config: "Config" = config
         self.met: MetDataset = self._get_met()
         self.rad: MetDataset = self._get_rad()
-        self.altitude_grid: AltitudeGrid = altitude_grid
+        self.altitude_grid: "AltitudeGrid" = altitude_grid
         time_bounds = (
             self.config.DEPARTURE_DATE,
             self.config.DEPARTURE_DATE + self.config.WEATHER_BOUND,
@@ -68,7 +71,7 @@ class WeatherGrid:
 
         return rad
 
-    def _init_weather_data_along_grid(self, grid: AltitudeGrid) -> xr.Dataset:
+    def _init_weather_data_along_grid(self, grid: "AltitudeGrid") -> xr.Dataset:
         """
         Initializes the weather data along the grid
         """
@@ -96,7 +99,7 @@ class WeatherGrid:
 
         return weather_data
 
-    def get_weather_data_at_point(self, point: FlightPoint) -> xr.Dataset:
+    def get_weather_data_at_point(self, point: "FlightPoint") -> xr.Dataset:
         """
         Gets the weather data at a point in the grid
         """
@@ -109,7 +112,7 @@ class WeatherGrid:
         )
         return data
 
-    def get_wind_vector_at_point(self, point: xr.Dataset) -> WindVector:
+    def get_wind_vector_at_point(self, point: xr.Dataset) -> "WindVector":
         """
         Gets the wind vector at a point and returns it as a tuple
         """
