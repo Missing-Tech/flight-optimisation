@@ -95,8 +95,6 @@ def run_aco(config: Config, choose_path=False):
         progress.add_task(description="Creating altitude grid...", total=None)
         routing_graph_manager = RoutingGraphManager(config)
         geodesic_path = routing_graph_manager.get_geodesic_path()
-        # routing_grid = routing_graph_manager.get_routing_grid()
-        # altitude_grid = routing_graph_manager.get_altitude_grid()
     print("[bold green]:white_check_mark: Altitude grid constructed.[/bold green]")
 
     # Construct performance model
