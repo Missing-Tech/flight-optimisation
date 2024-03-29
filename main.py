@@ -46,6 +46,46 @@ def save_csv(file_path, data):
     data.to_csv(file_path, index=False)
 
 
+def print_results_table(
+    real_flight_objectives, random_objectives, pareto_set, chosen_pareto_path
+):
+    if type(real_flight_objectives) == pd.DataFrame:
+        real_flight_objectives = real_flight_objectives.to_dict(orient="records")[0]
+    if type(random_objectives) == pd.DataFrame:
+        random_objectives = random_objectives.to_dict(orient="records")[0]
+    table = Table()
+    table.add_column("Solution", style="bold")
+    table.add_column("Contrail EF", style="blue italic")
+    table.add_column("kg of CO2", style="red italic")
+    table.add_column("Time (h)", style="green italic")
+    table.add_row(
+        "[blue]Real Flight[/blue]",
+        "{:.3g}".format(real_flight_objectives["contrail"]),
+        "{:.3g}".format(real_flight_objectives["co2"]),
+        "{:.3g}".format(real_flight_objectives["time"]),
+    )
+    table.add_row(
+        "[green]Rand. Flight[/green]",
+        "{:.3g}".format(random_objectives["contrail"]),
+        "{:.3g}".format(random_objectives["co2"]),
+        "{:.3g}".format(random_objectives["time"]),
+    )
+    for i, solution in enumerate(pareto_set):
+        print()
+        name = f"Solution {i + 1}"
+        if solution.objectives == chosen_pareto_path.objectives:
+            name = "[red]Chosen Path[/red]"
+        table.add_row(
+            name,
+            "{:.3g}".format(solution.objectives["contrail"]),
+            "{:.3g}".format(solution.objectives["co2"]),
+            "{:.3g}".format(solution.objectives["time"]),
+        )
+
+    print(table)
+    print("\n \n \n")  # Add some space between the table and the next question
+
+
 def run_aco(config: Config, choose_path=False):
     with Progress(
         SpinnerColumn(),
@@ -108,33 +148,8 @@ def run_aco(config: Config, choose_path=False):
         random_objectives = random_flight_path.calculate_objectives()
     print("[bold green]:white_check_mark: Created a random flight path.[/bold green]")
 
-    table = Table()
-    table.add_column("Solution", style="bold")
-    table.add_column("Contrail EF", style="blue")
-    table.add_column("kg of CO2", style="red")
-    table.add_column("Time (h)", style="green")
-    table.add_row(
-        "Real Flight",
-        str(real_flight_objectives["contrail"]),
-        str(real_flight_objectives["co2"]),
-        str(real_flight_objectives["time"]),
-    )
-    table.add_row(
-        "Random Flight",
-        str(random_objectives["contrail"]),
-        str(random_objectives["co2"]),
-        str(random_objectives["time"]),
-    )
-    for i, solution in enumerate(pareto_set):
-        table.add_row(
-            str(i + 1),
-            str(solution.objectives["contrail"]),
-            str(solution.objectives["co2"]),
-            str(solution.objectives["time"]),
-        )
+    print_results_table(real_flight_objectives, random_objectives, pareto_set, None)
 
-    print(table)
-    print("\n \n \n")  # Add some space between the table and the next question
     if choose_path:
         questions = [
             inquirer.List(
@@ -322,6 +337,7 @@ def save_figs(dir: str, results, config):
         display,
         real_flight_df,
         chosen_pareto_path_df,
+        random_path_df,
         contrail_grid.contrail_grid,
         config,
     )
@@ -330,6 +346,7 @@ def save_figs(dir: str, results, config):
         display,
         real_flight_df,
         chosen_pareto_path_df,
+        random_path_df,
         contrail_polys,
         contrail_grid.contrail_grid,
         config,
@@ -587,7 +604,14 @@ def main():
                 pareto_set_objectives,
                 config,
             ) = results
+            print_results_table(
+                real_flight_objectives,
+                random_objectives,
+                pareto_set,
+                chosen_pareto_path,
+            )
         print("[bold green]:white_check_mark: Results loaded.[/bold green]")
+
     else:
         questions = [
             inquirer.List(
