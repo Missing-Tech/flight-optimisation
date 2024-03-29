@@ -20,6 +20,7 @@ from config import (
     TimeConfig,
     CocipConfig,
 )
+from objectives import ContrailObjective, CO2Objective, TimeObjective, CocipObjective
 from routing_graph import RoutingGraphManager
 from performance_model import PerformanceModel, RealFlight, RandomFlight
 from aco import ACO
@@ -46,13 +47,10 @@ def save_csv(file_path, data):
     data.to_csv(file_path, index=False)
 
 
-def print_results_table(
-    real_flight_objectives, random_objectives, pareto_set, chosen_pareto_path
-):
-    if type(real_flight_objectives) == pd.DataFrame:
-        real_flight_objectives = real_flight_objectives.to_dict(orient="records")[0]
-    if type(random_objectives) == pd.DataFrame:
-        random_objectives = random_objectives.to_dict(orient="records")[0]
+def print_results_table(real_flight, random_flight, pareto_set, chosen_pareto_path):
+    real_flight_objectives = real_flight.objectives
+    random_flight_objectives = random_flight.objectives
+
     table = Table()
     table.add_column("Solution", style="bold")
     table.add_column("Contrail EF", style="blue italic")
@@ -66,14 +64,16 @@ def print_results_table(
     )
     table.add_row(
         "[green]Rand. Flight[/green]",
-        "{:.3g}".format(random_objectives["contrail"]),
-        "{:.3g}".format(random_objectives["co2"]),
-        "{:.3g}".format(random_objectives["time"]),
+        "{:.3g}".format(random_flight_objectives["contrail"]),
+        "{:.3g}".format(random_flight_objectives["co2"]),
+        "{:.3g}".format(random_flight_objectives["time"]),
     )
     for i, solution in enumerate(pareto_set):
-        print()
         name = f"Solution {i + 1}"
-        if solution.objectives == chosen_pareto_path.objectives:
+        if (
+            chosen_pareto_path is not None
+            and solution.objectives == chosen_pareto_path.objectives
+        ):
             name = "[red]Chosen Path[/red]"
         table.add_row(
             name,
@@ -131,7 +131,6 @@ def run_aco(config: Config, choose_path=False):
         )
         real_flight = RealFlight("jan-31-cleaned.csv", routing_graph_manager, config)
         real_flight.run_performance_model()
-        real_flight_objectives = real_flight.calculate_objectives()
     print(
         "[bold green]:white_check_mark: Performance model run on real flight.[/bold green]"
     )
@@ -145,10 +144,27 @@ def run_aco(config: Config, choose_path=False):
         random_flight_path = RandomFlight(routing_graph_manager, config)
         random_flight_path.construct_random_flight()
         random_flight_path.run_performance_model()
-        random_objectives = random_flight_path.calculate_objectives()
     print("[bold green]:white_check_mark: Created a random flight path.[/bold green]")
 
-    print_results_table(real_flight_objectives, random_objectives, pareto_set, None)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        progress.add_task(description="Recalculating objectives...", total=None)
+        # Recalculate objectives
+        objectives = [ContrailObjective, CO2Objective, TimeObjective, CocipObjective]
+        config.OBJECTIVES = objectives
+
+        random_flight_path.config = config
+        real_flight.config = config
+        random_flight_path.calculate_objectives()
+        real_flight.calculate_objectives()
+        for path in pareto_set:
+            path.config = config
+            path.calculate_objectives()
+
+    print_results_table(real_flight, random_flight_path, pareto_set, None)
 
     if choose_path:
         questions = [
@@ -184,15 +200,6 @@ def run_aco(config: Config, choose_path=False):
         "[bold green]:white_check_mark: CoCiP calculated for both flights.[/bold green]"
     )
 
-    objectives = {key: [] for key in ant_colony.objectives_over_time[0].keys()}
-    for entry in ant_colony.objectives_over_time:
-        for key, value in entry.items():
-            objectives[key].append(value)
-
-    pareto_set_objectives = []
-    for solution in pareto_set:
-        pareto_set_objectives.append(solution.objectives)
-
     return (
         geodesic_path,
         real_flight,
@@ -205,9 +212,6 @@ def run_aco(config: Config, choose_path=False):
         rand_cocip,
         contrail_grid,
         contrail_polys,
-        real_flight_objectives,
-        random_objectives,
-        pareto_set_objectives,
     )
 
 
@@ -224,9 +228,6 @@ def save_results(dir: str, results, config):
         rand_cocip,
         contrail_grid,
         contrail_polys,
-        real_flight_objectives,
-        random_objectives,
-        pareto_set_objectives,
     ) = results
     save_pickle(f"{dir}geodesic_path.pkl", geodesic_path)
     save_pickle(f"{dir}real_flight.pkl", real_flight)
@@ -242,15 +243,16 @@ def save_results(dir: str, results, config):
     save_csv(f"{dir}objectives.csv", pd.DataFrame(objectives))
     save_csv(
         f"{dir}real_flight_objectives.csv",
-        pd.DataFrame(real_flight_objectives, index=[0]),
+        pd.DataFrame(real_flight.objectives, index=[0]),
     )
+    pareto_set_objectives = [solution.objectives for solution in pareto_set]
     save_csv(
         f"{dir}pareto_set_objectives.csv",
         pd.DataFrame(pareto_set_objectives),
     )
     save_csv(
         f"{dir}random_objectives.csv",
-        pd.DataFrame(random_objectives, index=[0]),
+        pd.DataFrame(random_flight_path.objectives, index=[0]),
     )
 
 
@@ -267,9 +269,6 @@ def load_results(dir: str):
     contrail_grid = load_pickle(f"{dir}contrail_grid.pkl")
     contrail_polys = load_pickle(f"{dir}contrail_polys.pkl")
     config = load_pickle(f"{dir}config.pkl")
-    real_flight_objectives = load_csv(f"{dir}real_flight_objectives.csv")
-    pareto_set_objectives = load_csv(f"{dir}pareto_set_objectives.csv")
-    random_objectives = load_csv(f"{dir}random_objectives.csv")
 
     return (
         geodesic_path,
@@ -283,9 +282,6 @@ def load_results(dir: str):
         rand_cocip,
         contrail_grid,
         contrail_polys,
-        real_flight_objectives,
-        random_objectives,
-        pareto_set_objectives,
         config,
     )
 
@@ -304,9 +300,6 @@ def save_figs(dir: str, results, config):
         rand_cocip,
         contrail_grid,
         contrail_polys,
-        real_flight_objectives,
-        random_objectives,
-        pareto_set_objectives,
     ) = results
     geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
     real_flight_df = pd.DataFrame(
@@ -447,124 +440,12 @@ def main():
                 "Run ACO",
                 "Load ACO Results",
                 "Automate Results",
-                "Re-analyze objectives",
             ],
             carousel=True,
         ),
     ]
 
     answers = inquirer.prompt(questions)
-    if answers["choice"] == "Re-analyze objectives":
-        questions = [
-            inquirer.Path(
-                "dir",
-                message="Where are the results located?",
-                default="results/user/",
-                path_type=inquirer.Path.DIRECTORY,
-            ),
-        ]
-        answers = inquirer.prompt(questions)
-        results = load_results(answers["dir"])
-        (
-            geodesic_path,
-            real_flight,
-            random_flight_path,
-            chosen_pareto_path,
-            pareto_set,
-            objectives,
-            fp_cocip,
-            aco_cocip,
-            rand_cocip,
-            contrail_grid,
-            contrail_polys,
-            real_flight_objectives,
-            random_objectives,
-            pareto_set_objectives,
-            config,
-        ) = results
-
-        print("[bold green]:white_check_mark: Results loaded.[/bold green]")
-        print("[bold blue]Analyzing objectives...[/bold blue]")
-
-        routing_graph_manager = RoutingGraphManager(config)
-        performance_model = PerformanceModel(routing_graph_manager, config)
-        real_flight.objectives["cocip"] = fp_cocip.contrail["ef"].sum()
-        random_flight_path.objectives["cocip"] = rand_cocip.contrail["ef"].sum()
-        chosen_pareto_path.objectives["cocip"] = aco_cocip.contrail["ef"].sum()
-        real_flight.objectives["contrail"] = (
-            performance_model.contrail_grid.interpolate_contrail_grid(
-                real_flight.flight_path
-            )
-        )
-        chosen_pareto_path.objectives["contrail"] = (
-            performance_model.contrail_grid.interpolate_contrail_grid(
-                chosen_pareto_path.flight_path
-            )
-        )
-        real_flight_objectives["cocip"] = real_flight.objectives["cocip"]
-        real_flight_objectives["contrail"] = real_flight.objectives["contrail"]
-        random_objectives["cocip"] = random_flight_path.objectives["cocip"]
-        if "cocip" not in pareto_set_objectives:
-            pareto_set_objectives["cocip"] = [0] * len(pareto_set)
-        if "time" not in pareto_set_objectives:
-            pareto_set_objectives["time"] = [0] * len(pareto_set)
-        if "co2" not in pareto_set_objectives:
-            pareto_set_objectives["co2"] = [0] * len(pareto_set)
-        if "contrail" not in pareto_set_objectives:
-            pareto_set_objectives["contrail"] = [0] * len(pareto_set)
-
-        for i, pareto in enumerate(pareto_set):
-            ef, _, _ = performance_model.cocip_manager.calculate_ef_from_flight_path(
-                pareto.flight_path
-            )
-            contrail_objective = (
-                performance_model.contrail_grid.interpolate_contrail_grid(
-                    pareto.flight_path
-                )
-            )
-            pareto.objectives["cocip"] = ef.sum()
-            pareto_set_objectives["cocip"][i] = ef.sum()
-            pareto.objectives["contrail"] = contrail_objective
-            pareto_set_objectives["contrail"][i] = contrail_objective
-            pareto_set_objectives["time"][i] = (
-                pareto.flight_path[-1]["time"] - pareto.flight_path[0]["time"]
-            ).seconds / 3600
-            pareto_set_objectives["co2"][i] = (
-                sum(point["CO2"] for point in pareto.flight_path)
-                * pareto_set_objectives["time"][i]
-                * 3600
-                / 1000  # convert g/s to kg
-            )
-
-        print("[bold green]:white_check_mark: Objectives re-analyzed.[/bold green]")
-        questions = [
-            inquirer.Path(
-                "dir",
-                message="Where would you like to save the results?",
-                default=answers["dir"],
-                path_type=inquirer.Path.DIRECTORY,
-            ),
-        ]
-        answers = inquirer.prompt(questions)
-        results = (
-            geodesic_path,
-            real_flight,
-            random_flight_path,
-            chosen_pareto_path,
-            pareto_set,
-            objectives,
-            fp_cocip,
-            aco_cocip,
-            rand_cocip,
-            contrail_grid,
-            contrail_polys,
-            real_flight_objectives,
-            random_objectives,
-            pareto_set_objectives,
-        )
-        save_results(answers["dir"], results, config)
-        print("[bold green]:white_check_mark: Results saved.[/bold green]")
-        return
     if answers["choice"] == "Automate Results":
         automate_results()
         print("[bold green]:white_check_mark: Results automated.[/bold green]")
@@ -599,14 +480,12 @@ def main():
                 rand_cocip,
                 contrail_grid,
                 contrail_polys,
-                real_flight_objectives,
-                random_objectives,
-                pareto_set_objectives,
                 config,
             ) = results
+
             print_results_table(
-                real_flight_objectives,
-                random_objectives,
+                real_flight,
+                random_flight_path,
                 pareto_set,
                 chosen_pareto_path,
             )
@@ -671,9 +550,6 @@ def main():
             rand_cocip,
             contrail_grid,
             contrail_polys,
-            real_flight_objectives,
-            random_objectives,
-            pareto_set_objectives,
         ) = results
 
         questions = [
