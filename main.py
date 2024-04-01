@@ -70,11 +70,9 @@ def print_results_table(real_flight, random_flight, pareto_set, chosen_pareto_pa
     )
     for i, solution in enumerate(pareto_set):
         name = f"Solution {i + 1}"
-        if (
-            chosen_pareto_path is not None
-            and solution.objectives == chosen_pareto_path.objectives
-        ):
-            name = "[red]Chosen Path[/red]"
+        if chosen_pareto_path is not None:
+            if solution.flight_path == chosen_pareto_path.flight_path:
+                name = "[red]Chosen Path[/red]"
         table.add_row(
             name,
             "{:.3g}".format(solution.objectives["contrail"]),
@@ -116,6 +114,7 @@ def run_aco(config: Config, choose_path=False):
     # Run ACO
     ant_colony = ACO(routing_graph_manager, config)
     pareto_set = ant_colony.run_aco_colony()
+    objectives = ant_colony.objectives
     print("[bold green]:white_check_mark: ACO complete.[/bold green]")
 
     # Run performance model on a real flight
@@ -151,8 +150,13 @@ def run_aco(config: Config, choose_path=False):
     ) as progress:
         progress.add_task(description="Recalculating objectives...", total=None)
         # Recalculate objectives
-        objectives = [ContrailObjective, CO2Objective, TimeObjective, CocipObjective]
-        config.OBJECTIVES = objectives
+        objective_list = [
+            ContrailObjective,
+            CO2Objective,
+            TimeObjective,
+            CocipObjective,
+        ]
+        config.OBJECTIVES = objective_list
 
         random_flight_path.config = config
         real_flight.config = config
@@ -309,7 +313,7 @@ def save_figs(dir: str, results, config):
         columns=["latitude", "longitude", "time", "altitude_ft"],
     )
     random_path_df = pd.DataFrame(
-        chosen_pareto_path.flight_path,
+        random_flight_path.flight_path,
         columns=["latitude", "longitude", "time", "altitude_ft"],
     )
     fig1 = graphs.show_flight_path_comparison(
@@ -434,16 +438,13 @@ def main():
         inquirer.List(
             "choice",
             message="What would you like to do?",
-            choices=[
-                "Run ACO",
-                "Load ACO Results",
-                "Automate Results",
-            ],
+            choices=["Run ACO", "Load ACO Results", "Automate Results"],
             carousel=True,
         ),
     ]
 
     answers = inquirer.prompt(questions)
+
     if answers["choice"] == "Automate Results":
         automate_results()
         print("[bold green]:white_check_mark: Results automated.[/bold green]")

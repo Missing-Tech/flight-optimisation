@@ -85,7 +85,7 @@ class ContrailObjective(Objective):
 class CocipObjective(Objective):
     def __init__(self, performance_model: PerformanceModel, config: "Config"):
         super().__init__(performance_model, config)
-        self.name: str = "contrail"
+        self.name: str = "cocip"
         self.weight: float = config.CONTRAIL_WEIGHT
 
     def _run_objective_function(self, flight_path: "FlightPath") -> float:

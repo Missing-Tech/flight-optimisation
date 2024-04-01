@@ -27,7 +27,8 @@ class AircraftPerformanceModel:
         Calculate flight characteristics for the whole flight path
         """
         flight_path = self.calculate_coarse_characteristics(flight_path)
-        flight_path = self.resample(flight_path)
+        if flight_path[0]["segment_length"] > 100000:
+            flight_path = self.resample(flight_path)
         for i, point in enumerate(flight_path):
             if i != len(flight_path) - 1:
                 next_point = flight_path[i + 1]
@@ -57,7 +58,11 @@ class AircraftPerformanceModel:
                 next_point = flight_path[i + 1]
                 point["course"] = self.calculate_course_at_point(point, next_point)
                 point["climb_angle"] = self.calculate_climb_angle(point, next_point)
+                point["segment_length"] = self.calculate_segment_length(
+                    next_point, point
+                )
             else:
+                point["segment_length"] = 0
                 point["course"] = 0
                 point["climb_angle"] = 0
 
