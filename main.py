@@ -118,7 +118,7 @@ def run_aco(config: Config, choose_path=False):
     # Run ACO
     ant_colony = ACO(routing_graph_manager, config)
     pareto_set = ant_colony.run_aco_colony()
-    objectives = ant_colony.objectives
+    objectives = ant_colony.objectives_over_time
     print("[bold green]:white_check_mark: ACO complete.[/bold green]")
 
     # Run performance model on a real flight

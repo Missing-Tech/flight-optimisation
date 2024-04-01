@@ -9,6 +9,7 @@ import pandas as pd
 def show_objectives_over_time(display, objectives):
     blank = display.blank
     _, objective_axs = blank.create_fig(3, 1)
+    objectives = pd.DataFrame(objectives)
 
     # Show objectives over time
     blank.show_plot(
