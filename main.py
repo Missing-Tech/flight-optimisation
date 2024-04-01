@@ -56,17 +56,20 @@ def print_results_table(real_flight, random_flight, pareto_set, chosen_pareto_pa
     table.add_column("Contrail EF", style="blue italic")
     table.add_column("kg of CO2", style="red italic")
     table.add_column("Time (h)", style="green italic")
+    table.add_column("CoCiP EF", style="yellow italic")
     table.add_row(
         "[blue]Real Flight[/blue]",
         "{:.3g}".format(real_flight_objectives["contrail"]),
         "{:.3g}".format(real_flight_objectives["co2"]),
         "{:.3g}".format(real_flight_objectives["time"]),
+        "{:.3g}".format(real_flight_objectives["cocip"]),
     )
     table.add_row(
         "[green]Rand. Flight[/green]",
         "{:.3g}".format(random_flight_objectives["contrail"]),
         "{:.3g}".format(random_flight_objectives["co2"]),
         "{:.3g}".format(random_flight_objectives["time"]),
+        "{:.3g}".format(random_flight_objectives["cocip"]),
     )
     for i, solution in enumerate(pareto_set):
         name = f"Solution {i + 1}"
@@ -78,6 +81,7 @@ def print_results_table(real_flight, random_flight, pareto_set, chosen_pareto_pa
             "{:.3g}".format(solution.objectives["contrail"]),
             "{:.3g}".format(solution.objectives["co2"]),
             "{:.3g}".format(solution.objectives["time"]),
+            "{:.3g}".format(solution.objectives["cocip"]),
         )
 
     print(table)
@@ -488,7 +492,34 @@ def main():
                 pareto_set,
                 chosen_pareto_path,
             )
+
         print("[bold green]:white_check_mark: Results loaded.[/bold green]")
+        questions = [
+            inquirer.Confirm(
+                "choose_path",
+                message="Would you like to choose a different path?",
+                default=False,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
+
+        if answers["choose_path"] is True:
+            questions = [
+                inquirer.List(
+                    "results",
+                    message="What path would you like to choose?",
+                    choices=[i + 1 for i, _ in enumerate(pareto_set)],
+                    carousel=True,
+                )
+            ]
+            answers = inquirer.prompt(questions)
+            chosen_pareto_path = pareto_set[answers["results"] - 1]
+            # A bit of a hack to recalculate CoCiP for the new chosen path
+            _, _, aco_cocip = (
+                chosen_pareto_path.performance_model.cocip_manager.calculate_ef_from_flight_path(
+                    chosen_pareto_path.flight_path
+                )
+            )
 
     else:
         questions = [
