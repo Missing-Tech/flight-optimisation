@@ -56,6 +56,7 @@ class TestFlight(unittest.TestCase):
                 "level": 1,
             }
         )
+
         flight.add_point_from_index((1, 1, 1))
         # Assert point is correctly added from index
         self.assertEqual(len(flight.flight_path), 1)

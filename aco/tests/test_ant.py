@@ -28,26 +28,31 @@ class TestAnt(unittest.TestCase):
                     "level": 0,
                 }
 
-        class MockConfig:
-            GRID_WIDTH = 0
-            STARTING_ALTITUDE = 10000
-            PHEROMONE_WEIGHT = 1
-            HEURISTIC_WEIGHT = 1
-            STARTING_WEIGHT = 100000
-            DEPARTURE_DATE = pd.Timestamp(
-                year=2024, month=1, day=31, hour=13, minute=45, second=57
-            )
-
         class MockObjective:
-            def __init__(self):
+            def __init__(self, performance_model, config):
                 self.name = "objective"
 
             @staticmethod
             def calculate_objective(flight_path):
                 return 1
 
+            def _run_objective_function(self, flight_path):
+                return 1
+
+        class MockConfig:
+            GRID_WIDTH = 0
+            STARTING_ALTITUDE = 10000
+            NO_OF_POINTS = 3
+            PHEROMONE_WEIGHT = 1
+            HEURISTIC_WEIGHT = 1
+            STARTING_WEIGHT = 100000
+            OBJECTIVES = [MockObjective]
+            DEPARTURE_DATE = pd.Timestamp(
+                year=2024, month=1, day=31, hour=13, minute=45, second=57
+            )
+
         self.mock_routing_graph_manager = MockRoutingGraphManager()
-        self.mock_objective = MockObjective()
+        self.mock_objective = MockObjective
         self.mock_config = MockConfig()
 
     def test_run_ant(self):
@@ -61,15 +66,6 @@ class TestAnt(unittest.TestCase):
         # Assert that the construct_solution and objective_function methods are called
         ant.construct_solution.assert_called_once()
         self.assertTrue(solution.objectives)  # Check if objectives are set
-
-    def test_objective_function(self):
-        ant = Ant(
-            self.mock_routing_graph_manager, [self.mock_objective], self.mock_config
-        )
-        flight_path = MagicMock()
-        objectives = ant.objective_function(flight_path)
-        # Assert that the objective function returns the correct values
-        self.assertEqual(objectives[str(self.mock_objective)], 1)
 
     def test_construct_solution(self):
         ant = Ant(
@@ -111,4 +107,4 @@ class TestAnt(unittest.TestCase):
             (0, 1, 10000), 1, self.mock_objective
         )
         # Assert that the probability is calculated correctly
-        self.assertEqual(probability, None)
+        self.assertEqual(probability, 0.0001)

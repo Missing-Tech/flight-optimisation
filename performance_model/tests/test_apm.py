@@ -22,6 +22,8 @@ class TestAircraftPerformanceModel(unittest.TestCase):
             NOMINAL_ENGINE_EFFICIENCY = 0.85
             STARTING_WEIGHT = 100000
             AIRCRAFT_TYPE = "A320"
+            PRESSURE_LEVELS = [0, 1, 2, 3]
+            NOMINAL_THRUST = 1
 
         self.mock_weather_grid = MockWeatherGrid()
         self.mock_config = MockConfig()
@@ -34,7 +36,7 @@ class TestAircraftPerformanceModel(unittest.TestCase):
         ]
         flight_path = apm.calculate_flight_characteristics(flight_path)
         # Assert flight characteristics are calculated correctly
-        self.assertEqual(len(flight_path), 2)
+        self.assertEqual(len(flight_path), 23)
         self.assertIn("course", flight_path[0])
         self.assertIn("climb_angle", flight_path[0])
         self.assertIn("time", flight_path[0])

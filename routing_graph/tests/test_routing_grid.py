@@ -6,7 +6,7 @@ class TestRoutingGrid(unittest.TestCase):
     def setUp(self):
         class GeodesicPath(list):
             def __init__(self):
-                self.path = [(0, 0, 0), (1, 1, 0), (2, 2, 0)]
+                self.path = [(0, 0), (1, 1), (2, 2)]
                 super().__init__(self.path)
 
         class Config:
@@ -20,11 +20,10 @@ class TestRoutingGrid(unittest.TestCase):
         self.routing_grid = RoutingGrid(self.geodesic_path, self.config)
 
     def test_calculate_new_coordinates(self):
-        new_coordinates = self.routing_grid.calculate_new_coordinates((0, 0, 0), 100, 0)
+        new_coordinates = self.routing_grid.calculate_new_coordinates((0, 0), 100, 0)
         # Assert expected latitude, longitude, and bearing
         self.assertAlmostEqual(new_coordinates[0], 0.8993, places=3)
         self.assertAlmostEqual(new_coordinates[1], 0.0, places=3)
-        self.assertAlmostEqual(new_coordinates[2], 0.0, places=3)
 
     def test_calculate_normal_bearing(self):
         normal_bearing = self.routing_grid.calculate_normal_bearing(0)
@@ -32,7 +31,7 @@ class TestRoutingGrid(unittest.TestCase):
         self.assertAlmostEqual(normal_bearing, 1.5708, places=3)
 
     def test_calculate_bearing(self):
-        bearing = self.routing_grid.calculate_bearing((0, 0, 0), (1, 1, 0))
+        bearing = self.routing_grid.calculate_bearing((0, 0), (1, 1))
         # Assert expected bearing
         self.assertAlmostEqual(bearing, 0.7853, places=3)
 

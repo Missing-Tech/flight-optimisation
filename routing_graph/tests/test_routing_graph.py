@@ -64,7 +64,7 @@ class TestRoutingGraph(unittest.TestCase):
 
     def test_get_consecutive_points(self):
         points = self.routing_graph.get_consecutive_points(
-            0, 0, 0, self.mock_altitude_grid
+            (0, 0, 0), self.mock_altitude_grid
         )
         # Assert that points are correctly calculated
         self.assertEqual(points, [(1, 0, 0), (1, 1, 0)])

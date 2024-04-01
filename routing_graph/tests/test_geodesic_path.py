@@ -52,4 +52,4 @@ class TestGeodesicPath(unittest.TestCase):
         geodesic_path = GeodesicPath(self.config)
         point = geodesic_path.find_point_distance_along_great_circle(0, 0, 0)
         self.assertIsInstance(point, tuple)
-        self.assertEqual(len(point), 3)
+        self.assertEqual(len(point), 2)
