@@ -1,5 +1,7 @@
 from __future__ import print_function, unicode_literals
 import random
+from pymoo.indicators.hv import HV
+import numpy as np
 import warnings
 from dotenv import load_dotenv
 import pandas as pd
@@ -427,6 +429,8 @@ def automate_results():
     if "No of ants" in answers["results"]:
         print("[bold blue]Collecting no of ants data...[/bold blue]")
         for no_of_ant in no_of_ants:
+            if no_of_ant != 16:
+                continue
             print(f"[blue]Running {no_of_ant} ants...[/blue]")
             config = Config()
             config.NO_OF_ANTS = no_of_ant
@@ -442,19 +446,57 @@ def main():
         inquirer.List(
             "choice",
             message="What would you like to do?",
-            choices=["Run ACO", "Load ACO Results", "Automate Results"],
+            choices=[
+                "Run ACO",
+                "Load ACO Results",
+                "Automate Results",
+                "Compare Pareto Fronts",
+            ],
             carousel=True,
         ),
     ]
 
     answers = inquirer.prompt(questions)
+    show_results = True
 
     if answers["choice"] == "Automate Results":
         automate_results()
         print("[bold green]:white_check_mark: Results automated.[/bold green]")
         return
 
-    if answers["choice"] == "Load ACO Results":
+    elif answers["choice"] == "Compare Pareto Fronts":
+        questions = [
+            inquirer.Path(
+                "dir",
+                message="Where are the fronts located?",
+                default="results/user/",
+                path_type=inquirer.Path.DIRECTORY,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
+        dfs = []
+
+        # Load all CSVs in the directory
+        for filename in os.listdir(answers["dir"]):
+            if filename.endswith(".csv"):
+                filepath = os.path.join(answers["dir"], filename)
+                df = pd.read_csv(filepath)
+                df.name = os.path.splitext(filename)[0]
+                dfs.append(df)
+
+        display = Display()
+        graphs.compare_fronts(display, dfs)
+        concat_dfs = pd.concat(dfs)
+        hv = HV(ref_point=np.max(concat_dfs.values, axis=0) + 1)
+        for front in dfs:
+            front_array = front.values
+            hypervolume = hv(front_array)
+            print(f"HV {front.name}: {hypervolume}")
+
+        show_results = False
+        display.show()
+
+    elif answers["choice"] == "Load ACO Results":
         questions = [
             inquirer.Path(
                 "dir",
@@ -613,76 +655,81 @@ def main():
 
             print("[bold green]:white_check_mark: Results saved.[/bold green]")
 
-    geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
-    real_flight_df = pd.DataFrame(
-        real_flight.flight_path,
-        columns=["latitude", "longitude", "time", "altitude_ft"],
-    )
-    chosen_pareto_path_df = pd.DataFrame(
-        chosen_pareto_path.flight_path,
-        columns=["latitude", "longitude", "time", "altitude_ft"],
-    )
-    random_path_df = pd.DataFrame(
-        random_flight_path.flight_path,
-        columns=["latitude", "longitude", "time", "altitude_ft"],
-    )
-
-    questions = [
-        inquirer.Checkbox(
-            "graphs",
-            message="What plots would you like to see?",
-            choices=[
-                "Objectives over time",
-                "Flight path comparison",
-                "Flight path over time",
-                "3D Flight path over time",
-            ],
-            carousel=True,
-        ),
-    ]
-    answers = inquirer.prompt(questions)
-
-    # Display results
-    display = Display()
-
-    if "Objectives over time" in answers["graphs"]:
-        graphs.show_objectives_over_time(display, objectives)
-
-    if "Flight path comparison" in answers["graphs"]:
-        graphs.show_flight_path_comparison(
-            display,
-            geodesic_path,
-            real_flight_df,
-            chosen_pareto_path_df,
-            random_path_df,
-            pareto_set,
-            fp_cocip,
-            aco_cocip,
-            rand_cocip,
+    if show_results:
+        geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
+        real_flight_df = pd.DataFrame(
+            real_flight.flight_path,
+            columns=["latitude", "longitude", "time", "altitude_ft"],
+        )
+        chosen_pareto_path_df = pd.DataFrame(
+            chosen_pareto_path.flight_path,
+            columns=["latitude", "longitude", "time", "altitude_ft"],
+        )
+        random_path_df = pd.DataFrame(
+            random_flight_path.flight_path,
+            columns=["latitude", "longitude", "time", "altitude_ft"],
         )
 
-    if "Flight path over time" in answers["graphs"]:
-        graphs.show_flight_frames(
-            display,
-            real_flight_df,
-            chosen_pareto_path_df,
-            random_path_df,
-            contrail_grid.contrail_grid,
-            config,
-        )
+        questions = [
+            inquirer.Checkbox(
+                "graphs",
+                message="What plots would you like to see?",
+                choices=[
+                    "Objectives over time",
+                    "Flight path comparison",
+                    "Flight path over time",
+                    "3D Flight path over time",
+                    "Pareto Front",
+                ],
+                carousel=True,
+            ),
+        ]
+        answers = inquirer.prompt(questions)
 
-    if "3D Flight path over time" in answers["graphs"]:
-        graphs.show_3d_flight_frames(
-            display,
-            real_flight_df,
-            chosen_pareto_path_df,
-            random_path_df,
-            contrail_polys,
-            contrail_grid.contrail_grid,
-            config,
-        )
+        # Display results
+        display = Display()
 
-    display.show()
+        if "Objectives over time" in answers["graphs"]:
+            graphs.show_objectives_over_time(display, objectives)
+
+        if "Flight path comparison" in answers["graphs"]:
+            graphs.show_flight_path_comparison(
+                display,
+                geodesic_path,
+                real_flight_df,
+                chosen_pareto_path_df,
+                random_path_df,
+                pareto_set,
+                fp_cocip,
+                aco_cocip,
+                rand_cocip,
+            )
+
+        if "Pareto Front" in answers["graphs"]:
+            graphs.show_pareto_front(display, pareto_set)
+
+        if "Flight path over time" in answers["graphs"]:
+            graphs.show_flight_frames(
+                display,
+                real_flight_df,
+                chosen_pareto_path_df,
+                random_path_df,
+                contrail_grid.contrail_grid,
+                config,
+            )
+
+        if "3D Flight path over time" in answers["graphs"]:
+            graphs.show_3d_flight_frames(
+                display,
+                real_flight_df,
+                chosen_pareto_path_df,
+                random_path_df,
+                contrail_polys,
+                contrail_grid.contrail_grid,
+                config,
+            )
+
+        display.show()
 
 
 if __name__ == "__main__":

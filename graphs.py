@@ -6,6 +6,22 @@ import json
 import pandas as pd
 
 
+def show_pareto_front(display, pareto_front):
+    blank3d = display.blank3d
+    _, axs = blank3d.create_fig(1, 1)
+    pareto_front = [flight.objectives for flight in pareto_front]
+    pareto_front = pd.DataFrame(pareto_front)
+
+    blank3d.show_front(pareto_front, axs[0])
+
+
+def compare_fronts(display, fronts):
+    blank3d = display.blank3d
+    _, axs = blank3d.create_fig(1, 1)
+
+    blank3d.compare_fronts(fronts, axs[0])
+
+
 def show_objectives_over_time(display, objectives):
     blank = display.blank
     _, objective_axs = blank.create_fig(3, 1)

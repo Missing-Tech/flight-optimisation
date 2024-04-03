@@ -107,7 +107,6 @@ class ACO:
                             best_objectives[objective] = solution.objectives[objective]
 
                 self.objectives_over_time.append(best_objectives.copy())
-
                 self.pheromone_update(
                     iteration_best_solution, iteration_best_objectives, best_objectives
                 )
