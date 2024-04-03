@@ -500,7 +500,7 @@ def main():
         graphs.compare_fronts(display, norm_dfs)
         concat_dfs = pd.concat(norm_dfs).values
 
-        hv = HV(ref_point=np.max(concat_dfs, axis=0) + 1)
+        hv = HV(ref_point=np.max(concat_dfs, axis=0) + 0.1)
         for front in norm_dfs:
             hypervolume = hv(front.values)
             print(f"HV {front.name}: {hypervolume}")
