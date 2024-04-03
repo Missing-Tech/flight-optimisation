@@ -77,10 +77,6 @@ class Blank3D(Blank):
         ax.set_xlabel("CO2")
         ax.set_ylabel("Contrail EF")
         ax.set_zlabel("Time")
-        ax.set_xlim([5.6e6, 7e6])
-        ax.set_ylim([0, 2.5e15])
-        ax.set_zlim([6, 7])
-        ax.set_title("Pareto Front")
         ax.legend()
 
     def _create_plot(self, fig, grid_pos):

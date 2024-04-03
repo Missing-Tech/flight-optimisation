@@ -1,6 +1,8 @@
 from __future__ import print_function, unicode_literals
 import random
 from pymoo.indicators.hv import HV
+from pymoo.indicators import distance_indicator
+from pymoo.util.normalization import ZeroToOneNormalization
 import numpy as np
 import warnings
 from dotenv import load_dotenv
@@ -485,12 +487,22 @@ def main():
                 dfs.append(df)
 
         display = Display()
-        graphs.compare_fronts(display, dfs)
-        concat_dfs = pd.concat(dfs)
-        hv = HV(ref_point=np.max(concat_dfs.values, axis=0) + 1)
-        for front in dfs:
-            front_array = front.values
-            hypervolume = hv(front_array)
+        concat_dfs = pd.concat(dfs).values
+        ideal, nadir = distance_indicator.derive_ideal_and_nadir_from_pf(concat_dfs)
+        normalization = ZeroToOneNormalization(ideal, nadir)
+
+        norm_dfs = []
+        for df in dfs:
+            norm_df = pd.DataFrame(normalization.forward(df.values), columns=df.columns)
+            norm_df.name = df.name
+            norm_dfs.append(norm_df)
+
+        graphs.compare_fronts(display, norm_dfs)
+        concat_dfs = pd.concat(norm_dfs).values
+
+        hv = HV(ref_point=np.max(concat_dfs, axis=0) + 1)
+        for front in norm_dfs:
+            hypervolume = hv(front.values)
             print(f"HV {front.name}: {hypervolume}")
 
         show_results = False
