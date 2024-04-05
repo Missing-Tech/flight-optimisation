@@ -19,9 +19,6 @@ class WeatherGrid:
         Class to interpolate weather data along the routing grid
         """
         self.config: "Config" = config
-        self.met: MetDataset = self._get_met()
-        self.rad: MetDataset = self._get_rad()
-        self.altitude_grid: "AltitudeGrid" = altitude_grid
         time_bounds = (
             self.config.DEPARTURE_DATE,
             self.config.DEPARTURE_DATE + self.config.WEATHER_BOUND,
@@ -34,6 +31,9 @@ class WeatherGrid:
             pressure_levels=pressure_levels,
         )
         self.era5sl: ERA5 = ERA5(time=time_bounds, variables=Cocip.rad_variables)
+        self.met: MetDataset = self._get_met()
+        self.rad: MetDataset = self._get_rad()
+        self.altitude_grid: "AltitudeGrid" = altitude_grid
 
     def get_weather_grid(self) -> xr.Dataset:
         """
@@ -76,16 +76,17 @@ class WeatherGrid:
         Initializes the weather data along the grid
         """
         if not os.path.exists("data/weather_data.nc"):
+            grid = grid.altitude_grid
             for alt in grid:
                 grid[alt] = [x for x in sum(grid[alt], []) if x is not None]
 
+            grid = [
+                (lat, lon, key) for key, values in grid.items() for lat, lon in values
+            ]
+
             flight_path = pd.DataFrame(
-                [
-                    (alt, *coords)
-                    for alt, coords_list in grid.items()
-                    for coords in coords_list
-                ],
-                columns=["altitude_ft", "latitude", "longitude"],
+                grid,
+                columns=["latitude", "longitude", "altitude_ft"],
             )
 
             fl_ds = flight_path.copy()
