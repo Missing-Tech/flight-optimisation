@@ -67,8 +67,8 @@ class PSGridManager:
         """
         Retrieves a performance grid for a given weather grid
         """
-        self.ps_grid: xr.Dataset = self._get_ps_grid(weather_grid)
         self.config: "Config" = config
+        self.ps_grid: xr.Dataset = self._get_ps_grid(weather_grid)
 
     def _get_ps_grid(self, weather_grid: "WeatherGrid") -> xr.Dataset:
         """

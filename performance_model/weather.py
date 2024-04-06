@@ -39,9 +39,7 @@ class WeatherGrid:
         """
         Gets the weather data along the grid
         """
-        self.weather_grid: xr.Dataset = self._init_weather_data_along_grid(
-            self.altitude_grid
-        )
+        self.weather_grid: xr.Dataset = self._init_weather_data_along_grid()
         return self.weather_grid
 
     def _get_met(self) -> MetDataset:
@@ -71,12 +69,12 @@ class WeatherGrid:
 
         return rad
 
-    def _init_weather_data_along_grid(self, grid: "AltitudeGrid") -> xr.Dataset:
+    def _init_weather_data_along_grid(self) -> xr.Dataset:
         """
         Initializes the weather data along the grid
         """
         if not os.path.exists("data/weather_data.nc"):
-            grid = grid.altitude_grid
+            grid = self.altitude_grid.altitude_grid.copy()
             for alt in grid:
                 grid[alt] = [x for x in sum(grid[alt], []) if x is not None]
 

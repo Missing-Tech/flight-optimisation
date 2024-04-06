@@ -8,13 +8,19 @@
 virtualenv .venv
 ```
 
-2. Install packages
+2. Activate the .venv
+
+```bash
+source .venv/bin/activate
+```
+
+3. Install packages
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Run the program
+4. Run the program
 
 ```bash
 python main.py
