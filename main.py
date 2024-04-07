@@ -443,6 +443,50 @@ def automate_results():
     print("[bold green]:white_check_mark: Results collected.[/bold green]")
 
 
+def compare_fronts():
+    questions = [
+        inquirer.Path(
+            "dir",
+            message="Where are the fronts located?",
+            default="results/user/",
+            path_type=inquirer.Path.DIRECTORY,
+        ),
+    ]
+    answers = inquirer.prompt(questions)
+    dfs = []
+
+    # Load all CSVs in the directory
+    for filename in os.listdir(answers["dir"]):
+        if filename.endswith(".csv"):
+            filepath = os.path.join(answers["dir"], filename)
+            df = pd.read_csv(filepath)
+            df.name = os.path.splitext(filename)[0]
+            dfs.append(df)
+
+    display = Display()
+    concat_dfs = pd.concat(dfs).values
+    ideal, nadir = distance_indicator.derive_ideal_and_nadir_from_pf(concat_dfs)
+    normalization = ZeroToOneNormalization(ideal, nadir)
+
+    norm_dfs = []
+    for df in dfs:
+        norm_df = pd.DataFrame(normalization.forward(df.values), columns=df.columns)
+        norm_df.name = df.name
+        norm_dfs.append(norm_df)
+
+    graphs.compare_fronts(display, norm_dfs)
+    concat_dfs = pd.concat(norm_dfs).values
+
+    # Create a hypervolume from the normalised dataframes
+    hv = HV(ref_point=np.max(concat_dfs, axis=0) + 0.1)
+    for front in norm_dfs:
+        hypervolume = hv(front.values)
+        print(f"HV {front.name}: {hypervolume}")
+
+    show_results = False
+    display.show()
+
+
 def main():
     questions = [
         inquirer.List(
@@ -459,7 +503,6 @@ def main():
     ]
 
     answers = inquirer.prompt(questions)
-    show_results = True
 
     if answers["choice"] == "Automate Results":
         automate_results()
@@ -467,47 +510,8 @@ def main():
         return
 
     elif answers["choice"] == "Compare Pareto Fronts":
-        questions = [
-            inquirer.Path(
-                "dir",
-                message="Where are the fronts located?",
-                default="results/user/",
-                path_type=inquirer.Path.DIRECTORY,
-            ),
-        ]
-        answers = inquirer.prompt(questions)
-        dfs = []
-
-        # Load all CSVs in the directory
-        for filename in os.listdir(answers["dir"]):
-            if filename.endswith(".csv"):
-                filepath = os.path.join(answers["dir"], filename)
-                df = pd.read_csv(filepath)
-                df.name = os.path.splitext(filename)[0]
-                dfs.append(df)
-
-        display = Display()
-        concat_dfs = pd.concat(dfs).values
-        ideal, nadir = distance_indicator.derive_ideal_and_nadir_from_pf(concat_dfs)
-        normalization = ZeroToOneNormalization(ideal, nadir)
-
-        norm_dfs = []
-        for df in dfs:
-            norm_df = pd.DataFrame(normalization.forward(df.values), columns=df.columns)
-            norm_df.name = df.name
-            norm_dfs.append(norm_df)
-
-        graphs.compare_fronts(display, norm_dfs)
-        concat_dfs = pd.concat(norm_dfs).values
-
-        hv = HV(ref_point=np.max(concat_dfs, axis=0) + 0.1)
-        for front in norm_dfs:
-            hypervolume = hv(front.values)
-            print(f"HV {front.name}: {hypervolume}")
-
-        show_results = False
-        display.show()
-
+        compare_fronts()
+        return
     elif answers["choice"] == "Load ACO Results":
         questions = [
             inquirer.Path(
@@ -667,7 +671,6 @@ def main():
 
             print("[bold green]:white_check_mark: Results saved.[/bold green]")
 
-    if show_results:
         geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
         real_flight_df = pd.DataFrame(
             real_flight.flight_path,
