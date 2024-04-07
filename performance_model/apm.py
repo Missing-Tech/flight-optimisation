@@ -5,7 +5,6 @@ from openap import FuelFlow, Emission
 import math
 import pycontrails as pc
 import typing
-from rich import print
 
 from utils import Conversions
 from .weather import WeatherGrid
@@ -26,9 +25,12 @@ class AircraftPerformanceModel:
         """
         Calculate flight characteristics for the whole flight path
         """
+
         flight_path = self.calculate_coarse_characteristics(flight_path)
         if flight_path[0]["segment_length"] > 100000:
             flight_path = self.resample(flight_path)
+        fuelflow = FuelFlow(ac=self.config.AIRCRAFT_TYPE)
+        emission = Emission(ac=self.config.AIRCRAFT_TYPE)
         for i, point in enumerate(flight_path):
             if i != len(flight_path) - 1:
                 next_point = flight_path[i + 1]
@@ -41,7 +43,10 @@ class AircraftPerformanceModel:
                 previous_point = flight_path[i - 1]
 
             point = self.recalculate_flight_characteristics(i, point, next_point)
-            point = self.calculate_emission_data(i, point, previous_point)
+
+            point = self.calculate_emission_data(
+                i, point, previous_point, emission, fuelflow
+            )
 
         return flight_path
 
@@ -120,22 +125,31 @@ class AircraftPerformanceModel:
         return point
 
     def calculate_emission_data(
-        self, i: int, point: "FlightPoint", previous_point: "FlightPoint"
+        self,
+        i: int,
+        point: "FlightPoint",
+        previous_point: "FlightPoint",
+        emission: "Emission",
+        fuelflow: "FuelFlow",
     ) -> "FlightPoint":
         """
         Calculate emissions for the new resampled flight path
         """
         if i == 0:
             point["aircraft_mass"] = self.config.STARTING_WEIGHT
-            fuel_flow = self.calculate_fuel_flow(point, point["aircraft_mass"])
+            fuel_flow = self.calculate_fuel_flow(
+                point, point["aircraft_mass"], fuelflow
+            )
             point["fuel_flow"] = fuel_flow
-            point["CO2"] = self.calculate_emissions(fuel_flow)
+            point["CO2"] = self.calculate_emissions(fuel_flow, emission)
         else:
-            fuel_flow = self.calculate_fuel_flow(point, previous_point["aircraft_mass"])
+            fuel_flow = self.calculate_fuel_flow(
+                point, previous_point["aircraft_mass"], fuelflow
+            )
             time_elapsed = pd.Timedelta(point["time"] - previous_point["time"]).seconds
             point["fuel_flow"] = fuel_flow
             point["CO2"] = (
-                self.calculate_emissions(fuel_flow) * time_elapsed
+                self.calculate_emissions(fuel_flow, emission) * time_elapsed
             ) / 1000  # kg
             point["aircraft_mass"] = (
                 previous_point["aircraft_mass"] - point["fuel_flow"] * time_elapsed
@@ -278,18 +292,18 @@ class AircraftPerformanceModel:
         ground_speed = first_component + second_component
         return ground_speed
 
-    def calculate_emissions(self, FF: float) -> float:
+    def calculate_emissions(self, FF: float, emission: "Emission") -> float:
         """
         Calculates the emissinos of a point
         """
-        emission = Emission(ac=self.config.AIRCRAFT_TYPE)
         return emission.co2(FF)  # g/s
 
-    def calculate_fuel_flow(self, point: "FlightPoint", mass: float) -> float:
+    def calculate_fuel_flow(
+        self, point: "FlightPoint", mass: float, fuelflow: "FuelFlow"
+    ) -> float:
         """
         Calculates the fuel flow of a point
         """
-        fuelflow = FuelFlow(ac=self.config.AIRCRAFT_TYPE)
 
         FF = fuelflow.enroute(
             mass=mass,
