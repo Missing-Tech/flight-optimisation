@@ -672,80 +672,80 @@ def main():
 
             print("[bold green]:white_check_mark: Results saved.[/bold green]")
 
-        geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
-        real_flight_df = pd.DataFrame(
-            real_flight.flight_path,
-            columns=["latitude", "longitude", "time", "altitude_ft"],
+    geodesic_path = pd.DataFrame(geodesic_path, columns=["latitude", "longitude"])
+    real_flight_df = pd.DataFrame(
+        real_flight.flight_path,
+        columns=["latitude", "longitude", "time", "altitude_ft"],
+    )
+    chosen_pareto_path_df = pd.DataFrame(
+        chosen_pareto_path.flight_path,
+        columns=["latitude", "longitude", "time", "altitude_ft"],
+    )
+    random_path_df = pd.DataFrame(
+        random_flight_path.flight_path,
+        columns=["latitude", "longitude", "time", "altitude_ft"],
+    )
+
+    questions = [
+        inquirer.Checkbox(
+            "graphs",
+            message="What plots would you like to see?",
+            choices=[
+                "Objectives over time",
+                "Flight path comparison",
+                "Flight path over time",
+                "3D Flight path over time",
+                "Pareto Front",
+            ],
+            carousel=True,
+        ),
+    ]
+    answers = inquirer.prompt(questions)
+
+    # Display results
+    display = Display()
+
+    if "Objectives over time" in answers["graphs"]:
+        graphs.show_objectives_over_time(display, objectives)
+
+    if "Flight path comparison" in answers["graphs"]:
+        graphs.show_flight_path_comparison(
+            display,
+            geodesic_path,
+            real_flight_df,
+            chosen_pareto_path_df,
+            random_path_df,
+            pareto_set,
+            fp_cocip,
+            aco_cocip,
+            rand_cocip,
         )
-        chosen_pareto_path_df = pd.DataFrame(
-            chosen_pareto_path.flight_path,
-            columns=["latitude", "longitude", "time", "altitude_ft"],
+
+    if "Pareto Front" in answers["graphs"]:
+        graphs.show_pareto_front(display, pareto_set)
+
+    if "Flight path over time" in answers["graphs"]:
+        graphs.show_flight_frames(
+            display,
+            real_flight_df,
+            chosen_pareto_path_df,
+            random_path_df,
+            contrail_grid.contrail_grid,
+            config,
         )
-        random_path_df = pd.DataFrame(
-            random_flight_path.flight_path,
-            columns=["latitude", "longitude", "time", "altitude_ft"],
+
+    if "3D Flight path over time" in answers["graphs"]:
+        graphs.show_3d_flight_frames(
+            display,
+            real_flight_df,
+            chosen_pareto_path_df,
+            random_path_df,
+            contrail_polys,
+            contrail_grid.contrail_grid,
+            config,
         )
 
-        questions = [
-            inquirer.Checkbox(
-                "graphs",
-                message="What plots would you like to see?",
-                choices=[
-                    "Objectives over time",
-                    "Flight path comparison",
-                    "Flight path over time",
-                    "3D Flight path over time",
-                    "Pareto Front",
-                ],
-                carousel=True,
-            ),
-        ]
-        answers = inquirer.prompt(questions)
-
-        # Display results
-        display = Display()
-
-        if "Objectives over time" in answers["graphs"]:
-            graphs.show_objectives_over_time(display, objectives)
-
-        if "Flight path comparison" in answers["graphs"]:
-            graphs.show_flight_path_comparison(
-                display,
-                geodesic_path,
-                real_flight_df,
-                chosen_pareto_path_df,
-                random_path_df,
-                pareto_set,
-                fp_cocip,
-                aco_cocip,
-                rand_cocip,
-            )
-
-        if "Pareto Front" in answers["graphs"]:
-            graphs.show_pareto_front(display, pareto_set)
-
-        if "Flight path over time" in answers["graphs"]:
-            graphs.show_flight_frames(
-                display,
-                real_flight_df,
-                chosen_pareto_path_df,
-                random_path_df,
-                contrail_grid.contrail_grid,
-                config,
-            )
-
-        if "3D Flight path over time" in answers["graphs"]:
-            graphs.show_3d_flight_frames(
-                display,
-                real_flight_df,
-                chosen_pareto_path_df,
-                random_path_df,
-                contrail_polys,
-                contrail_grid.contrail_grid,
-                config,
-            )
-
-        display.show()
+    display.show()
 
 
 if __name__ == "__main__":
