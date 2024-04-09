@@ -89,7 +89,8 @@ def print_results_table(real_flight, random_flight, pareto_set, chosen_pareto_pa
         )
 
     print(table)
-    print("\n \n \n")  # Add some space between the table and the next question
+    # Add some space between the table and the next question, as it'll get cut off by inquirer
+    print("\n \n \n")
 
 
 def run_aco(config: Config, choose_path=False):
@@ -468,6 +469,7 @@ def compare_fronts():
     ideal, nadir = distance_indicator.derive_ideal_and_nadir_from_pf(concat_dfs)
     normalization = ZeroToOneNormalization(ideal, nadir)
 
+    # Normalise all dataframes
     norm_dfs = []
     for df in dfs:
         norm_df = pd.DataFrame(normalization.forward(df.values), columns=df.columns)
@@ -483,7 +485,6 @@ def compare_fronts():
         hypervolume = hv(front.values)
         print(f"HV {front.name}: {hypervolume}")
 
-    show_results = False
     display.show()
 
 
