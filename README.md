@@ -33,3 +33,7 @@ Run tests for all modules with:
 ```bash
 python -m unittest discover -s . -p "test_*.py"
 ```
+
+Full dissertation:
+
+[Report.pdf](https://github.com/user-attachments/files/25365315/Report-1.pdf)
